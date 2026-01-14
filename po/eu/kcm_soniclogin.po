@@ -1,15 +1,15 @@
-# Translation for kcm_soniclogin.po to Euskara/Basque (eu).
-# Copyright (C) 2025-2026 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# Translation for kcm_plasmalogin.po to Euskara/Basque (eu).
+# Copyright (C) 2025 This file is copyright:
+# This file is distributed under the same license as the plasma-login-manager package.
 # SPDX-FileCopyrightText: 2025 KDE euskaratzeko proiektuaren arduraduna <xalba@ni.eus>
 #
 # Translators:
-# SPDX-FileCopyrightText: Iñigo Salvador Azurmendi <xalba@ni.eus>, 2025, 2026.
+# SPDX-FileCopyrightText: 2025 Iñigo Salvador Azurmendi <xalba@ni.eus>
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"POT-Creation-Date: 2026-01-14 00:46+0000\n"
 "PO-Revision-Date: 2025-10-23 01:16+0200\n"
 "Last-Translator: Iñigo Salvador Azurmendi <xalba@ni.eus>\n"
 "Language-Team: Basque <kde-i18n-eu@kde.org>\n"
@@ -27,25 +27,25 @@ msgstr ""
 "Ez da ezarpenak gordetzeko gai aldi baterako direktorio bat ezin izan "
 "duelako sortu."
 
-#: kcm.cpp:139
+#: kcm.cpp:132
 msgid "Unable to save settings because the config could not be opened."
 msgstr "Ez da ezarpenak gordetzeko gai konfigurazioa ezin izan duelako ireki."
 
-#: kcm.cpp:214
+#: kcm.cpp:204
 msgid ""
-"Unable to synchronise Plasma settings because the 'soniclogin' user does "
-"not exist. Please check your Sonic Login install."
+"Unable to synchronise Plasma settings because the 'plasmalogin' user does "
+"not exist. Please check your Plasma Login install."
 msgstr ""
-"Ez da Plasma ezarpenak sinkronizatzeko gai 'soniclogin' erabiltzailea "
+"Ez da Plasma ezarpenak sinkronizatzeko gai 'plasmalogin' erabiltzailea "
 "existitzen ez delako. Mesedez, egiaztatu Plasman saio hasteko zure "
 "instalazioa."
 
-#: kcm.cpp:265
+#: kcm.cpp:255
 msgid ""
-"Unable to reset Plasma settings because the 'soniclogin' user does not "
-"exist. Please check your Sonic Login install."
+"Unable to reset Plasma settings because the 'plasmalogin' user does not "
+"exist. Please check your Plasma Login install."
 msgstr ""
-"Ez da Plasma ezarpenak berrezartzeko gai 'soniclogin' erabiltzailea "
+"Ez da Plasma ezarpenak berrezartzeko gai 'plasmalogin' erabiltzailea "
 "existitzen ez delako. Mesedez egiaztatu Plasman saio hasteko zure "
 "instalazioa."
 
@@ -204,13 +204,13 @@ msgctxt "@option:radio"
 msgid "Last logged-in user"
 msgstr "Saioa hasi zuen azken erabiltzailea"
 
-#: ui/main.qml:293
+#: ui/main.qml:292
 #, kde-format
 msgctxt "@label"
 msgid "Default session:"
 msgstr "Saio lehenetsia:"
 
-#: ui/main.qml:299
+#: ui/main.qml:298
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in session"

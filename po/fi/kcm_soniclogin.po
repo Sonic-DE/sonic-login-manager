@@ -1,12 +1,12 @@
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# This file is distributed under the same license as the plasma-login-manager package.
 # SPDX-FileCopyrightText: 2025 Tommi Nieminen <translator@legisign.org>
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"POT-Creation-Date: 2026-01-14 00:46+0000\n"
 "PO-Revision-Date: 2025-11-13 18:13+0200\n"
 "Last-Translator: Tommi Nieminen <translator@legisign.org>\n"
 "Language-Team: Finnish <kde-i18n-doc@kde.org>\n"
@@ -22,25 +22,25 @@ msgid ""
 "Unable to save settings because a temporary directory could not be created."
 msgstr "Asetuksia ei voitu tallentaa, koska väliaikaiskansiota ei voitu luoda."
 
-#: kcm.cpp:139
+#: kcm.cpp:132
 msgid "Unable to save settings because the config could not be opened."
 msgstr "Asetuksia ei voitu tallentaa, koska asetuksia ei saatu avattua."
 
-#: kcm.cpp:214
+#: kcm.cpp:204
 msgid ""
-"Unable to synchronise Plasma settings because the 'soniclogin' user does "
-"not exist. Please check your Sonic Login install."
+"Unable to synchronise Plasma settings because the 'plasmalogin' user does "
+"not exist. Please check your Plasma Login install."
 msgstr ""
-"Plasman asetuksia ei voitu tahdistaa, koska ”soniclogin”-tunnusta ei ole. "
-"Tarkista Sonic Loginin asennus."
+"Plasman asetuksia ei voitu tahdistaa, koska ”plasmalogin”-tunnusta ei ole. "
+"Tarkista Plasma Loginin asennus."
 
-#: kcm.cpp:265
+#: kcm.cpp:255
 msgid ""
-"Unable to reset Plasma settings because the 'soniclogin' user does not "
-"exist. Please check your Sonic Login install."
+"Unable to reset Plasma settings because the 'plasmalogin' user does not "
+"exist. Please check your Plasma Login install."
 msgstr ""
-"Plasman asetuksia ei voitu palauttaa, koska ”soniclogin”-tunnusta ei ole. "
-"Tarkista Sonic Loginin asennus."
+"Plasman asetuksia ei voitu palauttaa, koska ”plasmalogin”-tunnusta ei ole. "
+"Tarkista Plasma Loginin asennus."
 
 #: ui/Appearance.qml:23
 #, kde-format
@@ -196,13 +196,13 @@ msgctxt "@option:radio"
 msgid "Last logged-in user"
 msgstr "Viimeksi kirjautunut käyttäjä"
 
-#: ui/main.qml:293
+#: ui/main.qml:292
 #, kde-format
 msgctxt "@label"
 msgid "Default session:"
 msgstr "Oletusistunto:"
 
-#: ui/main.qml:299
+#: ui/main.qml:298
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in session"

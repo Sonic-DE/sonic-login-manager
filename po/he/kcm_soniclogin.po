@@ -1,12 +1,12 @@
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# This file is distributed under the same license as the plasma-login-manager package.
 #
 # SPDX-FileCopyrightText: 2025 Yaron Shahrabani <sh.yaron@gmail.com>
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"POT-Creation-Date: 2026-01-14 00:46+0000\n"
 "PO-Revision-Date: 2025-10-21 14:42+0300\n"
 "Last-Translator: Yaron Shahrabani <sh.yaron@gmail.com>\n"
 "Language-Team: צוות התרגום של KDE ישראל\n"
@@ -23,25 +23,25 @@ msgid ""
 "Unable to save settings because a temporary directory could not be created."
 msgstr "לא ניתן לשמור את ההגדרה כי לא ניתן ליצור תיקייה זמנית."
 
-#: kcm.cpp:139
+#: kcm.cpp:132
 msgid "Unable to save settings because the config could not be opened."
 msgstr "לא ניתן לשמור את ההגדרות כי לא ניתן לפתוח את התצורה."
 
-#: kcm.cpp:214
+#: kcm.cpp:204
 msgid ""
-"Unable to synchronise Plasma settings because the 'soniclogin' user does "
-"not exist. Please check your Sonic Login install."
+"Unable to synchronise Plasma settings because the 'plasmalogin' user does "
+"not exist. Please check your Plasma Login install."
 msgstr ""
-"לא ניתן לסנכרן את הגדרות פלזמה כי המשתמש ‚soniclogin’ לא קיים. נא לבדוק "
-"שהתקנת הכניסה עם פלזמה (Sonic Login) תקינה."
+"לא ניתן לסנכרן את הגדרות פלזמה כי המשתמש ‚plasmalogin’ לא קיים. נא לבדוק "
+"שהתקנת הכניסה עם פלזמה (Plasma Login) תקינה."
 
-#: kcm.cpp:265
+#: kcm.cpp:255
 msgid ""
-"Unable to reset Plasma settings because the 'soniclogin' user does not "
-"exist. Please check your Sonic Login install."
+"Unable to reset Plasma settings because the 'plasmalogin' user does not "
+"exist. Please check your Plasma Login install."
 msgstr ""
-"לא ניתן לאפס את הגדרות פלזמה כי המשתמש ‚soniclogin’ לא קיים. נא לבדוק "
-"שהתקנת הכניסה עם פלזמה (Sonic Login) תקינה."
+"לא ניתן לאפס את הגדרות פלזמה כי המשתמש ‚plasmalogin’ לא קיים. נא לבדוק "
+"שהתקנת הכניסה עם פלזמה (Plasma Login) תקינה."
 
 #: ui/Appearance.qml:23
 #, kde-format
@@ -196,13 +196,13 @@ msgctxt "@option:radio"
 msgid "Last logged-in user"
 msgstr "המשתמש האחרון שנכנס למערכת"
 
-#: ui/main.qml:293
+#: ui/main.qml:292
 #, kde-format
 msgctxt "@label"
 msgid "Default session:"
 msgstr "הפעלת ברירת מחדל:"
 
-#: ui/main.qml:299
+#: ui/main.qml:298
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in session"
