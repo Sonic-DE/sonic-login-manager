@@ -1,14 +1,14 @@
-# Spanish translations for kcm_soniclogin.po package.
+# Spanish translations for kcm_plasmalogin.po package.
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# This file is distributed under the same license as the plasma-login-manager package.
 # Automatically generated, 2025.
 #
 # SPDX-FileCopyrightText: 2025 Eloy Cuadra <ecuadra@eloihr.net>
 msgid ""
 msgstr ""
-"Project-Id-Version: kcm_soniclogin\n"
+"Project-Id-Version: kcm_plasmalogin\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"POT-Creation-Date: 2026-01-14 00:46+0000\n"
 "PO-Revision-Date: 2025-10-22 01:41+0100\n"
 "Last-Translator: Eloy Cuadra <ecuadra@eloihr.net>\n"
 "Language-Team: Spanish <kde-l10n-es@kde.org>\n"
@@ -26,28 +26,28 @@ msgstr ""
 "No se han podido guardar las preferencias porque no se ha podido crear un "
 "directorio temporal."
 
-#: kcm.cpp:139
+#: kcm.cpp:132
 msgid "Unable to save settings because the config could not be opened."
 msgstr ""
 "No se han podido guardar las preferencias porque no se puede abrir la "
 "configuración."
 
-#: kcm.cpp:214
+#: kcm.cpp:204
 msgid ""
-"Unable to synchronise Plasma settings because the 'soniclogin' user does "
-"not exist. Please check your Sonic Login install."
+"Unable to synchronise Plasma settings because the 'plasmalogin' user does "
+"not exist. Please check your Plasma Login install."
 msgstr ""
 "No se han podido sincronizar las preferencias de Plasma porque el usuario "
-"«soniclogin» no existe. Compruebe la instalación del inicio de sesión de "
+"«plasmalogin» no existe. Compruebe la instalación del inicio de sesión de "
 "Plasma."
 
-#: kcm.cpp:265
+#: kcm.cpp:255
 msgid ""
-"Unable to reset Plasma settings because the 'soniclogin' user does not "
-"exist. Please check your Sonic Login install."
+"Unable to reset Plasma settings because the 'plasmalogin' user does not "
+"exist. Please check your Plasma Login install."
 msgstr ""
 "No se han podido reiniciar las preferencias de Plasma porque el usuario "
-"«soniclogin» no existe. Compruebe la instalación del inicio de sesión de "
+"«plasmalogin» no existe. Compruebe la instalación del inicio de sesión de "
 "Plasma."
 
 #: ui/Appearance.qml:23
@@ -205,13 +205,13 @@ msgctxt "@option:radio"
 msgid "Last logged-in user"
 msgstr "Último usuario que haya iniciado sesión"
 
-#: ui/main.qml:293
+#: ui/main.qml:292
 #, kde-format
 msgctxt "@label"
 msgid "Default session:"
 msgstr "Sesión predeterminada:"
 
-#: ui/main.qml:299
+#: ui/main.qml:298
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in session"
