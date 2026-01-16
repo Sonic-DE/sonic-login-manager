@@ -95,6 +95,7 @@ SessionManagementScreen {
     }
 
     RowLayout {
+        id: passwordRow
         Layout.fillWidth: true
 
         PlasmaExtras.PasswordField {
@@ -159,6 +160,12 @@ SessionManagementScreen {
                 clicked()
             }
         }
+    }
+
+    SessionButton {
+        id: sessionButton
+        Layout.maximumWidth: passwordRow.width
+        onSessionChanged: root.focusFirstVisibleFormControl()
     }
 
     // Synchronise state
