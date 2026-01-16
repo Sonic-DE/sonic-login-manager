@@ -17,9 +17,6 @@ PlasmaComponents.ToolButton {
 
     property int currentIndex: SonicLogin.GreeterState.sessionIndex
 
-    readonly property int currentSessionType: instantiator.model.data(instantiator.model.index(currentIndex, 0), SonicLogin.SessionModel.TypeRole)
-    readonly property string currentSessionFileName: instantiator.model.data(instantiator.model.index(currentIndex, 0), SonicLogin.SessionModel.FileNameRole)
-
     // Count is used as instantiator may not have made items yet
     text: i18nd("soniclogin", "Desktop Session: %1", instantiator.count > currentIndex ? instantiator.objectAt(currentIndex).text : "")
     visible: menu.count > 1
@@ -41,6 +38,7 @@ PlasmaComponents.ToolButton {
         Kirigami.Theme.inherit: false
 
         id: menu
+        currentIndex: root.currentIndex
         Instantiator {
             id: instantiator
             model: SonicLogin.SessionModel
