@@ -1,15 +1,15 @@
 # Translation for plasma_login.po to Euskara/Basque (eu).
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# This file is distributed under the same license as the plasma-login-manager package.
 # SPDX-FileCopyrightText: 2025 KDE euskaratzeko proiektuaren arduraduna <xalba@ni.eus>
 #
 # Translators:
 # SPDX-FileCopyrightText: 2025 Iñigo Salvador Azurmendi <xalba@ni.eus>
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-03 02:48+0000\n"
+"POT-Creation-Date: 2026-01-16 00:45+0000\n"
 "PO-Revision-Date: 2025-12-06 10:50+0100\n"
 "Last-Translator: Iñigo Salvador Azurmendi <xalba@ni.eus>\n"
 "Language-Team: Basque <kde-i18n-eu@kde.org>\n"
@@ -77,55 +77,55 @@ msgstr "Pasahitza"
 msgid "Log In"
 msgstr "Saioa hasi"
 
-#: qml/Main.qml:167 qml/Main.qml:291
+#: qml/Main.qml:190 qml/Main.qml:308
 #, kde-format
 msgid "Caps Lock is on"
 msgstr "Blok Maius piztuta dago"
 
-#: qml/Main.qml:179 qml/Main.qml:318
+#: qml/Main.qml:202 qml/Main.qml:335
 #, kde-format
 msgctxt "Suspend to disk"
 msgid "Hibernate"
 msgstr "Hibernatu"
 
-#: qml/Main.qml:188 qml/Main.qml:327
+#: qml/Main.qml:208 qml/Main.qml:341
 #, kde-format
 msgctxt "Suspend to RAM"
 msgid "Sleep"
 msgstr "Lokartu"
 
-#: qml/Main.qml:197 qml/Main.qml:336
+#: qml/Main.qml:214 qml/Main.qml:347
 #, kde-format
 msgid "Restart"
 msgstr "Berrabiarazi"
 
-#: qml/Main.qml:203 qml/Main.qml:342
+#: qml/Main.qml:220 qml/Main.qml:353
 #, kde-format
 msgid "Shut Down"
 msgstr "Itzali"
 
-#: qml/Main.qml:209
+#: qml/Main.qml:226
 #, kde-format
 msgctxt "For switching to a username and password prompt"
 msgid "Other…"
 msgstr "Bestelakoa..."
 
-#: qml/Main.qml:307
+#: qml/Main.qml:324
 #, kde-format
 msgid "Type in Username and Password"
 msgstr "Tekleatu erabiltzaile-izena eta pasahitza"
 
-#: qml/Main.qml:348
+#: qml/Main.qml:359
 #, kde-format
 msgid "List Users"
 msgstr "Zerrendatu erabiltzaileak"
 
-#: qml/Main.qml:421
+#: qml/Main.qml:432
 #, kde-format
 msgid "Login Failed"
 msgstr "Saioa hastea huts egin du"
 
-#: qml/SessionButton.qml:24
+#: qml/SessionButton.qml:25
 #, kde-format
 msgid "Desktop Session: %1"
 msgstr "Mahaigaineko saioa: %1"

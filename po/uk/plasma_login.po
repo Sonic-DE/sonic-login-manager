@@ -1,22 +1,22 @@
-# Translation of plasma_login to Norwegian Bokmål
+# Copyright (C) YEAR This file is copyright:
+# This file is distributed under the same license as the plasma-login-manager package.
 #
+# Yuri Chornoivan <yurchor@ukr.net>, 2025.
 msgid ""
 msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-01-16 00:45+0000\n"
-"PO-Revision-Date: 2025-05-31 19:07+0200\n"
-"Last-Translator: Martin Hansen <mh306602@gmail.com>\n"
-"Language-Team: Norwegian Bokmål <l10n-no@lister.huftis.org>\n"
-"Language: nb\n"
+"PO-Revision-Date: 2025-12-01 15:06+0200\n"
+"Last-Translator: Yuri Chornoivan <yurchor@ukr.net>\n"
+"Language-Team: Ukrainian <trans-uk@lists.fedoraproject.org>\n"
+"Language: uk\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Lokalize 25.04.1\n"
-"X-Environment: kde\n"
-"X-Accelerator-Marker: &\n"
-"X-Text-Markup: kde4\n"
+"Plural-Forms: nplurals=4; plural=n==1 ? 3 : n%10==1 && n%100!=11 ? 0 : n"
+"%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
+"X-Generator: Lokalize 23.04.3\n"
 
 #: ../settings/models/sessionmodel.cpp:77
 #, kde-format
@@ -24,7 +24,7 @@ msgctxt ""
 "@item:inmenu %1 is the localised name of a desktop session, %2 is the index "
 "of the session"
 msgid "%1 (X11) (%2)"
-msgstr ""
+msgstr "%1 (X11) (%2)"
 
 #: ../settings/models/sessionmodel.cpp:82
 #, kde-format
@@ -32,19 +32,19 @@ msgctxt ""
 "@item:inmenu %1 is the localised name of a desktop session, %2 is the index "
 "of the session"
 msgid "%1 (Wayland) (%2)"
-msgstr ""
+msgstr "%1 (Wayland) (%2)"
 
 #: ../settings/models/sessionmodel.cpp:89
 #, kde-format
 msgctxt "@item:inmenu %1 is the localised name of a desktop session"
 msgid "%1 (X11)"
-msgstr ""
+msgstr "%1 (X11)"
 
 #: ../settings/models/sessionmodel.cpp:91
 #, kde-format
 msgctxt "@item:inmenu %1 is the localised name of a desktop session"
 msgid "%1 (Wayland)"
-msgstr ""
+msgstr "%1 (Wayland)"
 
 #: ../settings/models/sessionmodel.cpp:94
 #, kde-format
@@ -52,78 +52,78 @@ msgctxt ""
 "@item:inmenu %1 is the localised name of a desktop session, %2 is the index "
 "of the session"
 msgid "%1 (%2)"
-msgstr ""
+msgstr "%1 (%2)"
 
 #: qml/KeyboardButton.qml:15
 #, kde-format
 msgctxt "Button to change keyboard layout"
 msgid "Switch layout"
-msgstr "Bytt oppsett"
+msgstr "Змінити розкладку"
 
 #: qml/Login.qml:88
 #, kde-format
 msgid "Username"
-msgstr "Brukernavn"
+msgstr "Користувач"
 
 #: qml/Login.qml:105
 #, kde-format
 msgid "Password"
-msgstr "Passord"
+msgstr "Пароль"
 
 #: qml/Login.qml:145 qml/Login.qml:151
 #, kde-format
 msgid "Log In"
-msgstr "Logg inn"
+msgstr "Увійти"
 
 #: qml/Main.qml:190 qml/Main.qml:308
 #, kde-format
 msgid "Caps Lock is on"
-msgstr "«Caps Lock» er på"
+msgstr "Caps Lock увімкнено"
 
 #: qml/Main.qml:202 qml/Main.qml:335
 #, kde-format
 msgctxt "Suspend to disk"
 msgid "Hibernate"
-msgstr ""
+msgstr "Приспати"
 
 #: qml/Main.qml:208 qml/Main.qml:341
 #, kde-format
 msgctxt "Suspend to RAM"
 msgid "Sleep"
-msgstr "Hvilemodus"
+msgstr "Призупинити"
 
 #: qml/Main.qml:214 qml/Main.qml:347
 #, kde-format
 msgid "Restart"
-msgstr "Start på nytt"
+msgstr "Перезапустити"
 
 #: qml/Main.qml:220 qml/Main.qml:353
 #, kde-format
 msgid "Shut Down"
-msgstr "Slå av"
+msgstr "Вимкнути"
 
 #: qml/Main.qml:226
 #, kde-format
 msgctxt "For switching to a username and password prompt"
 msgid "Other…"
-msgstr "Annet …"
+msgstr "Інше…"
 
 #: qml/Main.qml:324
 #, kde-format
 msgid "Type in Username and Password"
-msgstr "Skriv inn brukernavn og passord"
+msgstr "Введіть ім'я користувача і пароль"
 
 #: qml/Main.qml:359
 #, kde-format
 msgid "List Users"
-msgstr "Vis brukere"
+msgstr "Список користувачів"
 
 #: qml/Main.qml:432
 #, kde-format
 msgid "Login Failed"
-msgstr "Feil ved innlogging"
+msgstr "Невдала спроба увійти"
 
 #: qml/SessionButton.qml:25
 #, kde-format
 msgid "Desktop Session: %1"
-msgstr "Skrivebordsøkt: %1"
+msgstr "Сеанс стільниці: %1"
