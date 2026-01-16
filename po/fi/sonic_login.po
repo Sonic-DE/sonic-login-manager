@@ -1,13 +1,13 @@
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
-# SPDX-FileCopyrightText: 2025, 2026 Tommi Nieminen <translator@legisign.org>
+# This file is distributed under the same license as the plasma-login-manager package.
+# SPDX-FileCopyrightText: 2025 Tommi Nieminen <translator@legisign.org>
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-03 02:48+0000\n"
-"PO-Revision-Date: 2026-01-05 18:05+0200\n"
+"POT-Creation-Date: 2026-01-16 00:45+0000\n"
+"PO-Revision-Date: 2025-10-13 21:14+0300\n"
 "Last-Translator: Tommi Nieminen <translator@legisign.org>\n"
 "Language-Team: Finnish <kde-i18n-doc@kde.org>\n"
 "Language: fi\n"
@@ -46,7 +46,11 @@ msgid "%1 (Wayland)"
 msgstr "%1 (Wayland)"
 
 #: ../settings/models/sessionmodel.cpp:94
-#, kde-format
+#, fuzzy, kde-format
+#| msgctxt ""
+#| "@item:inmenu %1 is the localised name of a desktop session, %2 is the "
+#| "index of the sessionn"
+#| msgid "%1 (%2)"
 msgctxt ""
 "@item:inmenu %1 is the localised name of a desktop session, %2 is the index "
 "of the session"
@@ -74,55 +78,55 @@ msgstr "Salasana"
 msgid "Log In"
 msgstr "Kirjaudu"
 
-#: qml/Main.qml:167 qml/Main.qml:291
+#: qml/Main.qml:190 qml/Main.qml:308
 #, kde-format
 msgid "Caps Lock is on"
 msgstr "Vaihtolukko on käytössä"
 
-#: qml/Main.qml:179 qml/Main.qml:318
+#: qml/Main.qml:202 qml/Main.qml:335
 #, kde-format
 msgctxt "Suspend to disk"
 msgid "Hibernate"
 msgstr "Lepotila"
 
-#: qml/Main.qml:188 qml/Main.qml:327
+#: qml/Main.qml:208 qml/Main.qml:341
 #, kde-format
 msgctxt "Suspend to RAM"
 msgid "Sleep"
 msgstr "Lepotila"
 
-#: qml/Main.qml:197 qml/Main.qml:336
+#: qml/Main.qml:214 qml/Main.qml:347
 #, kde-format
 msgid "Restart"
 msgstr "Käynnistä uudelleen"
 
-#: qml/Main.qml:203 qml/Main.qml:342
+#: qml/Main.qml:220 qml/Main.qml:353
 #, kde-format
 msgid "Shut Down"
 msgstr "Sammuta"
 
-#: qml/Main.qml:209
+#: qml/Main.qml:226
 #, kde-format
 msgctxt "For switching to a username and password prompt"
 msgid "Other…"
 msgstr "Muu…"
 
-#: qml/Main.qml:307
+#: qml/Main.qml:324
 #, kde-format
 msgid "Type in Username and Password"
 msgstr "Syötä käyttäjätunnus ja salasana"
 
-#: qml/Main.qml:348
+#: qml/Main.qml:359
 #, kde-format
 msgid "List Users"
 msgstr "Luettele käyttäjät"
 
-#: qml/Main.qml:421
+#: qml/Main.qml:432
 #, kde-format
 msgid "Login Failed"
 msgstr "Kirjautuminen epäonnistui"
 
-#: qml/SessionButton.qml:24
+#: qml/SessionButton.qml:25
 #, kde-format
 msgid "Desktop Session: %1"
 msgstr "Työpöytäistunto: %1"

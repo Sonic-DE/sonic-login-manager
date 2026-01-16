@@ -1,15 +1,15 @@
-# German translations for sonic-login-manager package
-# German translation for sonic-login-manager.
+# German translations for plasma-login-manager package
+# German translation for plasma-login-manager.
 # Copyright (C) 2025 This file is copyright:
-# This file is distributed under the same license as the sonic-login-manager package.
+# This file is distributed under the same license as the plasma-login-manager package.
 # SPDX-FileCopyrightText: 2025 Alois Spitzbart <spitz234@hotmail.com>
-# SPDX-FileCopyrightText: 2025-2026 Philipp Kiemle <l10n.daphipz@fastmail.de>
+# SPDX-FileCopyrightText: 2025 Philipp Kiemle <l10n.daphipz@fastmail.de>
 msgid ""
 msgstr ""
-"Project-Id-Version: sonic-login-manager\n"
+"Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
-"POT-Creation-Date: 2026-02-03 02:48+0000\n"
-"PO-Revision-Date: 2026-01-26 17:28+0100\n"
+"POT-Creation-Date: 2026-01-16 00:45+0000\n"
+"PO-Revision-Date: 2025-11-16 19:17+0100\n"
 "Last-Translator: Philipp Kiemle <l10n.daphipz@fastmail.de>\n"
 "Language-Team: German <kde-i18n-de@kde.org>\n"
 "Language: de\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 25.12.1\n"
+"X-Generator: Lokalize 25.08.3\n"
 
 #: ../settings/models/sessionmodel.cpp:77
 #, kde-format
@@ -53,7 +53,7 @@ msgctxt ""
 "@item:inmenu %1 is the localised name of a desktop session, %2 is the index "
 "of the session"
 msgid "%1 (%2)"
-msgstr "%1 (%2)"
+msgstr ""
 
 #: qml/KeyboardButton.qml:15
 #, kde-format
@@ -76,55 +76,55 @@ msgstr "Passwort"
 msgid "Log In"
 msgstr "Anmelden"
 
-#: qml/Main.qml:167 qml/Main.qml:291
+#: qml/Main.qml:190 qml/Main.qml:308
 #, kde-format
 msgid "Caps Lock is on"
 msgstr "Feststelltaste ist aktiviert"
 
-#: qml/Main.qml:179 qml/Main.qml:318
+#: qml/Main.qml:202 qml/Main.qml:335
 #, kde-format
 msgctxt "Suspend to disk"
 msgid "Hibernate"
 msgstr "Ruhezustand"
 
-#: qml/Main.qml:188 qml/Main.qml:327
+#: qml/Main.qml:208 qml/Main.qml:341
 #, kde-format
 msgctxt "Suspend to RAM"
 msgid "Sleep"
 msgstr "Standby-Modus"
 
-#: qml/Main.qml:197 qml/Main.qml:336
+#: qml/Main.qml:214 qml/Main.qml:347
 #, kde-format
 msgid "Restart"
 msgstr "Neu starten"
 
-#: qml/Main.qml:203 qml/Main.qml:342
+#: qml/Main.qml:220 qml/Main.qml:353
 #, kde-format
 msgid "Shut Down"
 msgstr "Herunterfahren"
 
-#: qml/Main.qml:209
+#: qml/Main.qml:226
 #, kde-format
 msgctxt "For switching to a username and password prompt"
 msgid "Other…"
 msgstr "Weitere …"
 
-#: qml/Main.qml:307
+#: qml/Main.qml:324
 #, kde-format
 msgid "Type in Username and Password"
 msgstr "Benutzernamen und Passwort eingeben"
 
-#: qml/Main.qml:348
+#: qml/Main.qml:359
 #, kde-format
 msgid "List Users"
 msgstr "Benutzer anzeigen"
 
-#: qml/Main.qml:421
+#: qml/Main.qml:432
 #, kde-format
 msgid "Login Failed"
 msgstr "Anmeldung fehlgeschlagen"
 
-#: qml/SessionButton.qml:24
+#: qml/SessionButton.qml:25
 #, kde-format
 msgid "Desktop Session: %1"
 msgstr "Arbeitsflächen-Sitzung: %1"
