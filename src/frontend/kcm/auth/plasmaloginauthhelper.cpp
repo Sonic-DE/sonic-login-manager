@@ -119,6 +119,8 @@ ActionReply PlasmaLoginAuthHelper::sync(const QVariantMap &args)
 
     createConfigFile(QStringLiteral("fontconfig/fonts.conf"));
 
+    createConfigFile(QStringLiteral("kxkbrc"));
+
     return ActionReply::SuccessReply();
 }
 
@@ -154,6 +156,9 @@ ActionReply PlasmaLoginAuthHelper::reset(const QVariantMap &args)
 
     QFile kwinoutputconfigFile(homeDir + QStringLiteral("/.config/") + QStringLiteral("/kwinoutputconfig.json"));
     kwinoutputconfigFile.remove();
+
+    QFile kxkbrcFile(homeDir + QStringLiteral("/.config/") + QStringLiteral("/kxkbrc"));
+    kxkbrcFile.remove();
 
     return ActionReply::SuccessReply();
 }

@@ -244,6 +244,8 @@ void PlasmaLoginKcm::synchronizeSettings()
         addConfigFile(fontconfigPath + QStringLiteral("/fonts.conf"), QStringLiteral("fontconfig/fonts.conf"));
     }
 
+    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kxkbrc")), QStringLiteral("kxkbrc"));
+
     KAuth::Action syncAction(QStringLiteral("org.kde.kcontrol.kcmplasmalogin.sync"));
     syncAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmplasmalogin"));
     syncAction.setArguments(args);
