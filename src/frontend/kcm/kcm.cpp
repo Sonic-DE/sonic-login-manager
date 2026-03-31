@@ -31,339 +31,367 @@
 
 #include "kcm.h"
 
-K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json", registerPlugin<SonicLoginKcm>(); registerPlugin<SonicLoginData>();)
+K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json",
+                           registerPlugin<SonicLoginKcm>();
+                           registerPlugin<SonicLoginData>();)
 
 SonicLoginKcm::SonicLoginKcm(QObject *parent, const KPluginMetaData &data)
-    : KQuickManagedConfigModule(parent, data)
-    , m_wallpaperSettings(new WallpaperSettings(this))
-{
-    setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
-    registerSettings(&SonicLoginSettings::getInstance());
+    : KQuickManagedConfigModule(parent, data),
+      m_wallpaperSettings(new WallpaperSettings(this)) {
+  setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
+  registerSettings(&SonicLoginSettings::getInstance());
 
-    constexpr const char *url = "org.kde.private.kcms.soniclogin";
-    qRegisterMetaType<QList<WallpaperInfo>>("QList<WallpaperInfo>");
-    qmlRegisterAnonymousType<SonicLoginSettings>(url, 1);
-    qmlRegisterAnonymousType<WallpaperInfo>(url, 1);
-    qmlRegisterAnonymousType<WallpaperIntegration>(url, 1);
-    qmlRegisterAnonymousType<KConfigPropertyMap>(url, 1);
-    qmlRegisterAnonymousType<UserModel>(url, 1);
-    qmlRegisterAnonymousType<SessionModel>(url, 1);
-    qmlProtectModule(url, 1);
+  constexpr const char *url = "org.kde.private.kcms.soniclogin";
+  qRegisterMetaType<QList<WallpaperInfo>>("QList<WallpaperInfo>");
+  qmlRegisterAnonymousType<SonicLoginSettings>(url, 1);
+  qmlRegisterAnonymousType<WallpaperInfo>(url, 1);
+  qmlRegisterAnonymousType<WallpaperIntegration>(url, 1);
+  qmlRegisterAnonymousType<KConfigPropertyMap>(url, 1);
+  qmlRegisterAnonymousType<UserModel>(url, 1);
+  qmlRegisterAnonymousType<SessionModel>(url, 1);
+  qmlProtectModule(url, 1);
 
-    // Our modules will be checking the Plasmoid attached object when running from Plasma, let it load the module
-    constexpr const char *uri = "org.kde.plasma.plasmoid";
-    qmlRegisterUncreatableType<QObject>(uri, 2, 0, "PlasmoidPlaceholder", QStringLiteral("Do not create objects of type Plasmoid"));
+  // Our modules will be checking the Plasmoid attached object when running from
+  // Plasma, let it load the module
+  constexpr const char *uri = "org.kde.plasma.plasmoid";
+  qmlRegisterUncreatableType<QObject>(
+      uri, 2, 0, "PlasmoidPlaceholder",
+      QStringLiteral("Do not create objects of type Plasmoid"));
 
-    connect(&SonicLoginSettings::getInstance(), &SonicLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings, &WallpaperSettings::loadWallpaperConfig);
-    connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged, this, &SonicLoginKcm::currentWallpaperChanged);
+  connect(&SonicLoginSettings::getInstance(),
+          &SonicLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings,
+          &WallpaperSettings::loadWallpaperConfig);
+  connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged,
+          this, &SonicLoginKcm::currentWallpaperChanged);
 }
 
-void SonicLoginKcm::load()
-{
-    KQuickManagedConfigModule::load();
-    m_wallpaperSettings->load();
+void SonicLoginKcm::load() {
+  KQuickManagedConfigModule::load();
+  m_wallpaperSettings->load();
 
-    updateState();
-    Q_EMIT loadCalled();
+  updateState();
+  Q_EMIT loadCalled();
 }
 
-void SonicLoginKcm::save()
-{
-    // We are not allowed to write GUI items to the arg map passed to KAuth, such as QColor
-    // which is used in most wallpapers. So instead, we'll have to save a temporary copy of
-    // the written-out config and have KAuth update the installed file with its content.
+void SonicLoginKcm::save() {
+  // We are not allowed to write GUI items to the arg map passed to KAuth, such
+  // as QColor which is used in most wallpapers. So instead, we'll have to save
+  // a temporary copy of the written-out config and have KAuth update the
+  // installed file with its content.
 
-    QTemporaryDir tempDir;
-    if (!tempDir.isValid()) {
-        Q_EMIT errorOccurred(QString::fromUtf8(kli18n("Unable to save settings because a temporary directory could not be created.").untranslatedText()));
-        return;
+  QTemporaryDir tempDir;
+  if (!tempDir.isValid()) {
+    Q_EMIT errorOccurred(
+        QString::fromUtf8(kli18n("Unable to save settings because a temporary "
+                                 "directory could not be created.")
+                              .untranslatedText()));
+    return;
+  }
+
+  const QString tempFileName =
+      tempDir.path() + QLatin1String("/soniclogin.conf");
+  KConfig tempConfig(tempFileName, KConfig::SimpleConfig);
+
+  // Write our config
+  for (const auto &item : SonicLoginSettings::getInstance().items()) {
+    if (!item->isDefault()) {
+      tempConfig.group(item->group()).writeEntry(item->key(), item->property());
+    }
+  }
+
+  // Write wallpaper config
+  const QString wallpaperPluginId =
+      SonicLoginSettings::getInstance().wallpaperPluginId();
+  for (const auto item : m_wallpaperSettings->wallpaperSkeleton()->items()) {
+    if (item->isDefault()) {
+      continue;
     }
 
-    const QString tempFileName = tempDir.path() + QLatin1String("/soniclogin.conf");
-    KConfig tempConfig(tempFileName, KConfig::SimpleConfig);
+    tempConfig.group(QLatin1String("Greeter"))
+        .group(QLatin1String("Wallpaper"))
+        .group(wallpaperPluginId)
+        .group(QLatin1String("General"))
+        .writeEntry(item->key(), wallpaperConfiguration()->value(item->key()));
+  }
+  QVariantMap args;
 
-    // Write our config
-    for (const auto &item : SonicLoginSettings::getInstance().items()) {
-        if (!item->isDefault()) {
-            tempConfig.group(item->group()).writeEntry(item->key(), item->property());
-        }
+  // For image wallpapers we want to copy the user-set image
+  auto imageWallpaperGroup =
+      tempConfig.group("Greeter").group("Wallpaper").group("org.kde.image");
+  if (imageWallpaperGroup.exists()) {
+    // PreviewImage is a supposedly transient state for previewing, we don't
+    // want to save this to disk
+    imageWallpaperGroup.group("General").deleteEntry("PreviewImage");
+
+    // Copy the original image to somewhere the greeter can read it
+    const QUrl imageUri =
+        QUrl(imageWallpaperGroup.group("General").readEntry("Image"))
+            .adjusted(QUrl::StripTrailingSlash);
+    if (imageUri.isLocalFile()) {
+      args.insert(syncWallpaper(imageUri));
+
+      QUrl adjustedUri = QUrl();
+      adjustedUri.setScheme(QStringLiteral("file"));
+      adjustedUri.setPath(KUser("soniclogin").homeDir() + "/wallpapers/" +
+                          imageUri.fileName());
+      adjustedUri.setFragment(imageUri.fragment());
+      imageWallpaperGroup.group("General").writeEntry("Image", adjustedUri);
+    }
+  }
+
+  // Write our temporary saved config to be read back into auth helper args
+  // NOTE: If the config ends up empty, then sync won't write the file and
+  //       we'd trip up on that later
+  const bool configHasContent = tempConfig.isDirty();
+  if (configHasContent) {
+    tempConfig.sync();
+  }
+
+  // Read our temporary saved config into auth helper args
+  QString config;
+  if (configHasContent) {
+    QFile tempFile(tempFileName);
+    if (!tempFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      Q_EMIT errorOccurred(QString::fromUtf8(
+          kli18n(
+              "Unable to save settings because the config could not be opened.")
+              .untranslatedText()));
+      return;
     }
 
-    // Write wallpaper config
-    const QString wallpaperPluginId = SonicLoginSettings::getInstance().wallpaperPluginId();
-    for (const auto item : m_wallpaperSettings->wallpaperSkeleton()->items()) {
-        if (item->isDefault()) {
-            continue;
-        }
+    QTextStream in(&tempFile);
+    config = in.readAll();
+  }
 
-        tempConfig.group(QLatin1String("Greeter"))
-            .group(QLatin1String("Wallpaper"))
-            .group(wallpaperPluginId)
-            .group(QLatin1String("General"))
-            .writeEntry(item->key(), wallpaperConfiguration()->value(item->key()));
-    }
-    QVariantMap args;
+  args[QStringLiteral("config")] = config;
 
-    // For image wallpapers we want to copy the user-set image
-    auto imageWallpaperGroup = tempConfig.group("Greeter").group("Wallpaper").group("org.kde.image");
-    if (imageWallpaperGroup.exists()) {
-        // PreviewImage is a supposedly transient state for previewing, we don't want to save this to disk
-        imageWallpaperGroup.group("General").deleteEntry("PreviewImage");
+  KAuth::Action saveAction(authActionName());
+  saveAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
+  saveAction.setArguments(args);
 
-        // Copy the original image to somewhere the greeter can read it
-        const QUrl imageUri = QUrl(imageWallpaperGroup.group("General").readEntry("Image")).adjusted(QUrl::StripTrailingSlash);
-        if (imageUri.isLocalFile()) {
-            args.insert(syncWallpaper(imageUri));
-
-            QUrl adjustedUri = QUrl();
-            adjustedUri.setScheme(QStringLiteral("file"));
-            adjustedUri.setPath(KUser("soniclogin").homeDir() + "/wallpapers/" + imageUri.fileName());
-            adjustedUri.setFragment(imageUri.fragment());
-            imageWallpaperGroup.group("General").writeEntry("Image", adjustedUri);
-        }
-    }
-
-    // Write our temporary saved config to be read back into auth helper args
-    // NOTE: If the config ends up empty, then sync won't write the file and
-    //       we'd trip up on that later
-    const bool configHasContent = tempConfig.isDirty();
-    if (configHasContent) {
-        tempConfig.sync();
-    }
-
-    // Read our temporary saved config into auth helper args
-    QString config;
-    if (configHasContent) {
-        QFile tempFile(tempFileName);
-        if (!tempFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            Q_EMIT errorOccurred(QString::fromUtf8(kli18n("Unable to save settings because the config could not be opened.").untranslatedText()));
-            return;
-        }
-
-        QTextStream in(&tempFile);
-        config = in.readAll();
-    }
-
-    args[QStringLiteral("config")] = config;
-
-    KAuth::Action saveAction(authActionName());
-    saveAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
-    saveAction.setArguments(args);
-
-    auto job = saveAction.execute();
-    connect(job, &KJob::result, this, [this, job] {
-        if (job->error()) {
-            Q_EMIT errorOccurred(job->errorString());
-        } else {
-            updateState();
-        }
-        // Clarify enable or disable the Apply button.
-        this->setNeedsSave(job->error());
-    });
-    job->start();
-}
-
-QVariantMap SonicLoginKcm::syncWallpaper(const QUrl &imageUri)
-{
-    const QString baseName = imageUri.fileName();
-    const QString imagePath = imageUri.toLocalFile();
-
-    if (imagePath.isEmpty()) {
-        return {};
-    }
-
-    QVariantMap wallpaperArgs;
-    QStringList files;
-
-    // We open the file and pass an FD so the root helper knows our user can read the contents
-    auto addFile = [&wallpaperArgs, &files](const QString &relativePath, const QString &fullPath) {
-        files.append(relativePath);
-        QFile imageFile(fullPath);
-        if (imageFile.open(QIODevice::ReadOnly)) {
-            // There's a silly quirk in KAuth that we can only pass FDs on the top level of the QVariantMap as it's handled specially
-            // Hence one entry for the list of files, then one entry per file descriptor.
-            wallpaperArgs["_fd_" + relativePath] = QVariant::fromValue(QDBusUnixFileDescriptor(imageFile.handle()));
-        } else {
-            qWarning() << "Could not read file" << fullPath;
-        }
-    };
-
-    QFileInfo fileInfo(imagePath);
-    if (fileInfo.isDir()) {
-        // special case, it's a package
-        addFile(baseName + "/metadata.json", imagePath + "/metadata.json");
-        QDir imagesDir(imagePath + "/contents/images");
-        for (const QString &imageFileName : imagesDir.entryList(QDir::Files)) {
-            addFile(baseName + "/contents/images/" + imageFileName, imagePath + "/contents/images/" + imageFileName);
-        }
-        QDir darkImagesDir(imagePath + "/contents/images_dark");
-        for (const QString &imageFileName : darkImagesDir.entryList(QDir::Files)) {
-            addFile(baseName + "/contents/images_dark/" + imageFileName, imagePath + "/contents/images_dark/" + imageFileName);
-        }
+  auto job = saveAction.execute();
+  connect(job, &KJob::result, this, [this, job] {
+    if (job->error()) {
+      Q_EMIT errorOccurred(job->errorString());
     } else {
-        addFile(baseName, imagePath);
+      updateState();
     }
-    wallpaperArgs.insert("wallpapers", files);
-    return wallpaperArgs;
+    // Clarify enable or disable the Apply button.
+    this->setNeedsSave(job->error());
+  });
+  job->start();
 }
 
-void SonicLoginKcm::synchronizeSettings()
-{
-    if (KUser("soniclogin").homeDir().isEmpty()) {
-        Q_EMIT errorOccurred(QString::fromUtf8(
-            kli18n("Unable to synchronise Plasma settings because the 'soniclogin' user does not exist. Please check your Sonic Login install.")
-                .untranslatedText()));
-        return;
+QVariantMap SonicLoginKcm::syncWallpaper(const QUrl &imageUri) {
+  const QString baseName = imageUri.fileName();
+  const QString imagePath = imageUri.toLocalFile();
+
+  if (imagePath.isEmpty()) {
+    return {};
+  }
+
+  QVariantMap wallpaperArgs;
+  QStringList files;
+
+  // We open the file and pass an FD so the root helper knows our user can read
+  // the contents
+  auto addFile = [&wallpaperArgs, &files](const QString &relativePath,
+                                          const QString &fullPath) {
+    files.append(relativePath);
+    QFile imageFile(fullPath);
+    if (imageFile.open(QIODevice::ReadOnly)) {
+      // There's a silly quirk in KAuth that we can only pass FDs on the top
+      // level of the QVariantMap as it's handled specially Hence one entry for
+      // the list of files, then one entry per file descriptor.
+      wallpaperArgs["_fd_" + relativePath] =
+          QVariant::fromValue(QDBusUnixFileDescriptor(imageFile.handle()));
+    } else {
+      qWarning() << "Could not read file" << fullPath;
+    }
+  };
+
+  QFileInfo fileInfo(imagePath);
+  if (fileInfo.isDir()) {
+    // special case, it's a package
+    addFile(baseName + "/metadata.json", imagePath + "/metadata.json");
+    QDir imagesDir(imagePath + "/contents/images");
+    for (const QString &imageFileName : imagesDir.entryList(QDir::Files)) {
+      addFile(baseName + "/contents/images/" + imageFileName,
+              imagePath + "/contents/images/" + imageFileName);
+    }
+    QDir darkImagesDir(imagePath + "/contents/images_dark");
+    for (const QString &imageFileName : darkImagesDir.entryList(QDir::Files)) {
+      addFile(baseName + "/contents/images_dark/" + imageFileName,
+              imagePath + "/contents/images_dark/" + imageFileName);
+    }
+  } else {
+    addFile(baseName, imagePath);
+  }
+  wallpaperArgs.insert("wallpapers", files);
+  return wallpaperArgs;
+}
+
+void SonicLoginKcm::synchronizeSettings() {
+  if (KUser("soniclogin").homeDir().isEmpty()) {
+    Q_EMIT errorOccurred(QString::fromUtf8(
+        kli18n("Unable to synchronise Plasma settings because the 'soniclogin' "
+               "user does not exist. Please check your Sonic Login install.")
+            .untranslatedText()));
+    return;
+  }
+
+  QVariantMap args;
+
+  auto addConfigFile = [&args](const QString &path, const QString &key) {
+    if (path.isEmpty()) {
+      return;
     }
 
-    QVariantMap args;
-
-    auto addConfigFile = [&args](const QString &path, const QString &key) {
-        if (path.isEmpty()) {
-            return;
-        }
-
-        QFile file(path);
-        if (file.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream in(&file);
-            args[key] = in.readAll();
-        }
-    };
-
-    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kdeglobals")), QStringLiteral("kdeglobals"));
-
-    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("plasmarc")), QStringLiteral("plasmarc"));
-
-    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kcminputrc")), QStringLiteral("kcminputrc"));
-
-    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kwinoutputconfig.json")),
-                  QStringLiteral("kwinoutputconfig.json"));
-
-    const QString fontconfigPath = QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("fontconfig"), QStandardPaths::LocateDirectory);
-    if (!fontconfigPath.isEmpty()) {
-        addConfigFile(fontconfigPath + QStringLiteral("/fonts.conf"), QStringLiteral("fontconfig/fonts.conf"));
+    QFile file(path);
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+      QTextStream in(&file);
+      args[key] = in.readAll();
     }
+  };
 
-    KAuth::Action syncAction(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.sync"));
-    syncAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
-    syncAction.setArguments(args);
+  addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                       QStringLiteral("kdeglobals")),
+                QStringLiteral("kdeglobals"));
 
-    auto job = syncAction.execute();
-    connect(job, &KJob::result, this, [this, job] {
-        if (job->error()) {
-            Q_EMIT errorOccurred(job->errorString());
-        }
-        Q_EMIT syncAttempted();
-    });
-    job->start();
-}
+  addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                       QStringLiteral("plasmarc")),
+                QStringLiteral("plasmarc"));
 
-void SonicLoginKcm::resetSynchronizedSettings()
-{
-    if (KUser("soniclogin").homeDir().isEmpty()) {
-        Q_EMIT errorOccurred(QString::fromUtf8(
-            kli18n("Unable to reset Plasma settings because the 'soniclogin' user does not exist. Please check your Sonic Login install.").untranslatedText()));
-        return;
+  addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                       QStringLiteral("kcminputrc")),
+                QStringLiteral("kcminputrc"));
+
+  addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                       QStringLiteral("kwinoutputconfig.json")),
+                QStringLiteral("kwinoutputconfig.json"));
+
+  const QString fontconfigPath = QStandardPaths::locate(
+      QStandardPaths::GenericConfigLocation, QStringLiteral("fontconfig"),
+      QStandardPaths::LocateDirectory);
+  if (!fontconfigPath.isEmpty()) {
+    addConfigFile(fontconfigPath + QStringLiteral("/fonts.conf"),
+                  QStringLiteral("fontconfig/fonts.conf"));
+  }
+
+  addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation,
+                                       QStringLiteral("kxkbrc")),
+                QStringLiteral("kxkbrc"));
+
+  KAuth::Action syncAction(
+      QStringLiteral("org.kde.kcontrol.kcmsoniclogin.sync"));
+  syncAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
+  syncAction.setArguments(args);
+
+  auto job = syncAction.execute();
+  connect(job, &KJob::result, this, [this, job] {
+    if (job->error()) {
+      Q_EMIT errorOccurred(job->errorString());
     }
-
-    KAuth::Action resetAction(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.reset"));
-    resetAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
-
-    auto job = resetAction.execute();
-    connect(job, &KJob::result, this, [this, job] {
-        if (job->error()) {
-            Q_EMIT errorOccurred(job->errorString());
-        }
-        Q_EMIT syncAttempted();
-    });
-    job->start();
+    Q_EMIT syncAttempted();
+  });
+  job->start();
 }
 
-void SonicLoginKcm::defaults()
-{
-    KQuickManagedConfigModule::defaults();
-    m_wallpaperSettings->defaults();
+void SonicLoginKcm::resetSynchronizedSettings() {
+  if (KUser("soniclogin").homeDir().isEmpty()) {
+    Q_EMIT errorOccurred(QString::fromUtf8(
+        kli18n("Unable to reset Plasma settings because the 'soniclogin' user "
+               "does not exist. Please check your Sonic Login install.")
+            .untranslatedText()));
+    return;
+  }
 
-    updateState();
-    Q_EMIT defaultsCalled();
+  KAuth::Action resetAction(
+      QStringLiteral("org.kde.kcontrol.kcmsoniclogin.reset"));
+  resetAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
+
+  auto job = resetAction.execute();
+  connect(job, &KJob::result, this, [this, job] {
+    if (job->error()) {
+      Q_EMIT errorOccurred(job->errorString());
+    }
+    Q_EMIT syncAttempted();
+  });
+  job->start();
 }
 
-void SonicLoginKcm::updateState()
-{
-    m_forceUpdateState = false;
-    settingsChanged();
-    Q_EMIT isDefaultsWallpaperChanged();
+void SonicLoginKcm::defaults() {
+  KQuickManagedConfigModule::defaults();
+  m_wallpaperSettings->defaults();
+
+  updateState();
+  Q_EMIT defaultsCalled();
 }
 
-void SonicLoginKcm::forceUpdateState()
-{
-    m_forceUpdateState = true;
-    settingsChanged();
-    Q_EMIT isDefaultsWallpaperChanged();
+void SonicLoginKcm::updateState() {
+  m_forceUpdateState = false;
+  settingsChanged();
+  Q_EMIT isDefaultsWallpaperChanged();
 }
 
-bool SonicLoginKcm::isSaveNeeded() const
-{
-    return m_forceUpdateState || m_wallpaperSettings->isSaveNeeded();
+void SonicLoginKcm::forceUpdateState() {
+  m_forceUpdateState = true;
+  settingsChanged();
+  Q_EMIT isDefaultsWallpaperChanged();
 }
 
-bool SonicLoginKcm::isDefaults() const
-{
-    return m_wallpaperSettings->isDefaults();
+bool SonicLoginKcm::isSaveNeeded() const {
+  return m_forceUpdateState || m_wallpaperSettings->isSaveNeeded();
 }
 
-KConfigPropertyMap *SonicLoginKcm::wallpaperConfiguration() const
-{
-    return m_wallpaperSettings->wallpaperConfiguration();
+bool SonicLoginKcm::isDefaults() const {
+  return m_wallpaperSettings->isDefaults();
 }
 
-SonicLoginSettings *SonicLoginKcm::settings() const
-{
-    return &SonicLoginSettings::getInstance();
+KConfigPropertyMap *SonicLoginKcm::wallpaperConfiguration() const {
+  return m_wallpaperSettings->wallpaperConfiguration();
 }
 
-QString SonicLoginKcm::currentWallpaper() const
-{
-    return SonicLoginSettings::getInstance().wallpaperPluginId();
+SonicLoginSettings *SonicLoginKcm::settings() const {
+  return &SonicLoginSettings::getInstance();
 }
 
-bool SonicLoginKcm::isDefaultsWallpaper() const
-{
-    return m_wallpaperSettings->isDefaults();
+QString SonicLoginKcm::currentWallpaper() const {
+  return SonicLoginSettings::getInstance().wallpaperPluginId();
 }
 
-QUrl SonicLoginKcm::wallpaperConfigFile() const
-{
-    return m_wallpaperSettings->wallpaperConfigFile();
+bool SonicLoginKcm::isDefaultsWallpaper() const {
+  return m_wallpaperSettings->isDefaults();
 }
 
-WallpaperIntegration *SonicLoginKcm::wallpaperIntegration() const
-{
-    return m_wallpaperSettings->wallpaperIntegration();
+QUrl SonicLoginKcm::wallpaperConfigFile() const {
+  return m_wallpaperSettings->wallpaperConfigFile();
 }
 
-UserModel *SonicLoginKcm::userModel() const
-{
-    static UserModel userModel;
-    return &userModel;
+WallpaperIntegration *SonicLoginKcm::wallpaperIntegration() const {
+  return m_wallpaperSettings->wallpaperIntegration();
 }
 
-SessionModel *SonicLoginKcm::sessionModel() const
-{
-    static SessionModel sessionModel;
-    return &sessionModel;
+UserModel *SonicLoginKcm::userModel() const {
+  static UserModel userModel;
+  return &userModel;
 }
 
-bool SonicLoginKcm::KDEWalletAvailable()
-{
-    return !QStandardPaths::findExecutable(QLatin1String("kwalletmanager5")).isEmpty();
+SessionModel *SonicLoginKcm::sessionModel() const {
+  static SessionModel sessionModel;
+  return &sessionModel;
 }
 
-void SonicLoginKcm::openKDEWallet()
-{
-    KService::Ptr kwalletmanagerService = KService::serviceByDesktopName(QStringLiteral("org.kde.kwalletmanager5"));
-    auto *job = new KIO::ApplicationLauncherJob(kwalletmanagerService);
-    job->start();
+bool SonicLoginKcm::KDEWalletAvailable() {
+  return !QStandardPaths::findExecutable(QLatin1String("kwalletmanager5"))
+              .isEmpty();
+}
+
+void SonicLoginKcm::openKDEWallet() {
+  KService::Ptr kwalletmanagerService =
+      KService::serviceByDesktopName(QStringLiteral("org.kde.kwalletmanager5"));
+  auto *job = new KIO::ApplicationLauncherJob(kwalletmanagerService);
+  job->start();
 }
 
 #include "kcm.moc"
