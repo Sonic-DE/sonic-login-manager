@@ -9,6 +9,7 @@
 #include <limits>
 
 #include <QCollator>
+#include <QDir>
 #include <QFile>
 #include <QRegularExpression>
 #include <QTextStream>
@@ -20,10 +21,34 @@
 
 #include "sonicloginsettings.h"
 
+static void addDirectoryToConfig(KSharedConfig::Ptr config, const QDir &dir)
+{
+    const auto entryInfoList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::LocaleAware);
+
+    QStringList sources;
+
+    for (const QFileInfo &fi : entryInfoList) {
+        sources << fi.absoluteFilePath();
+    }
+
+    config->addConfigSources(sources);
+}
+
 SonicLoginSettings &SonicLoginSettings::getInstance()
 {
-    auto config = KSharedConfig::openConfig(QStringLiteral(SONICLOGIN_CONFIG_FILE), KConfig::CascadeConfig);
-    config->addConfigSources({QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_FILE)});
+    auto config = KSharedConfig::openConfig(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_FILE), KConfig::NoGlobals);
+
+    QDir sonicLoginSystemConfigDir(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_DIR));
+    if (sonicLoginSystemConfigDir.exists()) {
+        addDirectoryToConfig(config, sonicLoginSystemConfigDir);
+    }
+
+    config->addConfigSources({QStringLiteral(SONICLOGIN_CONFIG_FILE)});
+
+    QDir sonicLoginConfigDir(QStringLiteral(SONICLOGIN_CONFIG_DIR));
+    if (sonicLoginConfigDir.exists()) {
+        addDirectoryToConfig(config, sonicLoginConfigDir);
+    }
 
     static SonicLoginSettings instance(config);
     return instance;
