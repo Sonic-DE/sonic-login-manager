@@ -9,6 +9,7 @@
 #include <limits>
 
 #include <QCollator>
+#include <QDir>
 #include <QFile>
 #include <QRegularExpression>
 #include <QTextStream>
@@ -20,10 +21,34 @@
 
 #include "plasmaloginsettings.h"
 
+static void addDirectoryToConfig(KSharedConfig::Ptr config, const QDir &dir)
+{
+    const auto entryInfoList = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::LocaleAware);
+
+    QStringList sources;
+
+    for (const QFileInfo &fi : entryInfoList) {
+        sources << fi.absoluteFilePath();
+    }
+
+    config->addConfigSources(sources);
+}
+
 PlasmaLoginSettings &PlasmaLoginSettings::getInstance()
 {
-    auto config = KSharedConfig::openConfig(QStringLiteral(PLASMALOGIN_CONFIG_FILE), KConfig::CascadeConfig);
-    config->addConfigSources({QStringLiteral(PLASMALOGIN_SYSTEM_CONFIG_FILE)});
+    auto config = KSharedConfig::openConfig(QStringLiteral(PLASMALOGIN_SYSTEM_CONFIG_FILE), KConfig::NoGlobals);
+
+    QDir plasmaLoginSystemConfigDir(QStringLiteral(PLASMALOGIN_SYSTEM_CONFIG_DIR));
+    if (plasmaLoginSystemConfigDir.exists()) {
+        addDirectoryToConfig(config, plasmaLoginSystemConfigDir);
+    }
+
+    config->addConfigSources({QStringLiteral(PLASMALOGIN_CONFIG_FILE)});
+
+    QDir plasmaLoginConfigDir(QStringLiteral(PLASMALOGIN_CONFIG_DIR));
+    if (plasmaLoginConfigDir.exists()) {
+        addDirectoryToConfig(config, plasmaLoginConfigDir);
+    }
 
     static PlasmaLoginSettings instance(config);
     return instance;

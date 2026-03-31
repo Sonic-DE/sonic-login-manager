@@ -1,5 +1,7 @@
-set(PLASMALOGIN_CONFIG_FILE         "/etc/plasmalogin.conf"                                    CACHE PATH  "Path of the plasma-login config file")
-set(PLASMALOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/defaults.conf"    CACHE PATH  "Path of the system plasma-login config file")
+set(PLASMALOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/defaults.conf"      CACHE PATH  "Path of the system plasma-login config file")
+set(PLASMALOGIN_SYSTEM_CONFIG_DIR   "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d" CACHE PATH  "Path of the system plasma-login config directory")
+set(PLASMALOGIN_CONFIG_FILE         "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"          CACHE PATH  "Path of the plasma-login config file")
+set(PLASMALOGIN_CONFIG_DIR          "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"        CACHE PATH  "Path of the plasma-login config directory")
 
 configure_file(config.h.in config.h IMMEDIATE @ONLY)
 
