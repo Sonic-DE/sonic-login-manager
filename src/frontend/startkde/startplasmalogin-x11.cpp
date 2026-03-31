@@ -25,9 +25,6 @@ int main(int argc, char **argv)
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);
 
-    // Let clients try to reconnect to kwin after a restart
-    qputenv("QT_WAYLAND_RECONNECT", "1");
-
     // Query whether org.freedesktop.locale1 is available. If it is, try to
     // set XKB_DEFAULT_{MODEL,LAYOUT,VARIANT,OPTIONS} accordingly.
     {
@@ -74,7 +71,7 @@ int main(int argc, char **argv)
                                                   QStringLiteral("/org/freedesktop/systemd1"),
                                                   QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                   QStringLiteral("StartUnit"));
-        msg << QStringLiteral("plasma-login-wayland.target") << QStringLiteral("fail");
+        msg << QStringLiteral("plasma-login-x11.target") << QStringLiteral("fail");
         QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
         if (!reply.isValid()) {
             qWarning() << "Could not start systemd managed Plasma session:" << reply.error().name() << reply.error().message();
@@ -91,7 +88,7 @@ int main(int argc, char **argv)
                                                   QStringLiteral("/org/freedesktop/systemd1"),
                                                   QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                   QStringLiteral("StopUnit"));
-        msg << QStringLiteral("plasma-login-wayland.target") << QStringLiteral("fail");
+        msg << QStringLiteral("plasma-login-x11.target") << QStringLiteral("fail");
         QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
         if (!reply.isValid()) {
             qWarning() << "Could not stop systemd managed Plasma session:" << reply.error().name() << reply.error().message();
@@ -107,7 +104,7 @@ int main(int argc, char **argv)
                                                   QStringLiteral("/org/freedesktop/systemd1"),
                                                   QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                   QStringLiteral("StopUnit"));
-        msg << QStringLiteral("plasma-login-kwin_wayland.service") << QStringLiteral("fail");
+        msg << QStringLiteral("plasma-login-kwin_x11.service") << QStringLiteral("fail");
         QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
         if (!reply.isValid()) {
             qWarning() << "Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();

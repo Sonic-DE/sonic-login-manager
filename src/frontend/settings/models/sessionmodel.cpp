@@ -172,10 +172,10 @@ void SessionModel::populate(const QStringList &xSessionsPaths, const QStringList
             return false;
         }
 
-        // then Wayland first
-        const bool aIsWayland = (a.type == Session::Type::Wayland);
-        const bool bIsWayland = (b.type == Session::Type::Wayland);
-        if (aIsWayland && !bIsWayland) {
+        // then X11 first
+        const bool aIsX11 = (a.type == Session::Type::X11);
+        const bool bIsX11 = (b.type == Session::Type::X11);
+        if (aIsX11 && !bIsX11) {
             return true;
         } else {
             return false;

@@ -158,7 +158,7 @@ int Display::terminalId() const
 
 QString Display::sessionType() const
 {
-    return "wayland";
+    return "x11";
 }
 
 Seat *Display::seat() const

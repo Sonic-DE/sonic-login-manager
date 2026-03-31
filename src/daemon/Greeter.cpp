@@ -64,7 +64,7 @@ bool Greeter::start()
         return false;
     }
 
-    QString greeterCommand = QStandardPaths::findExecutable(QStringLiteral("startplasma-login-wayland"));
+    QString greeterCommand = QStandardPaths::findExecutable(QStringLiteral("startplasma-login-x11"));
     // allow overriding for test setups.
     greeterCommand = qEnvironmentVariable("PLASMALOGIN_GREETER_EXEC", greeterCommand);
 
