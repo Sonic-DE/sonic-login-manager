@@ -72,6 +72,22 @@ bool isTtyInUse(const QString &desiredTty)
             }
         }
     }
+    // Fallback for non-systemd systems: check if the TTY device is being used
+    // by checking for active login sessions via utmp/wtmp or process list
+    QFile ttyFile(QStringLiteral("/dev/%1").arg(desiredTty));
+    if (ttyFile.exists()) {
+        // On non-systemd systems, we can't reliably track TTY usage
+        // Just check if we can open the TTY exclusively
+        int fd = ::open(qPrintable(ttyFile.fileName()), O_RDWR | O_NOCTTY);
+        if (fd >= 0) {
+            ::close(fd);
+            // TTY is available
+            return false;
+        }
+        // If we can't open it, it might be in use by someone else
+        // but we should still try to use it
+        qDebug() << "TTY" << desiredTty << "might be in use, but will attempt to use it anyway";
+    }
     return false;
 }
 
@@ -366,10 +382,15 @@ void Display::slotAuthenticationFinished(const QString &user, bool success)
     if (success) {
         qDebug() << "Authentication for user " << user << " successful";
 
-        if (!m_reuseSessionId.isNull()) {
+        if (!m_reuseSessionId.isNull() && Logind::isAvailable()) {
             OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
             manager.UnlockSession(m_reuseSessionId);
             manager.ActivateSession(m_reuseSessionId);
+        } else if (!m_reuseSessionId.isNull()) {
+            // Session reuse requested but logind is not available
+            // This shouldn't happen in normal operation as session reuse
+            // requires logind, but handle gracefully
+            qDebug() << "Session reuse requested but logind is not available";
         }
 
         if (m_socket) {

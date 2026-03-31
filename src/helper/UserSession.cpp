@@ -25,6 +25,9 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#ifdef Q_OS_FREEBSD
+#include <login_cap.h>
+#endif
 
 namespace PLASMALOGIN
 {
@@ -215,10 +218,19 @@ void UserSession::setupChildProcess()
         exit(Auth::HELPER_OTHER_ERROR);
     }
 
+#if defined(Q_OS_FREEBSD)
+    // execve() uses the environment prepared in Backend::openSession(),
+    // therefore environment variables which are set here are ignored.
+    if (setusercontext(NULL, &pw, pw.pw_uid, LOGIN_SETALL) != 0) {
+        qCritical() << "setusercontext(NULL, *, " << pw.pw_uid << ", LOGIN_SETALL) failed for user: " << username;
+        exit(Auth::HELPER_OTHER_ERROR);
+    }
+#else
     if (setgid(pw.pw_gid) != 0) {
         qCritical() << "setgid(" << pw.pw_gid << ") failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
     }
+#endif
 
     // fetch ambient groups from PAM's environment;
     // these are set by modules such as pam_groups.so

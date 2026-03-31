@@ -19,6 +19,7 @@
 
 #include "Configuration.h"
 #include "DaemonApp.h"
+#include "LogindDBusTypes.h"
 #include "VirtualTerminal.h"
 
 #include <QDebug>
@@ -110,13 +111,17 @@ void Seat::removeDisplay(Display *display)
 void Seat::displayStopped()
 {
     Display *display = qobject_cast<Display *>(sender());
-    OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
     std::optional<int> nextVt;
     auto reusing = display->reuseSessionId();
-    if (manager.isValid() && !reusing.isEmpty()) {
-        auto sessionPath = manager.GetSession(reusing);
-        OrgFreedesktopLogin1SessionInterface sessionIface(Logind::serviceName(), sessionPath.value().path(), QDBusConnection::systemBus());
-        nextVt = QStringView(sessionIface.tTY()).mid(3).toInt(); // we need to convert ttyN to N
+
+    // Try to get the VT of the session being reused via logind
+    if (Logind::isAvailable() && !reusing.isEmpty()) {
+        OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
+        if (manager.isValid()) {
+            auto sessionPath = manager.GetSession(reusing);
+            OrgFreedesktopLogin1SessionInterface sessionIface(Logind::serviceName(), sessionPath.value().path(), QDBusConnection::systemBus());
+            nextVt = QStringView(sessionIface.tTY()).mid(3).toInt(); // we need to convert ttyN to N
+        }
     }
 
     // remove display

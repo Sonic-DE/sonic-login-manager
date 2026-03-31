@@ -82,6 +82,10 @@ endif()
 
 set(RUNTIME_DIR_DEFAULT "/run/plasmalogin")
 
+# utmps - for session tracking on non-systemd systems
+find_package(utmps)
+add_feature_info("utmps" UTMPS_FOUND "utmps support for non-systemd session tracking")
+
 # Extra default install directories
 set(PAM_CONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pam.d" CACHE PATH "Install directory for PAM configuration")
 

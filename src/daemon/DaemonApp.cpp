@@ -17,6 +17,7 @@
 #include "DaemonApp.h"
 
 #include "DisplayManager.h"
+#include "LogindDBusTypes.h"
 #include "SeatManager.h"
 #include "SignalHandler.h"
 
@@ -46,6 +47,24 @@ DaemonApp::DaemonApp(int &argc, char **argv)
 
     // set testing parameter
     m_testing = (arguments().indexOf(QStringLiteral("--test-mode")) != -1);
+
+    // If ConsoleKit isn't started by the OS init system (FreeBSD, for instance),
+    // we start it ourselves during the plasmalogin startup
+    if (!Logind::isAvailable()) {
+        bool consoleKitServiceActivatable = false;
+        QDBusReply<QStringList> activatableNamesReply = QDBusConnection::systemBus().interface()->activatableServiceNames();
+        if (activatableNamesReply.isValid()) {
+            consoleKitServiceActivatable = activatableNamesReply.value().contains(QStringLiteral("org.freedesktop.ConsoleKit"));
+        }
+
+        if (consoleKitServiceActivatable) {
+            QDBusReply<bool> registeredReply = QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.ConsoleKit"));
+            if (registeredReply.isValid() && registeredReply.value() == false) {
+                qDebug() << "Starting ConsoleKit as it is not yet running...";
+                QDBusConnection::systemBus().interface()->startService(QStringLiteral("org.freedesktop.ConsoleKit"));
+            }
+        }
+    }
 
     // create display manager
     m_displayManager = new DisplayManager(this);

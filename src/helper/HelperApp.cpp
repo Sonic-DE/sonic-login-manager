@@ -29,6 +29,11 @@
 #include <QByteArray>
 #include <signal.h>
 
+#if defined(Q_OS_LINUX)
+#include <utmp.h>
+#endif
+#include <utmpx.h>
+
 namespace PLASMALOGIN
 {
 HelperApp::HelperApp(int &argc, char **argv)
@@ -142,6 +147,14 @@ void HelperApp::doAuth()
     m_user = m_backend->userName();
     QProcessEnvironment env = authenticated(m_user);
 
+    // write failed login to btmp
+    const QString displayId = env.value(QStringLiteral("DISPLAY"));
+    const QString vt = env.value(QStringLiteral("XDG_VTNR"));
+    utmpLogin(vt, displayId, m_user, 0, false);
+
+    m_user = m_backend->userName();
+    QProcessEnvironment env = authenticated(m_user);
+
     if (!m_session->path().isEmpty()) {
         env.insert(m_session->processEnvironment());
         m_session->setProcessEnvironment(env);
@@ -226,6 +239,17 @@ void HelperApp::sessionOpened(bool success)
     if (m != SESSION_STATUS) {
         qCritical() << "Received a wrong opcode instead of SESSION_STATUS:" << m;
     }
+
+    // write successful login to utmp/wtmp for non-systemd session tracking
+    if (success) {
+        QProcessEnvironment env = m_session->processEnvironment();
+        const QString displayId = env.value(QStringLiteral("DISPLAY"));
+        const QString vt = env.value(QStringLiteral("XDG_VTNR"));
+        if (env.value(QStringLiteral("XDG_SESSION_CLASS")) != QLatin1String("greeter")) {
+            // cache pid for session end
+            utmpLogin(vt, displayId, m_user, m_session->processId(), true);
+        }
+    }
 }
 
 void HelperApp::displayServerStarted(const QString &displayName)
@@ -257,6 +281,99 @@ HelperApp::~HelperApp()
 
     m_session->stop();
     m_backend->closeSession();
+
+    // write logout to utmp/wtmp for non-systemd session tracking
+    qint64 pid = m_session->processId();
+    if (pid > 0) {
+        QProcessEnvironment env = m_session->processEnvironment();
+        if (env.value(QStringLiteral("XDG_SESSION_CLASS")) != QLatin1String("greeter")) {
+            QString vt = env.value(QStringLiteral("XDG_VTNR"));
+            QString displayId = env.value(QStringLiteral("DISPLAY"));
+            utmpLogout(vt, displayId, pid);
+        }
+    }
+}
+
+void HelperApp::utmpLogin(const QString &vt, const QString &displayName, const QString &user, qint64 pid, bool authSuccessful)
+{
+    struct utmpx entry{};
+    struct timeval tv;
+
+    entry.ut_type = USER_PROCESS;
+    entry.ut_pid = pid;
+
+    // ut_line: vt
+    if (!vt.isEmpty()) {
+        QString tty = QStringLiteral("tty");
+        tty.append(vt);
+        QByteArray ttyBa = tty.toLocal8Bit();
+        const char *ttyChar = ttyBa.constData();
+        strncpy(entry.ut_line, ttyChar, sizeof(entry.ut_line) - 1);
+    }
+
+    // ut_host: displayName
+    QByteArray displayBa = displayName.toLocal8Bit();
+    const char *displayChar = displayBa.constData();
+    strncpy(entry.ut_host, displayChar, sizeof(entry.ut_host) - 1);
+
+    // ut_user: user
+    QByteArray userBa = user.toLocal8Bit();
+    const char *userChar = userBa.constData();
+    strncpy(entry.ut_user, userChar, sizeof(entry.ut_user) - 1);
+
+    gettimeofday(&tv, NULL);
+    entry.ut_tv.tv_sec = tv.tv_sec;
+    entry.ut_tv.tv_usec = tv.tv_usec;
+
+    // write to utmp
+    setutxent();
+    if (!pututxline(&entry))
+        qWarning() << "Failed to write utmpx: " << strerror(errno);
+    endutxent();
+
+#if defined(Q_OS_LINUX)
+    updwtmpx(authSuccessful ? "/var/log/wtmp" : "/var/log/btmp", &entry);
+#endif
+}
+
+void HelperApp::utmpLogout(const QString &vt, const QString &displayName, qint64 pid)
+{
+    struct utmpx entry{};
+    struct timeval tv;
+
+    entry.ut_type = DEAD_PROCESS;
+    entry.ut_pid = pid;
+
+    // ut_line: vt
+    if (!vt.isEmpty()) {
+        QString tty = QStringLiteral("tty");
+        tty.append(vt);
+        QByteArray ttyBa = tty.toLocal8Bit();
+        const char *ttyChar = ttyBa.constData();
+        strncpy(entry.ut_line, ttyChar, sizeof(entry.ut_line) - 1);
+    }
+
+    // ut_host: displayName
+    QByteArray displayBa = displayName.toLocal8Bit();
+    const char *displayChar = displayBa.constData();
+    strncpy(entry.ut_host, displayChar, sizeof(entry.ut_host) - 1);
+
+    gettimeofday(&tv, NULL);
+    entry.ut_tv.tv_sec = tv.tv_sec;
+    entry.ut_tv.tv_usec = tv.tv_usec;
+
+    // write to utmp
+    setutxent();
+    if (!pututxline(&entry))
+        qWarning() << "Failed to write utmpx: " << strerror(errno);
+    endutxent();
+
+#if defined(Q_OS_LINUX)
+    // append to wtmp
+    updwtmpx("/var/log/wtmp", &entry);
+#elif defined(Q_OS_FREEBSD)
+    pututxline(&entry);
+#endif
 }
 }
 
