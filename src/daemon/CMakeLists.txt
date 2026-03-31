@@ -54,7 +54,9 @@ target_link_libraries(plasmalogin
                       Qt6::Qml
                       ${PAM_LIBRARIES}
                       KF6::ConfigCore
-                      KF6::ConfigGui
-                      PkgConfig::LIBSYSTEMD)
+                      KF6::ConfigGui)
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(plasmalogin PkgConfig::LIBSYSTEMD)
+endif()
 
 install(TARGETS plasmalogin DESTINATION "${CMAKE_INSTALL_BINDIR}")

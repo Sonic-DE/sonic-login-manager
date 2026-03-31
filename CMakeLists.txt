@@ -16,6 +16,7 @@ set(KDE_COMPILERSETTINGS_LEVEL "5.82")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ECM ${KF6_MIN_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -54,20 +55,29 @@ find_package(PkgConfig)
 # XAU
 pkg_check_modules(LIBXAU REQUIRED "xau" IMPORTED_TARGET)
 
-pkg_check_modules(SYSTEMD REQUIRED "systemd")
+pkg_check_modules(SYSTEMD "systemd")
+pkg_check_modules(LIBSYSTEMD "libsystemd" IMPORTED_TARGET)
 
-pkg_check_modules(LIBSYSTEMD REQUIRED "libsystemd" IMPORTED_TARGET)
-
-if (NOT DEFINED SYSTEMD_SYSTEM_UNIT_DIR)
-    pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
+if(SYSTEMD_FOUND)
+    set(HAVE_SYSTEMD TRUE)
+    message(STATUS "systemd found - enabling systemd support")
+else()
+    set(HAVE_SYSTEMD FALSE)
+    message(STATUS "systemd not found - building without systemd support")
 endif()
 
-if (NOT DEFINED SYSTEMD_SYSUSERS_DIR)
-    pkg_get_variable(SYSTEMD_SYSUSERS_DIR systemd sysusersdir)
-endif()
+if(SYSTEMD_FOUND)
+    if (NOT DEFINED SYSTEMD_SYSTEM_UNIT_DIR)
+        pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
+    endif()
 
-if (NOT DEFINED SYSTEMD_TMPFILES_DIR)
-    pkg_get_variable(SYSTEMD_TMPFILES_DIR systemd tmpfilesdir)
+    if (NOT DEFINED SYSTEMD_SYSUSERS_DIR)
+        pkg_get_variable(SYSTEMD_SYSUSERS_DIR systemd sysusersdir)
+    endif()
+
+    if (NOT DEFINED SYSTEMD_TMPFILES_DIR)
+        pkg_get_variable(SYSTEMD_TMPFILES_DIR systemd tmpfilesdir)
+    endif()
 endif()
 
 set(RUNTIME_DIR_DEFAULT "/run/plasmalogin")
@@ -136,5 +146,6 @@ ki18n_install(po)
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 
 file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
+list(FILTER ALL_CLANG_FORMAT_SOURCE_FILES EXCLUDE REGEX ".*\\.ccls-cache/.*")
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
 kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)

@@ -26,8 +26,10 @@ target_sources(plasmalogin-helper PRIVATE
 target_link_libraries(plasmalogin-helper
                       Qt6::Network
                       Qt6::DBus
-                      Qt6::Qml
-                      PkgConfig::LIBSYSTEMD)
+                      Qt6::Qml)
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(plasmalogin-helper PkgConfig::LIBSYSTEMD)
+endif()
 
 target_link_libraries(plasmalogin-helper ${PAM_LIBRARIES})
 
@@ -38,5 +40,8 @@ add_executable(plasmalogin-helper-start-x11user HelperStartX11User.cpp xorguserh
                                                 ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
                                                 )
-target_link_libraries(plasmalogin-helper-start-x11user Qt6::Core PkgConfig::LIBXAU PkgConfig::LIBSYSTEMD)
+target_link_libraries(plasmalogin-helper-start-x11user Qt6::Core PkgConfig::LIBXAU)
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(plasmalogin-helper-start-x11user PkgConfig::LIBSYSTEMD)
+endif()
 install(TARGETS plasmalogin-helper-start-x11user RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
