@@ -1,0 +1,12 @@
+#%PAM-1.0
+
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# FreeBSD PAM configuration for plasmalogin
+
+auth        required    pam_unix.so          no_warn try_first_pass nullok
+account     required    pam_login_access.so
+account     required    pam_unix.so
+session     required    pam_permit.so
+password    include     pam_unix.so          try_first_pass nullok use_authtok

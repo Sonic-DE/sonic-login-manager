@@ -1,0 +1,14 @@
+#%PAM-1.0
+
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# FreeBSD PAM configuration for plasmalogin autologin
+# This configuration does not use systemd
+
+auth        required    pam_env.so
+auth        required    pam_permit.so
+account     required    pam_login_access.so
+account     required    pam_permit.so
+password    required    pam_deny.so
+session     required    pam_permit.so
