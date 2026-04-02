@@ -17,7 +17,6 @@ namespace PLASMALOGIN
 {
 class HelperApp;
 class XOrgUserHelper;
-class WaylandHelper;
 class UserSession : public QProcess
 {
     Q_OBJECT

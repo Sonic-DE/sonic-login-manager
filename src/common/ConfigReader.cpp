@@ -212,8 +212,6 @@ void ConfigBase::loadInternal(const QString &filepath)
         // In version 0.14.0, these sections were renamed
         if (currentSection == QStringLiteral("XDisplay")) {
             currentSection = QStringLiteral("X11");
-        } else if (currentSection == QStringLiteral("WaylandDisplay")) {
-            currentSection = QStringLiteral("Wayland");
         }
 
         // value assignment

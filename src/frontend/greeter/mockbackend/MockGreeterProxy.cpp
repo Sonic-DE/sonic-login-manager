@@ -17,17 +17,11 @@ MockGreeterProxy::MockGreeterProxy()
 
 void MockGreeterProxy::login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
+    Q_UNUSED(sessionType);
+
     bool const success = (!user.isEmpty() && password == s_mockPassword);
 
-    QString sessionTypeName;
-    switch (sessionType) {
-    case PLASMALOGIN::SessionType::X11:
-        sessionTypeName = QStringLiteral("X11");
-        break;
-    case PLASMALOGIN::SessionType::Wayland:
-        sessionTypeName = QStringLiteral("Wayland");
-        break;
-    }
+    QString sessionTypeName = QStringLiteral("X11");
 
     qDebug().nospace() << "Login " << (success ? "success" : "failure") << " with user " << user << ", password " << password << ", session " << sessionTypeName
                        << " " << sessionFileName;

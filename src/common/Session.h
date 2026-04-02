@@ -26,28 +26,20 @@ namespace PLASMALOGIN
 class Session
 {
 public:
-    enum Type {
-        X11Session,
-        WaylandSession
-    };
-
-    static Session create(Session::Type type, const QString &name);
+    static Session create(const QString &name);
     Session(); // creates an invalid session
 
     bool isValid() const;
-    Type type() const;
     QString name() const;
 
     QString fileName() const;
 
     QString desktopSession() const;
-    QString xdgSessionType() const;
     QString exec() const;
     QString desktopNames() const;
 
 private:
-    Session(Type type, KSharedConfigPtr desktopFile);
-    Type m_type = WaylandSession;
+    Session(KSharedConfigPtr desktopFile);
     KSharedConfig::Ptr m_desktopFile;
     QString m_name;
 };
@@ -57,7 +49,7 @@ inline QDataStream &operator>>(QDataStream &stream, Session &session)
     quint32 type;
     QString fileName;
     stream >> type >> fileName;
-    session = Session::create(static_cast<Session::Type>(type), fileName);
+    session = Session::create(fileName);
     return stream;
 }
 

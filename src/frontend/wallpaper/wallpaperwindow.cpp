@@ -25,7 +25,6 @@ WallpaperWindow::WallpaperWindow(QScreen *screen)
     });
 
     setResizeMode(PlasmaQuick::QuickViewSharedEngine::SizeRootObjectToView);
-
     setFlags(Qt::BypassWindowManagerHint);
 }
 

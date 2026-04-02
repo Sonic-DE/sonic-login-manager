@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     QCoreApplication app(argc, argv);
 
     createConfigDirectory();
-    setupCursor(true);
+    setupCursor();
     signal(SIGTERM, sigtermHandler);
 
     // Query whether org.freedesktop.locale1 is available. If it is, try to

@@ -23,52 +23,35 @@
 namespace PLASMALOGIN
 {
 
-Session Session::create(Type type, const QString &name)
+Session Session::create(const QString &name)
 {
     QString fileName = name;
     if (!name.endsWith(".desktop")) {
         fileName = name + QStringLiteral(".desktop");
     }
 
-    QString filePath;
-    switch (type) {
-    case Session::X11Session:
-        filePath = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("/xsessions/") + fileName);
-        break;
-    case Session::WaylandSession:
-        filePath = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("/wayland-sessions/") + fileName);
-        break;
-    default:
-        filePath = QString();
-        break;
-    }
+    QString filePath = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("/xsessions/") + fileName);
     if (!filePath.isEmpty() && QFile::exists(filePath)) {
         auto config = KSharedConfig::openConfig(filePath, KConfig::SimpleConfig);
-        return Session(type, config);
+        return Session(config);
     } else {
         return Session();
     }
 }
 
 Session::Session()
-    : Session(WaylandSession, KSharedConfigPtr())
+    : Session(KSharedConfigPtr())
 {
 }
 
-Session::Session(Type type, KSharedConfigPtr desktopFile)
-    : m_type(type)
-    , m_desktopFile(desktopFile)
+Session::Session(KSharedConfigPtr desktopFile)
+    : m_desktopFile(desktopFile)
 {
 }
 
 bool Session::isValid() const
 {
     return m_desktopFile;
-}
-
-Session::Type Session::type() const
-{
-    return m_type;
 }
 
 QString Session::name() const
@@ -96,18 +79,6 @@ QString Session::desktopSession() const
         return QString();
     }
     return m_desktopFile->name();
-}
-
-QString Session::xdgSessionType() const
-{
-    switch (m_type) {
-    case WaylandSession:
-        return QStringLiteral("wayland");
-    case X11Session:
-        return QStringLiteral("x11");
-    default:
-        return QString();
-    }
 }
 
 QString Session::exec() const
