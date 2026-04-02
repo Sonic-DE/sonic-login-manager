@@ -4,7 +4,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2025-10-21 06:38+0200\n"
+"PO-Revision-Date: 2026-04-01 07:07+0200\n"
 "Last-Translator: Matjaž Jeran <matjaz.jeran@amis.net>\n"
 "Language-Team: Slovenian <lugos-slo@lugos.si>\n"
 "Language: sl\n"
@@ -13,7 +13,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=4; plural=(n%100==1 ? 1 : n%100==2 ? 2 : n%100==3 || n"
 "%100==4 ? 3 : 0);\n"
-"X-Generator: Poedit 3.7\n"
+"X-Generator: Poedit 3.9\n"
 
 #: kcm.cpp:78
 msgid ""
@@ -92,13 +92,7 @@ msgstr ""
 "Plasme:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -109,7 +103,7 @@ msgstr ""
 "<para><list><item>Barva shema</item><item>Tema kazalke in velikost</"
 "item><item>Pisava in upodobitve pisave</item><item>Prednost NumLock</"
 "item><item>Tema Plasme</item><item>Umerjenost DPI</item><item>Konfiguracija "
-"zaslona</item></list></para>"
+"zaslona</item><item>Postavitve tipkovnice</item></list></para>"
 
 #: ui/main.qml:67
 #, kde-format
