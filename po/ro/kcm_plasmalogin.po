@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2026-02-05 13:24+0000\n"
+"PO-Revision-Date: 2026-04-01 15:12+0100\n"
 "Last-Translator: Sergiu Bivol <sergiu@cip.md>\n"
 "Language-Team: Romanian <kde-i18n-ro@kde.org>\n"
 "Language: ro\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n==1 ? 0 : (n==0 || (n%100 > 0 && n%100 < "
 "20)) ? 1 : 2;\n"
-"X-Generator: Lokalize 25.08.1\n"
+"X-Generator: Lokalize 25.12.3\n"
 
 #: kcm.cpp:78
 msgid ""
@@ -98,13 +98,7 @@ msgstr ""
 "aduse următoarelor configurări Plasma:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -115,7 +109,8 @@ msgstr ""
 "<para><list><item>Schemă de culori</item><item>Tematică de cursor și "
 "dimensiune</item><item>Font și randarea fonturilor</item><item>Preferință "
 "NumLock</item><item>Tematică Plasma</item><item>Scalare DPI</"
-"item><item>Configurare ecran</item></list></para>"
+"item><item>Configurare ecran</item><item>Aranjamente de tastatură</item></"
+"list></para>"
 
 #: ui/main.qml:67
 #, kde-format

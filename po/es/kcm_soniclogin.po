@@ -1,15 +1,15 @@
 # Spanish translations for kcm_plasmalogin.po package.
-# Copyright (C) 2025 This file is copyright:
+# Copyright (C) 2025-2026 This file is copyright:
 # This file is distributed under the same license as the plasma-login-manager package.
 # Automatically generated, 2025.
 #
-# SPDX-FileCopyrightText: 2025 Eloy Cuadra <ecuadra@eloihr.net>
+# SPDX-FileCopyrightText: 2025, 2026 Eloy Cuadra <ecuadra@eloihr.net>
 msgid ""
 msgstr ""
 "Project-Id-Version: kcm_plasmalogin\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2025-10-22 01:41+0100\n"
+"PO-Revision-Date: 2026-04-01 12:24+0100\n"
 "Last-Translator: Eloy Cuadra <ecuadra@eloihr.net>\n"
 "Language-Team: Spanish <kde-l10n-es@kde.org>\n"
 "Language: es\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Lokalize 25.08.2\n"
+"X-Generator: Lokalize 25.12.3\n"
 
 #: kcm.cpp:78
 msgid ""
@@ -99,13 +99,7 @@ msgstr ""
 "personalización de las siguientes preferencias de Plasma:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -116,7 +110,8 @@ msgstr ""
 "<para><list><item>Esquema de color</item><item>Tema y tamaño del cursor</"
 "item><item>Tipo de letra y representación</item><item>Preferencia de bloqueo "
 "numérico</item><item>Tema de Plasma</item><item>Escalado de DPI</"
-"item><item>Configuración de la pantalla</item></list></para>"
+"item><item>Configuración de la pantalla</item><item>Diseños de teclado</"
+"item></list></para>"
 
 #: ui/main.qml:67
 #, kde-format
