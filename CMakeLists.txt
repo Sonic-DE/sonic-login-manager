@@ -41,7 +41,6 @@ include(ECMQmlModule)
 find_package(Qt6 CONFIG REQUIRED Core DBus Gui Qml Quick LinguistTools Test QuickTest ShaderTools)
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS Config Package WindowSystem I18n DBusAddons KCMUtils Auth KIO)
 find_package(PlasmaQuick ${PROJECT_DEP_VERSION} REQUIRED)
-find_package(LayerShellQt ${PROJECT_DEP_VERSION} REQUIRED)
 find_package(LibKWorkspace ${PROJECT_DEP_VERSION} REQUIRED)
 find_package(LibKLookAndFeel ${PROJECT_DEP_VERSION} REQUIRED)
 find_package(KF6Screen ${PROJECT_DEP_VERSION} REQUIRED)
@@ -96,7 +95,6 @@ set(STATE_DIR                   "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/plasmal
 set(RUNTIME_DIR                 "${RUNTIME_DIR_DEFAULT}"                            CACHE PATH      "Runtime data storage directory")
 
 set(SESSION_COMMAND             "${DATA_INSTALL_DIR}/scripts/Xsession"              CACHE PATH      "Script to execute when starting the X11 desktop session")
-set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"       CACHE PATH      "Script to execute when starting the Wayland desktop session")
 
 set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"        CACHE PATH      "Path of the plasmalogin config file")
 set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"      CACHE PATH      "Path of the plasmalogin config directory")

@@ -123,7 +123,6 @@ inline bool isSessionVariable(QStringView name)
 {
     // Check is variable is specific to session.
     return name == "DISPLAY"_L1 || name == "XAUTHORITY"_L1 || //
-        name == "WAYLAND_DISPLAY"_L1 || name == "WAYLAND_SOCKET"_L1 || //
         name.startsWith("XDG_"_L1);
 }
 
@@ -185,7 +184,7 @@ void runStartupConfig()
     }
 }
 
-void setupCursor(bool wayland)
+void setupCursor(void)
 {
 #ifdef XCURSOR_PATH
     QByteArray path(XCURSOR_PATH);
@@ -194,15 +193,13 @@ void setupCursor(bool wayland)
 #endif
 
     // TODO: consider linking directly
-    if (!wayland) {
-        const KConfig cfg(QStringLiteral("kcminputrc"));
-        const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
+    const KConfig cfg(QStringLiteral("kcminputrc"));
+    const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
 
-        const auto cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
-        const auto cursorSize = inputCfg.readEntry("cursorSize", 24);
+    const auto cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
+    const auto cursorSize = inputCfg.readEntry("cursorSize", 24);
 
-        runSync(QStringLiteral("kapplymousetheme"), {cursorTheme, QString::number(cursorSize)});
-    }
+    runSync(QStringLiteral("kapplymousetheme"), {cursorTheme, QString::number(cursorSize)});
 }
 
 std::optional<QProcessEnvironment> getSystemdEnvironment()

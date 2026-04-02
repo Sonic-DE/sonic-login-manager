@@ -23,7 +23,6 @@ target_link_libraries(plasma-login-wallpaper PRIVATE
     KF6::WindowSystem
     KF6::Package
     Plasma::PlasmaQuick
-    LayerShellQt::Interface
 )
 
 qt_add_shaders(plasma-login-wallpaper "wallpaper_shaders"

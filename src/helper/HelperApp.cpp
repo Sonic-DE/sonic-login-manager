@@ -153,7 +153,7 @@ void HelperApp::doAuth()
     utmpLogin(vt, displayId, m_user, 0, false);
 
     m_user = m_backend->userName();
-    QProcessEnvironment env = authenticated(m_user);
+    env = authenticated(m_user);
 
     if (!m_session->path().isEmpty()) {
         env.insert(m_session->processEnvironment());

@@ -33,10 +33,6 @@ namespace PLASMALOGIN
             Entry(SessionLogFile,      QString,     _S(".local/share/plasmalogin/xorg-session.log"),   _S("Path to the user session log file"));
         );
 
-        Section(Wayland,
-            Entry(SessionLogFile,      QString,     _S(".local/share/plasmalogin/wayland-session.log"),_S("Path to the user session log file"));
-        );
-
         Section(Users,
             Entry(DefaultPath,         QString,     _S("/usr/local/bin:/usr/bin:/bin"),         _S("Default $PATH for logged in users"));
             Entry(RememberLastUser,    bool,        true,                                       _S("Remember the last successfully logged in user"));

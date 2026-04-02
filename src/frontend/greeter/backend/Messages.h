@@ -35,7 +35,6 @@ enum class DaemonMessages {
 
 enum class SessionType {
     X11 = 0,
-    Wayland
 };
 }
 

@@ -11,6 +11,8 @@
 #include <KDesktopFile>
 #include <KLocalizedString>
 
+#include <utility>
+
 #include "sessionmodel.h"
 
 SessionModel::SessionModel(QObject *parent)
@@ -19,19 +21,6 @@ SessionModel::SessionModel(QObject *parent)
     // NOTE: /usr/local/share is listed first, then /usr/share, so sessions in the former take precedence
     const QStringList xSessionsDirs =
         QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("xsessions"), QStandardPaths::LocateDirectory);
-    const QStringList waylandSessionsDirs =
-        QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("wayland-sessions"), QStandardPaths::LocateDirectory);
-
-    // NOTE: SDDM checks for the existence of /dev/dri before including wayland sessions
-    // This is not duplicated here — if wayland isn't going to work, then neither is the greeter
-
-    populate(xSessionsDirs, waylandSessionsDirs);
-
-    QFileSystemWatcher *watcher = new QFileSystemWatcher(this);
-    watcher->addPaths(xSessionsDirs + waylandSessionsDirs);
-    connect(watcher, &QFileSystemWatcher::directoryChanged, [this, xSessionsDirs, waylandSessionsDirs]() {
-        populate(xSessionsDirs, waylandSessionsDirs);
-    });
 }
 
 int SessionModel::rowCount(const QModelIndex &parent) const
@@ -53,15 +42,13 @@ QVariant SessionModel::data(const QModelIndex &index, int role) const
 
         const bool shouldAppendType = std::any_of(m_sessions.cbegin(), m_sessions.cend(), [session](const Session &other) {
             return session.path != other.path // Don't compare to ourselves
-                && session.displayName == other.displayName // Display names are the same...
-                && session.type != other.type; // ...but the type is different
+                && session.displayName == other.displayName; // Display names are the same...
         });
 
         int index = 1;
         const bool shouldAppendIndex = std::any_of(m_sessions.cbegin(), m_sessions.cend(), [session, &index](const Session &other) {
             const bool match = session.path != other.path // Don't compare to ourselves
-                && session.displayName == other.displayName // Display names are the same...
-                && session.type == other.type; // ..and so is the type
+                && session.displayName == other.displayName; // Display names are the same...
 
             if (match && other.path < session.path) {
                 ++index;
@@ -71,25 +58,12 @@ QVariant SessionModel::data(const QModelIndex &index, int role) const
         });
 
         if (shouldAppendType && shouldAppendIndex) {
-            switch (session.type) {
-            case Session::Type::X11:
                 return i18nc("@item:inmenu %1 is the localised name of a desktop session, %2 is the index of the session",
                              "%1 (X11) (%2)",
                              session.displayName,
                              index);
-            case Session::Type::Wayland:
-                return i18nc("@item:inmenu %1 is the localised name of a desktop session, %2 is the index of the session",
-                             "%1 (Wayland) (%2)",
-                             session.displayName,
-                             index);
-            }
         } else if (shouldAppendType) {
-            switch (session.type) {
-            case Session::Type::X11:
                 return i18nc("@item:inmenu %1 is the localised name of a desktop session", "%1 (X11)", session.displayName);
-            case Session::Type::Wayland:
-                return i18nc("@item:inmenu %1 is the localised name of a desktop session", "%1 (Wayland)", session.displayName);
-            }
         } else if (shouldAppendIndex) {
             return i18nc("@item:inmenu %1 is the localised name of a desktop session, %2 is the index of the session", "%1 (%2)", session.displayName, index);
         }
@@ -102,8 +76,6 @@ QVariant SessionModel::data(const QModelIndex &index, int role) const
         return getDisplay();
     case SessionModel::DisplayNameRole:
         return session.displayName;
-    case SessionModel::TypeRole:
-        return session.type;
     case SessionModel::FileNameRole:
         return QFileInfo(session.path).fileName();
     case SessionModel::CommentRole:
@@ -140,51 +112,6 @@ int SessionModel::indexOfData(const QVariant &data, int role) const
     return -1;
 }
 
-void SessionModel::populate(const QStringList &xSessionsPaths, const QStringList &waylandSessionsPaths)
-{
-    beginResetModel();
-
-    m_sessions.clear();
-
-    for (const auto &xSession : getSessionsPaths(xSessionsPaths)) {
-        m_sessions << getSession(xSession, Session::Type::X11);
-    }
-
-    for (const auto &waylandSession : getSessionsPaths(waylandSessionsPaths)) {
-        m_sessions << getSession(waylandSession, Session::Type::Wayland);
-    }
-
-    std::sort(m_sessions.begin(), m_sessions.end(), [](const Session &a, const Session &b) {
-        // Plasma first
-        const bool aIsPlasma = QFileInfo(a.path).fileName().startsWith(QStringLiteral("plasma"));
-        const bool bIsPlasma = QFileInfo(b.path).fileName().startsWith(QStringLiteral("plasma"));
-        if (aIsPlasma && !bIsPlasma) {
-            return true;
-        } else if (!aIsPlasma && bIsPlasma) {
-            return false;
-        }
-
-        // then alphabetical
-        const int compare = QString::localeAwareCompare(a.displayName, b.displayName);
-        if (compare < 0) {
-            return true;
-        } else if (compare > 0) {
-            return false;
-        }
-
-        // then X11 first
-        const bool aIsX11 = (a.type == Session::Type::X11);
-        const bool bIsX11 = (b.type == Session::Type::X11);
-        if (aIsX11 && !bIsX11) {
-            return true;
-        } else {
-            return false;
-        }
-    });
-
-    endResetModel();
-}
-
 QStringList SessionModel::getSessionsPaths(const QStringList &sessionsDirs) const
 {
     QStringList sessionsPaths;
@@ -210,12 +137,12 @@ QStringList SessionModel::getSessionsPaths(const QStringList &sessionsDirs) cons
     return sessionsPaths;
 }
 
-Session SessionModel::getSession(const QString path, const Session::Type type) const
+Session SessionModel::getSession(const QString path) const
 {
-    qDebug().nospace() << "Reading session (" << type << ") from " << path;
+    qDebug().nospace() << "Reading session from " << path;
 
     KDesktopFile desktop(path);
-    return Session(type, path, desktop.readName(), desktop.readComment());
+    return Session(path, desktop.readName(), desktop.readComment());
 }
 
 #include "moc_sessionmodel.cpp"

@@ -148,10 +148,7 @@ Display::Display(Seat *parent)
     if ((daemonApp->first || mainConfig.Autologin.Relogin.get()) && !mainConfig.Autologin.User.get().isEmpty()) {
         // determine session type
         QString autologinSession = mainConfig.Autologin.Session.get();
-        m_autologinSession = Session::create(Session::WaylandSession, autologinSession);
-        if (!m_autologinSession.isValid()) {
-            m_autologinSession = Session::create(Session::X11Session, autologinSession);
-        }
+        m_autologinSession = Session::create(autologinSession);
         if (!m_autologinSession.isValid()) {
             qCritical() << "Unable to find autologin session entry" << autologinSession;
         }
@@ -297,10 +294,6 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
         return false;
     }
 
-    if (session.xdgSessionType().isEmpty()) {
-        qCritical() << "Failed to find XDG session type for session" << session.fileName();
-        return false;
-    }
     if (session.exec().isEmpty()) {
         qCritical() << "Failed to find command for session" << session.fileName();
         return false;
@@ -339,7 +332,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     }
 
     // some information
-    qDebug() << "Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId << session.xdgSessionType();
+    qDebug() << "Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId << " x11 ";
 
     QProcessEnvironment env;
     env.insert(QStringLiteral("PATH"), mainConfig.Users.DefaultPath.get());
@@ -350,18 +343,14 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
         env.insert(QStringLiteral("XDG_CURRENT_DESKTOP"), session.desktopNames());
     }
     env.insert(QStringLiteral("XDG_SESSION_CLASS"), QStringLiteral("user"));
-    env.insert(QStringLiteral("XDG_SESSION_TYPE"), session.xdgSessionType());
+    env.insert(QStringLiteral("XDG_SESSION_TYPE"), QStringLiteral("x11"));
     env.insert(QStringLiteral("XDG_SEAT"), seat()->name());
     if (m_sessionTerminalId > 0) {
         env.insert(QStringLiteral("XDG_VTNR"), QString::number(m_sessionTerminalId));
     }
     env.insert(QStringLiteral("XDG_SESSION_DESKTOP"), session.desktopNames());
 
-    if (session.xdgSessionType() == QLatin1String("x11")) {
-        m_auth->setDisplayServerCommand(XorgUserDisplayServer::command(this));
-    } else {
-        m_auth->setDisplayServerCommand(QStringLiteral());
-    }
+    m_auth->setDisplayServerCommand(XorgUserDisplayServer::command(this));
     m_auth->setUser(user);
     if (m_reuseSessionId.isNull()) {
         m_auth->setSession(session.exec());

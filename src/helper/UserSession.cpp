@@ -45,9 +45,7 @@ bool UserSession::start()
     auto helper = qobject_cast<HelperApp *>(parent());
     QProcessEnvironment env = processEnvironment();
 
-    bool isWaylandGreeter = false;
-
-    if (env.value(QStringLiteral("XDG_SESSION_TYPE")) == QLatin1String("x11")) {
+    {
         QString command;
         if (env.value(QStringLiteral("XDG_SESSION_CLASS")) == QLatin1String("greeter")) {
             command = m_path;
@@ -65,30 +63,9 @@ bool UserSession::start()
             setArguments({m_displayServerCmd, command});
         }
         QProcess::start();
-
-    } else if (env.value(QStringLiteral("XDG_SESSION_TYPE")) == QLatin1String("wayland")) {
-        if (env.value(QStringLiteral("XDG_SESSION_CLASS")) == QLatin1String("greeter")) {
-            isWaylandGreeter = true;
-        }
-        setProgram(WAYLAND_SESSION_COMMAND);
-        setArguments(QStringList{m_path});
-        qInfo() << "Starting Wayland user session:" << program() << m_path;
-        QProcess::start();
-        closeWriteChannel();
-        closeReadChannel(QProcess::StandardOutput);
-    } else {
-        qCritical() << "Unable to run user session: unknown session type";
     }
 
-    const bool started = waitForStarted();
-    if (started) {
-        return true;
-    } else if (isWaylandGreeter) {
-        // This is probably fine, we need the compositor to start first
-        return true;
-    }
-
-    return false;
+    return waitForStarted();
 }
 
 void UserSession::stop()
@@ -294,7 +271,7 @@ void UserSession::setupChildProcess()
         // determine stderr log file based on session type
         QString sessionLog = QStringLiteral("%1/%2")
                                  .arg(QString::fromLocal8Bit(pw.pw_dir))
-                                 .arg(sessionType == QLatin1String("x11") ? mainConfig.X11.SessionLogFile.get() : mainConfig.Wayland.SessionLogFile.get());
+                                 .arg(mainConfig.X11.SessionLogFile.get());
 
         // create the path
         QFileInfo finfo(sessionLog);

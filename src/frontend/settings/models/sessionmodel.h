@@ -7,20 +7,19 @@
 #include <QAbstractListModel>
 #include <QUrl>
 
+#include <utility>
+
 struct Session {
     enum Type {
         X11 = 0,
-        Wayland
     };
 
-    Type type;
     QString path;
     QString displayName;
     QString comment;
 
-    Session(Type type, QString path, QString displayName, QString comment)
-        : type(type)
-        , path(std::move(path))
+    Session(QString path, QString displayName, QString comment)
+        : path(std::move(path))
         , displayName(std::move(displayName))
         , comment(std::move(comment))
     {
@@ -51,9 +50,8 @@ public:
     Q_INVOKABLE int indexOfData(const QVariant &data, int role = Qt::DisplayRole) const;
 
 private:
-    void populate(const QStringList &xSessionsDirs, const QStringList &waylandSessionsDirs);
     QStringList getSessionsPaths(const QStringList &sessionsDirs) const;
-    Session getSession(const QString path, const Session::Type type) const;
+    Session getSession(const QString path) const;
 
     QList<Session> m_sessions;
 };

@@ -53,7 +53,6 @@ target_link_libraries(plasma-login-greeter PRIVATE
     KF6::WindowSystem
     KF6::ConfigCore
     X11::X11
-    LayerShellQt::Interface
     PW::KWorkspace
     KF6::ScreenDpms
 )
