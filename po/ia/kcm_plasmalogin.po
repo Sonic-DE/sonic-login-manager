@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2026-02-05 18:35+0100\n"
+"PO-Revision-Date: 2026-04-01 11:25+0200\n"
 "Last-Translator: giovanni <g.sora@tiscali.it>\n"
 "Language-Team: Interlingua <kde-i18n-doc@kde.org>\n"
 "Language: ia\n"
@@ -96,13 +96,7 @@ msgstr ""
 "al sequente preferentias de Plasma:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -113,7 +107,8 @@ msgstr ""
 "<para><list><item>Schema de color,</item><item>Thema de cursor e grandor</"
 "item><item>Font e Rendition de font,</item><item>Preferentia de NumLock </"
 "item><item>Thema de Plasma,</item><item>Scalar DPI</item><item> "
-"Configuration de schermo</item></list></para>"
+"Configuration de schermo</item><item>Dispositiones de Claviero</item></"
+"list></para>"
 
 #: ui/main.qml:67
 #, kde-format

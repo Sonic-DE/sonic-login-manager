@@ -1,13 +1,13 @@
 # Copyright (C) YEAR This file is copyright:
 # This file is distributed under the same license as the plasma-login-manager package.
 #
-# Yuri Chornoivan <yurchor@ukr.net>, 2025.
+# Yuri Chornoivan <yurchor@ukr.net>, 2025, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2025-10-21 22:16+0300\n"
+"PO-Revision-Date: 2026-04-01 08:37+0300\n"
 "Last-Translator: Yuri Chornoivan <yurchor@ukr.net>\n"
 "Language-Team: Ukrainian <trans-uk@lists.fedoraproject.org>\n"
 "Language: uk\n"
@@ -97,13 +97,7 @@ msgstr ""
 "таких вказаних вами параметрів Плазми:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -114,7 +108,7 @@ msgstr ""
 "<para><list><item>схему кольорів</item><item>тему і розмір вказівників</"
 "item><item>шрифт і показ шрифтів</item><item>налаштування NumLock</"
 "item><item>тему Плазми,</item><item>масштабування</item><item>налаштування "
-"екрана</item></list></para>"
+"екрана</item><item>Розкладки клавіатури</item></list></para>"
 
 #: ui/main.qml:67
 #, kde-format
