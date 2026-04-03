@@ -295,7 +295,10 @@ void ConfigBase::save(const ConfigSection *section, const ConfigEntryBase *entry
 
     // loading and checking phase
     QFile file(m_path);
-    file.open(QIODevice::ReadOnly); // first just for reading
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open config file for reading:" << m_path;
+        return;
+    }
     while (!file.atEnd()) {
         const QString line = QString::fromUtf8(file.readLine());
         // get rid of comments first
@@ -366,7 +369,10 @@ void ConfigBase::save(const ConfigSection *section, const ConfigEntryBase *entry
 
     // rewrite the whole thing only if there are changes
     if (changed) {
-        file.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            qWarning() << "Failed to open config file for writing:" << m_path;
+            return;
+        }
         for (const ConfigSection *s : sectionOrder) {
             file.write(sectionData.value(s));
         }

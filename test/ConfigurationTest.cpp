@@ -82,7 +82,7 @@ void ConfigurationTest::Unused()
 {
     QFile confFile(CONF_FILE);
     QFile confCopy(CONF_FILE_COPY);
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("InvalidGeneralValue=(null)\n");
     confFile.write("#InvalidSection Comment\n");
     confFile.write("[InvalidSection]\n");
@@ -110,7 +110,7 @@ void ConfigurationTest::LineChanges()
     QFile confFile(CONF_FILE);
     QFile confCopy(CONF_FILE_COPY);
     // put some junk there to make it a bit harder to parse
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("InvalidGeneralValue=(null)\n");
     confFile.close();
     // assuming the integers will be of the same length when saved
@@ -126,7 +126,7 @@ void ConfigurationTest::CustomEnum()
 {
     QTest::qWait(2000);
     QFile confFile(CONF_FILE);
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("Custom=bar\n");
     confFile.close();
     QVERIFY(config->Custom.get() == TestConfig::FOO);
@@ -145,7 +145,7 @@ void ConfigurationTest::RightOnInit()
 {
     delete config;
     QFile confFile(CONF_FILE);
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("String=a\n");
     confFile.write("Int=99999\n");
     confFile.write("StringList=a,b,c,qwertzuiop\n");
@@ -165,13 +165,13 @@ void ConfigurationTest::RightOnInitDir()
     delete config;
 
     QFile confFileA(SYS_CONF_DIR + QStringLiteral("/0001A"));
-    confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileA.write("Custom=Foo\n"); // overriden by B
     confFileA.write("Boolean=false\n");
     confFileA.close();
 
     QFile confFileB(CONF_DIR + QStringLiteral("/0001A"));
-    confFileB.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileB.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileB.write("String=a\n"); // overriden by C
     confFileB.write("Custom=Bar\n");
     confFileB.write("StringList=a,b,c\n");
@@ -179,13 +179,13 @@ void ConfigurationTest::RightOnInitDir()
     confFileB.close();
 
     QFile confFileC(CONF_DIR + QStringLiteral("/0001B"));
-    confFileC.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileC.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileC.write("String=b\n");
     confFileC.write("Int=1111111\n"); // overriden in CONF_FILE
     confFileC.close();
 
     QFile confFileMain(CONF_FILE);
-    confFileMain.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileMain.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileMain.write("Int=99999\n");
     confFileMain.close();
     confFileB.close();
@@ -206,7 +206,7 @@ void ConfigurationTest::FileChanged()
 
     // test from no file to a file
     QFile confFile(CONF_FILE);
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("String=a\n");
     confFile.close();
 
@@ -217,7 +217,7 @@ void ConfigurationTest::FileChanged()
     // wait 2 seconds so timestamp is definitely 1 second apart
     QTest::qWait(2000);
 
-    confFile.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFile.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFile.write("String=b\n");
     confFile.close();
 
@@ -228,7 +228,7 @@ void ConfigurationTest::FileChanged()
 
     // add file to conf dir
     QFile confFileA(CONF_DIR + QStringLiteral("/0001A"));
-    confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileA.write("Int=1111111\n"); // this is set in this config file but overriden in CONF_FILE
     confFileA.close();
     config->load();
@@ -237,7 +237,7 @@ void ConfigurationTest::FileChanged()
     QTest::qWait(2000);
     // modify existing file in conf dir
 
-    confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate);
+    QVERIFY(confFileA.open(QIODevice::WriteOnly | QIODevice::Truncate));
     confFileA.write("Int=222222\n"); // this is set in this config file but overriden in CONF_FILE
     confFileA.close();
     config->load();
