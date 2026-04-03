@@ -152,9 +152,6 @@ void HelperApp::doAuth()
     const QString vt = env.value(QStringLiteral("XDG_VTNR"));
     utmpLogin(vt, displayId, m_user, 0, false);
 
-    m_user = m_backend->userName();
-    env = authenticated(m_user);
-
     if (!m_session->path().isEmpty()) {
         env.insert(m_session->processEnvironment());
         m_session->setProcessEnvironment(env);
