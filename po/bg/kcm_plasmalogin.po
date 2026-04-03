@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2026-02-12 23:00+0100\n"
+"PO-Revision-Date: 2026-04-03 01:35+0200\n"
 "Last-Translator: Mincho Kondarev <mkondarev@yahoo.de>\n"
 "Language-Team: Bulgarian <kde-i18n-doc@kde.org>\n"
 "Language: bg\n"
@@ -94,13 +94,7 @@ msgid ""
 msgstr "Това ще рефлектира върху следните потребителските настройки на Plasma:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -111,7 +105,8 @@ msgstr ""
 "<para><list><item>Цветова схема</item><item>Тема и размер на курсора</"
 "item><item>Шрифт и изобразяване на шрифтове</item><item>Предпочитания за "
 "NumLock</item><item>Тема на Plasma</item><item>Мащабиране на DPI</"
-"item><item>Конфигурация на екрана</item></list></para>"
+"item><item>Конфигурация на екрана</item><item>Клавиатурни подредби</item></"
+"list></para>"
 
 #: ui/main.qml:67
 #, kde-format
