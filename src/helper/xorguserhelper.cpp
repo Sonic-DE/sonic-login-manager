@@ -50,7 +50,14 @@ QString XOrgUserHelper::display() const
 bool XOrgUserHelper::start(const QString &cmd)
 {
     // Create xauthority
-    m_xauth.setAuthDirectory(qEnvironmentVariable("XDG_RUNTIME_DIR"));
+    QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
+    qDebug() << "XOrgUserHelper::start: XDG_RUNTIME_DIR=" << xdgRuntimeDir;
+    // Fall back to /tmp/xauth_<uid> if XDG_RUNTIME_DIR is not set
+    if (xdgRuntimeDir.isEmpty()) {
+        xdgRuntimeDir = QStringLiteral("/tmp/xauth_%1").arg(::getuid());
+        qDebug() << "XOrgUserHelper::start: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
+    }
+    m_xauth.setAuthDirectory(xdgRuntimeDir);
     m_xauth.setup();
 
     // Start server process
