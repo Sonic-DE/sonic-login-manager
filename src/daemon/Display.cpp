@@ -221,6 +221,10 @@ void Display::startSocketServerAndGreeter()
 
     m_greeter->setSocket(m_socketServer->socketAddress());
 
+    // Set up display server for the greeter
+    m_greeter->setDisplayServerCommand(XorgUserDisplayServer::command(this));
+    qDebug() << "Display::startSocketServerAndGreeter: set X11 display server for greeter:" << XorgUserDisplayServer::command(this);
+
     // start greeter
     m_greeter->start();
 }
