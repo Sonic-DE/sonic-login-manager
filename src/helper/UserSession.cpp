@@ -63,6 +63,11 @@ bool UserSession::start()
             setProgram(QStringLiteral(LIBEXEC_INSTALL_DIR "/plasmalogin-helper-start-x11user"));
             setArguments({m_displayServerCmd, command});
         }
+        QString homeDir = processEnvironment().value(QStringLiteral("HOME"));
+        if (!homeDir.isEmpty()) {
+            qDebug() << "UserSession::start: setting working dir to HOME:" << homeDir;
+            setWorkingDirectory(homeDir);
+        }
         QProcess::start();
 
     } else if (env.value(QStringLiteral("XDG_SESSION_TYPE")) == QLatin1String("wayland")) {
