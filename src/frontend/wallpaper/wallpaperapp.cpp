@@ -14,6 +14,8 @@
 #include <QDBusConnection>
 #include <QDBusError>
 
+#include <KConfig>
+#include <KConfigGroup>
 #include <KConfigLoader>
 #include <KConfigPropertyMap>
 #include <KPackage/PackageLoader>
@@ -28,8 +30,20 @@
 WallpaperApp::WallpaperApp(int &argc, char **argv)
     : QGuiApplication(argc, argv)
 {
+    // If no wallpaper plugin is configured, try to load user's plasma wallpaper from local config
+    QString wallpaperPluginId = PlasmaLoginSettings::getInstance().wallpaperPluginId();
+    if (wallpaperPluginId.isEmpty()) {
+        // Get user's wallpaper from plasma-workspace-localrc
+        KConfig localConfig(QStringLiteral("plasma-workspace-localrc"), KConfig::SimpleConfig);
+        KConfigGroup wallpaperGroup(&localConfig, "Wallpaper");
+        wallpaperPluginId = wallpaperGroup.readEntry("Image", QStringLiteral("org.kde.image"));
+        if (wallpaperPluginId.isEmpty()) {
+            wallpaperPluginId = QStringLiteral("org.kde.image");
+        }
+    }
+
     m_wallpaperPackage = KPackage::PackageLoader::self()->loadPackage(QStringLiteral("Plasma/Wallpaper"));
-    m_wallpaperPackage.setPath(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+    m_wallpaperPackage.setPath(wallpaperPluginId);
 
     for (const auto screenList{screens()}; QScreen *screen : screenList) {
         adoptScreen(screen);
