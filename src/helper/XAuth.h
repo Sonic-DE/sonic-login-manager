@@ -35,7 +35,7 @@ public:
     QString authPath() const;
     QByteArray cookie() const;
 
-    void setup();
+    bool setup();
     bool addCookie(const QString &display);
 
     static bool writeCookieToFile(const QString &display, const QString &fileName, QByteArray cookie);

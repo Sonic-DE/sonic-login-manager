@@ -68,13 +68,11 @@ QByteArray XAuth::cookie() const
     return m_cookie;
 }
 
-void XAuth::setup()
+bool XAuth::setup()
 {
     if (m_setup) {
-        return;
+        return true;
     }
-
-    m_setup = true;
 
     // Create directory if not existing
     QDir().mkpath(m_authDir);
@@ -82,7 +80,8 @@ void XAuth::setup()
     // Set path
     m_authFile.setFileTemplate(m_authDir + QStringLiteral("/xauth_XXXXXX"));
     if (!m_authFile.open()) {
-        qFatal("Failed to create xauth file");
+        qCritical() << "Failed to create xauth file in:" << m_authDir;
+        return false;
     }
 
     qDebug() << "Xauthority path:" << authPath();
@@ -99,6 +98,10 @@ void XAuth::setup()
     for (int i = 0; i < 16; i++) {
         m_cookie.append(dis(gen));
     }
+
+    m_setup = true;
+
+    return true;
 }
 
 bool XAuth::addCookie(const QString &display)

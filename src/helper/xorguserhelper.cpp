@@ -58,7 +58,10 @@ bool XOrgUserHelper::start(const QString &cmd)
         qDebug() << "XOrgUserHelper::start: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
     }
     m_xauth.setAuthDirectory(xdgRuntimeDir);
-    m_xauth.setup();
+    if (!m_xauth.setup()) {
+        qCritical() << "XOrgUserHelper::start: XAuth setup failed!";
+        return false;
+    }
 
     // Start server process
     if (!startServer(cmd)) {
