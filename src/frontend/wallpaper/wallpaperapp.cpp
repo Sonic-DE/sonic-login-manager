@@ -81,13 +81,31 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
         return;
     }
 
-    const QString xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
+    QString xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
-    const KConfigGroup cfg = PlasmaLoginSettings::getInstance()
-                                 .sharedConfig()
-                                 ->group(QStringLiteral("Greeter"))
-                                 .group(QStringLiteral("Wallpaper"))
-                                 .group(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+    KConfigGroup cfg = PlasmaLoginSettings::getInstance()
+                           .sharedConfig()
+                           ->group(QStringLiteral("Greeter"))
+                           .group(QStringLiteral("Wallpaper"))
+                           .group(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+
+    // Fall back to POTD if the current wallpaper plugin has no images configured
+    if (PlasmaLoginSettings::getInstance().wallpaperPluginId() == QStringLiteral("org.kde.image") && cfg.readEntry(QStringLiteral("Image")).isEmpty()) {
+        m_wallpaperPackage.setPath(QStringLiteral("org.kde.potd"));
+        if (!m_wallpaperPackage.isValid()) {
+            qWarning() << "Error loading POTD wallpaper, falling back to black background";
+            m_wallpaperPackage.setPath(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+        } else {
+            xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
+
+            // Use config for the POTD plugin
+            cfg = PlasmaLoginSettings::getInstance()
+                      .sharedConfig()
+                      ->group(QStringLiteral("Greeter"))
+                      .group(QStringLiteral("Wallpaper"))
+                      .group(m_wallpaperPackage.path());
+        }
+    }
 
     KConfigLoader *configLoader;
     if (xmlPath.isEmpty()) {
@@ -112,8 +130,7 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/plasma/login/wallpaper/main.qml")));
 
-    const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)},
-                                    {QStringLiteral("pluginName"), PlasmaLoginSettings::getInstance().wallpaperPluginId()}};
+    const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)}, {QStringLiteral("pluginName"), m_wallpaperPackage.path()}};
     QObject *wallpaperObject = component->createWithInitialProperties(properties, window->rootContext());
     auto wallpaperItem = qobject_cast<QQuickItem *>(wallpaperObject);
     if (!wallpaperItem) {
