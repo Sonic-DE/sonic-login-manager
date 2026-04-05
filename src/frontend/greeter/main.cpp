@@ -12,7 +12,6 @@
 #include <QScreen>
 
 #include <KLocalizedString>
-#include <KWindowSystem>
 #include <PlasmaQuick/QuickViewSharedEngine>
 #include <kworkspace6/sessionmanagement.h>
 
@@ -72,6 +71,10 @@ private:
 
         window->setSource(QUrl("qrc:/qt/qml/org/kde/plasma/login/Main.qml"));
         window->show();
+
+        // Raise greeter above wallpaper and ensure keyboard focus
+        window->raise();
+        window->requestActivate();
     }
 
     static bool s_testMode;
