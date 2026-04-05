@@ -94,6 +94,12 @@ void GreeterProxy::readyRead()
         input >> message;
 
         switch (DaemonMessages(message)) {
+        case DaemonMessages::HostName: {
+            // Host name is read but not used in the greeter currently
+            QString hostName;
+            input >> hostName;
+            qDebug() << "Message received from daemon: HostName =" << hostName;
+        } break;
         case DaemonMessages::LoginSucceeded: {
             // log message
             qDebug() << "Message received from daemon: LoginSucceeded";
