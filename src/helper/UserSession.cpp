@@ -35,9 +35,18 @@ UserSession::UserSession(HelperApp *parent)
     : QProcess(parent)
 {
     connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &UserSession::finished);
+    connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &UserSession::onProcessFinished);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     setChildProcessModifier(std::bind(&UserSession::childModifier, this));
 #endif
+}
+
+void UserSession::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
+{
+    if (exitStatus == QProcess::CrashExit) {
+        qWarning() << "UserSession: process crashed";
+    }
+    Q_EMIT finished(exitCode);
 }
 
 bool UserSession::start()

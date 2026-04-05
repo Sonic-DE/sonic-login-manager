@@ -36,6 +36,9 @@ public:
 Q_SIGNALS:
     void finished(int exitCode);
 
+private Q_SLOTS:
+    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 protected:
     void setupChildProcess() override;
