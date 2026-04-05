@@ -217,7 +217,10 @@ void Auth::Private::dataPending()
 void Auth::Private::childExited(int exitCode, QProcess::ExitStatus exitStatus)
 {
     if (exitStatus != QProcess::NormalExit) {
-        qWarning("Auth: plasmalogin-helper (%s) crashed (exit code %d)", qPrintable(child->arguments().join(QLatin1Char(' '))), HelperExitStatus(exitStatus));
+        qWarning("Auth: plasmalogin-helper (%s) crashed (exit code %d), exitStatus=%d",
+                 qPrintable(child->arguments().join(QLatin1Char(' '))),
+                 HelperExitStatus(exitStatus),
+                 exitStatus);
         Q_EMIT qobject_cast<Auth *>(parent())->error(child->errorString(), ERROR_INTERNAL);
     }
 
@@ -404,6 +407,7 @@ void Auth::stop()
 
     // wait for finished
     if (!d->child->waitForFinished(5000)) {
+        qWarning() << "Auth::stop: child process did not terminate gracefully, killing";
         d->child->kill();
     }
 }

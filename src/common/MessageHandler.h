@@ -129,12 +129,9 @@ static void messageHandler(QtMsgType type, const QMessageLogContext &context, co
 #ifdef HAVE_SYSTEMD
     // don't log to journald if running interactively, this is likely
     // the case when running plasmalogin in test mode
-    static bool isInteractive = isatty(STDERR_FILENO) && qgetenv("USER") != "plasmalogin";
-    if (!isInteractive) {
-        // log to journald
-        journaldLogger(type, context, msg);
-        return;
-    }
+    // log to journald
+    journaldLogger(type, context, msg);
+    return;
 #else
     Q_UNUSED(context);
     Q_UNUSED(isatty);

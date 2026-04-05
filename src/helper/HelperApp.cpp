@@ -132,6 +132,7 @@ void HelperApp::doAuth()
     }
 
     if (!m_backend->start(m_user)) {
+        qCritical() << "doAuth: PAM backend start failed, exiting with HELPER_AUTH_ERROR";
         authenticated(QString());
         exit(Auth::HELPER_AUTH_ERROR);
         return;
@@ -139,6 +140,7 @@ void HelperApp::doAuth()
 
     Q_ASSERT(getuid() == 0);
     if (!m_backend->authenticate()) {
+        qCritical() << "doAuth: PAM authentication failed, exiting with HELPER_AUTH_ERROR";
         authenticated(QString());
         exit(Auth::HELPER_AUTH_ERROR);
         return;
@@ -157,6 +159,7 @@ void HelperApp::doAuth()
         m_session->setProcessEnvironment(env);
 
         if (!m_backend->openSession()) {
+            qCritical() << "doAuth: backend openSession failed, exiting with HELPER_SESSION_ERROR";
             sessionOpened(false);
             exit(Auth::HELPER_SESSION_ERROR);
             return;

@@ -61,6 +61,7 @@ bool Greeter::start()
 {
     // check flag
     if (m_started) {
+        qWarning() << "Greeter::start() returning false - already started!";
         return false;
     }
 
@@ -187,11 +188,9 @@ void Greeter::onSessionStarted(bool success)
     // set flag
     m_started = success;
 
-    // log message
-    if (success) {
-        qDebug() << "Greeter session started successfully";
-    } else {
-        qDebug() << "Greeter session failed to start";
+    // log message with more details
+    if (!success) {
+        qCritical() << "Greeter session failed to start! m_auth ptr:" << (void *)m_auth;
     }
 }
 
@@ -244,7 +243,7 @@ void Greeter::authInfo(const QString &message, Auth::Info info)
 void Greeter::authError(const QString &message, Auth::Error error)
 {
     Q_UNUSED(error);
-    qWarning() << "Error from greeter session:" << message;
+    qWarning() << "Greeter::authError: Error from greeter session:" << message << "error type:" << error;
 }
 }
 

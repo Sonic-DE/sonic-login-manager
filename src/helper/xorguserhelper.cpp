@@ -65,6 +65,7 @@ bool XOrgUserHelper::start(const QString &cmd)
 
     // Start server process
     if (!startServer(cmd)) {
+        qCritical() << "XOrgUserHelper::start: X server start failed!";
         return false;
     }
 
@@ -106,8 +107,9 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     connect(process, &QProcess::readyReadStandardOutput, this, [process] {
         qInfo() << process->readAllStandardOutput();
     });
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [](int exitCode, QProcess::ExitStatus exitStatus) {
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [program](int exitCode, QProcess::ExitStatus exitStatus) {
         if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
+            qCritical() << "XOrgUserHelper: process" << program << "exited abnormally with exitCode:" << exitCode << ", quitting helper";
             QCoreApplication::instance()->quit();
         }
     });
@@ -160,6 +162,7 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // Start the server process
     qInfo("Running server: %s", qPrintable(serverCmd));
     if (!startProcess(serverCmd, serverEnv, &m_serverProcess)) {
+        qCritical() << "XOrgUserHelper::startServer: startProcess failed, closing pipe";
         ::close(pipeFds[0]);
         return false;
     }

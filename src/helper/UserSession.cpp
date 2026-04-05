@@ -7,6 +7,8 @@
  *
  */
 
+#include <QDir>
+#include <QFileInfo>
 #include <QSocketNotifier>
 
 #include "Configuration.h"
@@ -101,6 +103,7 @@ bool UserSession::start()
         return true;
     }
 
+    qCritical() << "UserSession::start: session process failed to start! error:" << error() << "-" << errorString();
     return false;
 }
 

@@ -80,9 +80,10 @@ bool PamHandle::authenticate(int flags)
     qDebug() << "[PAM] Authenticating...";
     m_result = pam_authenticate(m_handle, flags | m_silent);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] authenticate:" << pam_strerror(m_handle, m_result);
+        qCritical() << "[PAM] authenticate FAILED:" << m_result << "-" << pam_strerror(m_handle, m_result);
+    } else {
+        qDebug() << "[PAM] Authentication successful";
     }
-    qDebug() << "[PAM] returning.";
     return m_result == PAM_SUCCESS;
 }
 
@@ -153,7 +154,9 @@ bool PamHandle::start(const QString &service, const QString &user)
         m_result = pam_start(qPrintable(service), qPrintable(user), &m_conv, &m_handle);
     }
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] start" << pam_strerror(m_handle, m_result);
+        qCritical() << "[PAM] start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
+        qCritical() << "[PAM] Check that" << QStringLiteral("/etc/pam.d/%1").arg(service) << "or" << QStringLiteral("/usr/lib/pam.d/%1").arg(service)
+                    << "exists";
         return false;
     } else {
         qDebug() << "[PAM] Starting...";

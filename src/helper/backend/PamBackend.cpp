@@ -228,6 +228,7 @@ bool PamBackend::start(const QString &user)
     result = m_pam->start(service, user);
 
     if (!result) {
+        qCritical() << "[PAM Backend] PAM start failed for service:" << service;
         m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
     }
 
@@ -250,6 +251,7 @@ bool PamBackend::authenticate()
 bool PamBackend::openSession()
 {
     if (!m_pam->setCred(PAM_ESTABLISH_CRED)) {
+        qCritical() << "[PAM] openSession: setCred PAM_ESTABLISH_CRED failed:" << m_pam->errorString();
         m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         return false;
     }
@@ -273,10 +275,12 @@ bool PamBackend::openSession()
     }
 
     if (!m_pam->putEnv(sessionEnv)) {
+        qCritical() << "[PAM] openSession: putEnv failed:" << m_pam->errorString();
         m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
         return false;
     }
     if (!m_pam->openSession()) {
+        qCritical() << "[PAM] openSession: pam_open_session failed:" << m_pam->errorString();
         m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
         return false;
     }
