@@ -13,7 +13,6 @@
 
 #include <KLocalizedString>
 #include <KWindowSystem>
-#include <LayerShellQt/Window>
 #include <PlasmaQuick/QuickViewSharedEngine>
 #include <kworkspace6/sessionmanagement.h>
 
