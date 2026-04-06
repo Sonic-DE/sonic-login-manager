@@ -65,7 +65,7 @@ private:
 
         if (KWindowSystem::isPlatformWayland()) {
             if (auto layerShellWindow = LayerShellQt::Window::get(window)) {
-                layerShellWindow->setScope(QStringLiteral("plasma-login-wallpaper"));
+                layerShellWindow->setScope(QStringLiteral("plasma-login-greeter"));
                 layerShellWindow->setLayer(LayerShellQt::Window::LayerTop);
                 layerShellWindow->setExclusiveZone(-1);
                 layerShellWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
