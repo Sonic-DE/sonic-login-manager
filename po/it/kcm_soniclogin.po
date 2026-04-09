@@ -1,13 +1,13 @@
 # Copyright (C) 2025 This file is copyright:
 # This file is distributed under the same license as the plasma-login-manager package.
-# SPDX-FileCopyrightText: 2025 Valter Mura <valtermura@gmail.com>
+# SPDX-FileCopyrightText: 2025, 2026 Valter Mura <valtermura@gmail.com>
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-04-01 00:47+0000\n"
-"PO-Revision-Date: 2025-10-25 20:38+0200\n"
+"PO-Revision-Date: 2026-04-01 23:31+0200\n"
 "Last-Translator: Valter Mura <valtermura@gmail.com>\n"
 "Language-Team: Italian <kde-i18n-it@kde.org>\n"
 "Language: it\n"
@@ -15,7 +15,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 25.08.2\n"
+"X-Generator: Lokalize 25.12.3\n"
 
 #: kcm.cpp:78
 msgid ""
@@ -95,13 +95,7 @@ msgstr ""
 "personalizzazioni alle seguenti impostazioni di Plasma:"
 
 #: ui/main.qml:66
-#, fuzzy, kde-kuit-format
-#| msgctxt "@info"
-#| msgid ""
-#| "<para><list><item>Color scheme</item><item>Cursor theme and size</"
-#| "item><item>Font and font rendering</item><item>NumLock preference</"
-#| "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
-#| "configuration</item></list></para>"
+#, kde-kuit-format
 msgctxt "@info"
 msgid ""
 "<para><list><item>Color scheme</item><item>Cursor theme and size</"
@@ -112,7 +106,8 @@ msgstr ""
 "<para><list><item>Schema di colori</item><item>Tema e dimensione cursore</"
 "item><item>Carattere e resa carattere</item><item>Preferenza BlocNum</"
 "item><item>Tema di Plasma</item><item>Riscalatura DPI</"
-"item><item>Configurazione schermata</item></list></para>"
+"item><item>Configurazione schermata</item><item>Disposizioni tastiera</"
+"item></list></para>"
 
 #: ui/main.qml:67
 #, kde-format
