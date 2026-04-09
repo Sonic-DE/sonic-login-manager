@@ -1,89 +1,88 @@
-# Copyright (C) 2025 This file is copyright:
+# Slovak translations for plasma-login-manager package.
+# Copyright (C) 2026 This file is copyright:
 # This file is distributed under the same license as the plasma-login-manager package.
-# SPDX-FileCopyrightText: 2025, 2026 Valter Mura <valtermura@gmail.com>
+# Automatically generated, 2026.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: plasma-login-manager\n"
 "Report-Msgid-Bugs-To: https://bugs.kde.org\n"
 "POT-Creation-Date: 2026-02-28 02:46+0000\n"
-"PO-Revision-Date: 2025-10-25 20:38+0200\n"
-"Last-Translator: Valter Mura <valtermura@gmail.com>\n"
-"Language-Team: Italian <kde-i18n-it@kde.org>\n"
-"Language: it\n"
+"PO-Revision-Date: 2026-02-28 02:46+0000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: sk\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Lokalize 25.12.3\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 
 #: kcm.cpp:78
 msgid ""
 "Unable to save settings because a temporary directory could not be created."
 msgstr ""
-"Impossibile salvare le impostazioni perché non è stato possibile creare la "
-"cartella temporanea."
+"Nie je možné uložiť nastavenia, pretože sa nepodarilo vytvoriť dočasný "
+"adresár."
 
 #: kcm.cpp:139
 msgid "Unable to save settings because the config could not be opened."
 msgstr ""
-"Impossibile salvare le impostazioni perché non è stato possibile aprire il "
-"file di configurazione."
+"Nie je možné uložiť nastavenia, pretože sa nepodarilo otvoriť konfiguráciu."
 
 #: kcm.cpp:214
 msgid ""
 "Unable to synchronise Plasma settings because the 'plasmalogin' user does "
 "not exist. Please check your Plasma Login install."
 msgstr ""
-"Impossibile sincronizzare le impostazioni di Plasma perché l'utente "
-"«plasmalogin» non esiste. Verifica l'installazione di Accesso a Plasma."
+"Nie je možné synchronizovať nastavenia Plasma, pretože používateľ "
+"'plasmalogin' neexistuje. Skontrolujte inštaláciu Plasma Login."
 
 #: kcm.cpp:265
 msgid ""
 "Unable to reset Plasma settings because the 'plasmalogin' user does not "
 "exist. Please check your Plasma Login install."
 msgstr ""
-"Impossibile ripristinare le impostazioni di Plasma perché l'utente "
-"«plasmalogin» non esiste. Verifica l'installazione di Accesso a Plasma."
+"Nie je možné obnoviť nastavenia Plasma, pretože používateľ 'plasmalogin' "
+"neexistuje. Skontrolujte inštaláciu Plasma Login."
 
 #: ui/Appearance.qml:23
 #, kde-format
 msgctxt "@title"
 msgid "Appearance"
-msgstr "Aspetto"
+msgstr "Vzhľad"
 
 #: ui/Appearance.qml:35
 #, kde-format
 msgid "Clock"
-msgstr "Orologio"
+msgstr "Hodiny"
 
 #: ui/Appearance.qml:36
 #, kde-format
 msgid "Show clock"
-msgstr "Mostra l'orologio"
+msgstr "Zobrazovať hodiny"
 
 #: ui/Appearance.qml:52
 #, kde-format
 msgid "Wallpaper type:"
-msgstr "Tipo di sfondo:"
+msgstr "Typ tapety:"
 
 #: ui/main.qml:28
 #, kde-format
 msgctxt "@action:button"
 msgid "Apply Plasma Settings…"
-msgstr "Applica le impostazioni Plasma…"
+msgstr "Použiť Plasma nastavenia..."
 
 #: ui/main.qml:33
 #, kde-format
 msgctxt "@action:button"
 msgid "Configure Appearance…"
-msgstr "Configura l'aspetto…"
+msgstr "Nastaviť vzhľad..."
 
 #: ui/main.qml:64
 #, kde-format
 msgctxt "@title:window"
 msgid "Apply Plasma Settings"
-msgstr "Applica le impostazioni Plasma"
+msgstr "Použiť Plasma nastavenia"
 
 #: ui/main.qml:65
 #, kde-format
@@ -91,8 +90,8 @@ msgid ""
 "This will make the Plasma login screen reflect your customizations to the "
 "following Plasma settings:"
 msgstr ""
-"In questo modo la schermata di accesso a Plasma rifletterà le tue "
-"personalizzazioni alle seguenti impostazioni di Plasma:"
+"Toto spôsobí, že prihlasovacia obrazovka Plasma bude odrážať vaše "
+"prispôsobenia nasledujúcich nastavení Plasma:"
 
 #: ui/main.qml:66
 #, kde-kuit-format
@@ -103,10 +102,10 @@ msgid ""
 "item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
 "configuration</item></list></para>"
 msgstr ""
-"<para><list><item>Schema di colori</item><item>Tema e dimensione cursore</"
-"item><item>Carattere e resa carattere</item><item>Preferenza BlocNum</"
-"item><item>Tema di Plasma</item><item>Riscalatura DPI</"
-"item><item>Configurazione schermata</item></list></para>"
+"<para><list><item>Farebná schéma</item><item>Téma a veľkosť kurzora</"
+"item><item>Písmo a vykresľovanie písma</item><item>Nastavenie NumLock</"
+"item><item>Téma Plasma</item><item>Škálovanie DPI</item><item>Konfigurácia "
+"obrazovky</item></list></para>"
 
 #: ui/main.qml:67
 #, kde-format
@@ -114,32 +113,32 @@ msgid ""
 "Please note that theme files must be installed globally to be reflected on "
 "the Plasma login screen."
 msgstr ""
-"Nota che, affinché siano riproposti nella schermata di accesso a Plasma, i "
-"file del tema devono essere installati a livello globale."
+"Upozorňujeme, že súbory tém musia byť nainštalované globálne, aby sa "
+"prejavili na prihlasovacej obrazovke Plasma."
 
 #: ui/main.qml:71
 #, kde-format
 msgctxt "@action:button"
 msgid "Apply"
-msgstr "Applica"
+msgstr "Použiť"
 
 #: ui/main.qml:76
 #, kde-format
 msgctxt "@action:button"
 msgid "Reset to Default Settings"
-msgstr "Ripristina alle impostazioni predefinite"
+msgstr "Obnoviť na predvolené nastavenia"
 
 #: ui/main.qml:89
 #, kde-format
 msgctxt "@title:group"
 msgid "Auto-login"
-msgstr "Accesso automatico"
+msgstr "Automatické prihlásenie"
 
 #: ui/main.qml:94
 #, kde-format
 msgctxt "@option:check"
 msgid "Automatically log in:"
-msgstr "Accedi automaticamente:"
+msgstr "Automaticky prihlásiť:"
 
 #: ui/main.qml:99
 #, kde-format
@@ -147,7 +146,7 @@ msgctxt ""
 "@label:listbox, the following combobox selects the user to log in "
 "automatically"
 msgid "as user:"
-msgstr "come utente:"
+msgstr "ako používateľ:"
 
 #: ui/main.qml:154
 #, kde-format
@@ -155,7 +154,7 @@ msgctxt ""
 "@label:listbox, the following combobox selects the session that is started "
 "automatically"
 msgid "with session:"
-msgstr "con sessione:"
+msgstr "s reláciou:"
 
 #: ui/main.qml:187
 #, kde-kuit-format
@@ -166,49 +165,48 @@ msgid ""
 "this, you can change the wallet to have a blank password. Note that this is "
 "insecure and should only be done in a trusted environment."
 msgstr ""
-"L'accesso automatico non supporta lo sblocco automatico del tuo Portafoglio "
-"KDE, pertanto ti verrà chiesto di sbloccarlo ogni volta che accedi.    <nl/"
-"><nl/>    Per evitare questo comportamento, puoi modificare il portafoglio "
-"in modo da avere una password vuota. Nota che questa operazione non è sicura "
-"e deve essere eseguita soltanto all'interno di un ambiente affidabile."
+"Automatické prihlásenie nepodporuje automatické odomknutie KDE Peňaženky, "
+"preto vás požiada o jej odomknutie pri každom prihlásení.    <nl/><nl/>    "
+"Aby ste sa tomu vyhli, môžete zmeniť peňaženku na prázdne heslo. Note that "
+"this is insecure and should only be done in a trusted environment."
 
 #: ui/main.qml:192
 #, kde-format
 msgid "Open KDE Wallet Settings"
-msgstr "Apri le impostazioni di KDE Wallet"
+msgstr "Otvoriť nastavenia peňaženky KDE"
 
 #: ui/main.qml:199
 #, kde-format
 msgctxt "@option:check"
 msgid "Log in again immediately after logging off"
-msgstr "Accedi di nuovo immediatamente dopo essere uscito"
+msgstr "Prihlásiť sa znova hneď po odhlásení"
 
 #: ui/main.qml:210
 #, kde-format
 msgctxt "@title:group"
 msgid "Defaults"
-msgstr "Predefinite"
+msgstr "Predvolené"
 
 #: ui/main.qml:215
 #, kde-format
 msgctxt "@label"
 msgid "Default user:"
-msgstr "Utente predefinito:"
+msgstr "Predvolený používateľ:"
 
 #: ui/main.qml:221
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in user"
-msgstr "Ultimo utente di accesso"
+msgstr "Posledný prihlásený používateľ"
 
 #: ui/main.qml:293
 #, kde-format
 msgctxt "@label"
 msgid "Default session:"
-msgstr "Sessione predefinita:"
+msgstr "Predvolená relácia:"
 
 #: ui/main.qml:299
 #, kde-format
 msgctxt "@option:radio"
 msgid "Last logged-in session"
-msgstr "Ultima sessione di accesso"
+msgstr "Posledná prihlásená relácia"
