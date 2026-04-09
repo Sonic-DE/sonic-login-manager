@@ -91,38 +91,6 @@ set(LOG_FILE                    "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/plasmal
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"               CACHE STRING    "Name of the plasmalogin config file")
 set(PLASMALOGIN_INITIAL_VT             "1"                                                 CACHE STRING    "Initial tty to use")
 
-
-# Autodetect UID_MIN and UID_MAX from /etc/login.defs
-if(NOT DEFINED LOGIN_DEFS_PATH)
-    set(LOGIN_DEFS_PATH "/etc/login.defs" CACHE PATH "Path to login.defs")
-endif()
-
-if(NOT EXISTS "${LOGIN_DEFS_PATH}" AND NOT DEFINED UID_MIN AND NOT DEFINED UID_MAX)
-    message(FATAL_ERROR "Could not find login.defs at ${LOGIN_DEFS_PATH}. Try -DLOGIN_DEFS_PATH.")
-endif()
-
-if(NOT DEFINED UID_MIN)
-    file(STRINGS "${LOGIN_DEFS_PATH}" UID_MIN LIMIT_COUNT 1 REGEX "^UID_MIN")
-    string(REGEX REPLACE "^UID_MIN[\t ]+([0-9]+)" "\\1" UID_MIN "${UID_MIN}")
-    if(NOT UID_MIN MATCHES "[0-9]+")
-        message(WARNING "Could not detect a valid UID_MIN (got '${UID_MIN}'). You should review your login.defs file.")
-        set(UID_MIN 1000)
-    else()
-        message(STATUS "Autodetected UID_MIN=${UID_MIN} from ${LOGIN_DEFS_PATH}")
-    endif()
-endif()
-
-if(NOT DEFINED UID_MAX)
-    file(STRINGS "${LOGIN_DEFS_PATH}" UID_MAX LIMIT_COUNT 1 REGEX "^UID_MAX")
-    string(REGEX REPLACE "^UID_MAX[\t ]+([0-9]+)" "\\1" UID_MAX "${UID_MAX}")
-    if(NOT UID_MAX MATCHES "[0-9]+")
-        message(WARNING "Could not detect a valid UID_MAX (got '${UID_MAX}'). You should review your login.defs file.")
-        set(UID_MAX 65000)
-    else()
-        message(STATUS "Autodetected UID_MAX=${UID_MAX} from ${LOGIN_DEFS_PATH}")
-    endif()
-endif()
-
 # Add subdirectories
 add_subdirectory(data)
 add_subdirectory(services)
