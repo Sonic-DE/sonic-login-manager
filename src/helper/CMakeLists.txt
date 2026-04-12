@@ -1,17 +1,5 @@
 include(CheckLibraryExists)
 
-# On FreeBSD (possibly other BSDs as well), we want to use
-# setusercontext() to set up the login configuration from login.conf
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD")
-    find_library(_have_libutil util)
-    if(_have_libutil)
-        check_library_exists(${_have_libutil} setusercontext "" _have_setusercontext)
-    endif()
-    if(_have_libutil AND _have_setusercontext)
-        target_link_libraries(plasmalogin-helper ${_have_libutil})
-    endif()
-endif()
-
 include_directories(
     "${CMAKE_SOURCE_DIR}/src/common"
     "${CMAKE_SOURCE_DIR}/src/auth"
@@ -44,6 +32,19 @@ if(LIBSYSTEMD_FOUND)
 endif()
 
 target_link_libraries(plasmalogin-helper ${PAM_LIBRARIES})
+
+# On FreeBSD (possibly other BSDs as well), we want to use
+# setusercontext() to set up the login configuration from login.conf
+# Link util library for setusercontext on FreeBSD/BSD
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "FreeBSD" OR "${CMAKE_SYSTEM_NAME}" STREQUAL "GhostBSD")
+    find_library(_have_libutil util)
+    if(_have_libutil)
+        check_library_exists(${_have_libutil} setusercontext "" _have_setusercontext)
+    endif()
+    if(_have_libutil AND _have_setusercontext)
+        target_link_libraries(plasmalogin-helper ${_have_libutil})
+    endif()
+endif()
 
 # utmps for non-systemd session tracking
 if (UTMPS_FOUND)
