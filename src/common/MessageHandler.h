@@ -70,26 +70,13 @@ static void standardLogger(QtMsgType type, const QString &msg)
 {
     static QFile file(QStringLiteral(LOG_FILE));
 
-    // Try to open the log file if we're not outputting to a terminal
-    if (!file.isOpen() && !isatty(STDERR_FILENO)) {
-        if (!file.open(QFile::Append | QFile::WriteOnly)) {
-            if (!file.open(QFile::Truncate | QFile::WriteOnly)) {
-                qWarning() << "Failed to open log file:" << file.fileName();
-            }
-        }
-
-        // If we can't open the file, create it in a writable location
-        // It will look spmething like ~/.local/share/$appname/plasmalogin.log
-        // or for the plasmalogin user /var/lib/plasmalogin/.local/share/$appname/plasmalogin.log
-        if (!file.isOpen()) {
-            QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-            file.setFileName(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QLatin1String("/plasmalogin.log"));
-            if (!file.open(QFile::Append | QFile::WriteOnly)) {
-                if (!file.open(QFile::Truncate | QFile::WriteOnly)) {
-                    qWarning() << "Failed to open log file:" << file.fileName();
-                }
-            }
-        }
+    // Login manager runs before user login, so use system log path only
+    if (!file.isOpen()) {
+        file.setFileName(QStringLiteral(LOG_FILE));
+        // Ensure directory exists for login manager (runs as root before user session)
+        QFileInfo info(QStringLiteral(LOG_FILE));
+        QDir().mkpath(info.path());
+        file.open(QIODevice::Append | QIODevice::WriteOnly);
     }
 
     // create timestamp
