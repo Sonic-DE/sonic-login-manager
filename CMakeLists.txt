@@ -145,6 +145,10 @@ set(LOG_FILE                    "/var/log/sonic/loginmanager.log"               
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the soniclogin config file")
 set(SONICLOGIN_INITIAL_VT       "1"                                                             CACHE STRING    "Initial tty to use")
 
+if(NOT DEFINED LOGIN_DEFS_PATH)
+    set(LOGIN_DEFS_PATH "/etc/login.defs" CACHE PATH "Path to login.defs")
+endif()
+
 # Add subdirectories
 add_subdirectory(data)
 add_subdirectory(services)
