@@ -1,0 +1,32 @@
+#!/bin/sh
+# BSD script for plasmalogin
+# PROVIDE: plasmalogin
+# REQUIRE: LOGIN dbus
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="plasmalogin"
+rcvar=plasmalogin_enable
+command="@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin"
+pidfile="/var/run/plasmalogin/plasmalogin.pid"
+sig_stop=TERM
+sig_reload=USR1
+
+load_rc_config $name
+
+# Set environment variables for the daemon
+export PLASMALOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/startplasma-login-x11
+
+# Create required directories and log file before starting
+plasmalogin_start() {
+    mkdir -p /var/log
+    touch /var/log/plasmalogin.log
+    chown root:adm /var/log/plasmalogin.log
+    chmod 640 /var/log/plasmalogin.log
+    /bin/mkdir -p /var/run/plasmalogin
+    chown root:plasmalogin /var/run/plasmalogin
+    chmod 711 /var/run/plasmalogin
+}
+
+run_rc_command "$1"

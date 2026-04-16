@@ -1,0 +1,34 @@
+#!/bin/sh
+# non-systemd script for plasmalogin
+# Provides: plasmalogin
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# XTODO: add proper dependency for getty
+# Keybits: NO
+
+. /etc/rc.subr
+
+name="plasmalogin"
+rcvar=plasmalogin_enable
+command="@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin"
+pidfile="/run/plasmalogin/plasmalogin.pid"
+sig_stop=TERM
+sig_reload=USR1
+
+load_rc_config $name
+
+# Set environment variables for the daemon
+export PLASMALOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/startplasma-login-x11
+
+# Create required directories and log file before starting
+plasmalogin_start() {
+    mkdir -p /var/log
+    touch /var/log/plasmalogin.log
+    chown root:adm /var/log/plasmalogin.log
+    chmod 640 /var/log/plasmalogin.log
+    /bin/mkdir -p /run/plasmalogin
+    chown root:plasmalogin /run/plasmalogin
+    chmod 711 /run/plasmalogin
+}
+
+run_rc_command "$1"
