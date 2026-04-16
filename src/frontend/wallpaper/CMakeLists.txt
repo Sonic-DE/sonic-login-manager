@@ -6,6 +6,12 @@ include_directories(
 
 add_executable(plasma-login-wallpaper)
 
+# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
+# This allows using #ifdef HAVE_SYSTEMD in the source code
+if(SYSTEMD_FOUND)
+    target_compile_definitions(plasma-login-wallpaper PRIVATE HAVE_SYSTEMD)
+endif()
+
 ecm_add_qml_module(plasma-login-wallpaper URI "org.kde.plasma.login.wallpaper" GENERATE_PLUGIN_SOURCE)
 
 target_sources(plasma-login-wallpaper PRIVATE

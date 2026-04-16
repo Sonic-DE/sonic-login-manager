@@ -11,6 +11,13 @@ include_directories(
 ecm_qt_declare_logging_category(startplasma_SRCS HEADER debug.h IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup)
 
 add_executable(startplasma-login-x11 startplasmalogin-x11.cpp startplasma.cpp ${startplasma_SRCS})
+
+# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
+# This allows using #ifdef HAVE_SYSTEMD in the source code
+if(SYSTEMD_FOUND)
+    target_compile_definitions(startplasma-login-x11 PRIVATE HAVE_SYSTEMD)
+endif()
+
 target_link_libraries(startplasma-login-x11 PRIVATE
     Qt::Core
     Qt::DBus

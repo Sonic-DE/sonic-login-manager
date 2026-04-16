@@ -55,6 +55,13 @@ target_link_libraries(plasmalogin
                       ${PAM_LIBRARIES}
                       KF6::ConfigCore
                       KF6::ConfigGui)
+
+# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
+# This allows using #ifdef HAVE_SYSTEMD in the source code
+if(LIBSYSTEMD_FOUND)
+    target_compile_definitions(plasmalogin PRIVATE HAVE_SYSTEMD)
+endif()
+
 if(LIBSYSTEMD_FOUND)
     target_link_libraries(plasmalogin PkgConfig::LIBSYSTEMD)
 endif()

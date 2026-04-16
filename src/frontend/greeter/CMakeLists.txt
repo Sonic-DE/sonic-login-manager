@@ -31,6 +31,12 @@ ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
 
 add_executable(plasma-login-greeter ${LOGIN_GREETER_SRCS})
 
+# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
+# This allows using #ifdef HAVE_SYSTEMD in the source code
+if(SYSTEMD_FOUND)
+    target_compile_definitions(plasma-login-greeter PRIVATE HAVE_SYSTEMD)
+endif()
+
 set_source_files_properties(qml/GreeterState.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 

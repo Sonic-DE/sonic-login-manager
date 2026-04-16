@@ -8,6 +8,12 @@ include_directories("${CMAKE_BINARY_DIR}/src/common")
 
 add_executable(plasmalogin-helper)
 
+# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
+# This allows using #ifdef HAVE_SYSTEMD in the source code
+if(SYSTEMD_FOUND)
+    target_compile_definitions(plasmalogin-helper PRIVATE HAVE_SYSTEMD)
+endif()
+
 target_sources(plasmalogin-helper PRIVATE
     ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
     ${CMAKE_SOURCE_DIR}/src/common/ConfigReader.cpp
