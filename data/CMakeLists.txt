@@ -50,7 +50,13 @@ if(INSTALL_PAM_CONFIGURATION)
         elseif("debian" IN_LIST OS_ID_LIST)
            message(STATUS "Installing PAM configuration for Debian Linux-like systems.")
            set(PAM_OS_CONFIGURATION "debian" CACHE INTERNAL "Auto-detected Debian Linux type system" FORCE)
-        elseif("freebsd" IN_LIST OS_ID_LIST OR "FreeBSD" STREQUAL OS_ID)
+        elseif(
+         "freebsd" IN_LIST OS_ID_LIST OR "freebsd" STREQUAL OS_ID OR
+         "openbsd" IN_LIST OS_ID_LIST OR "openbsd" STREQUAL OS_ID OR
+         "netbsd" IN_LIST OS_ID_LIST OR "netbsd" STREQUAL OS_ID OR
+         "dragonfly" IN_LIST OS_ID_LIST OR "dragonfly" STREQUAL OS_ID OR
+         "ghostbsd" IN_LIST OS_ID_LIST OR "ghostbsd" STREQUAL OS_ID
+         )
            message(STATUS "Installing PAM configuration for FreeBSD and FreeBSD-like systems.")
            set(PAM_OS_CONFIGURATION "freebsd" CACHE INTERNAL "Auto-detected FreeBSD or FreeBSD-like system" FORCE)
         else()
