@@ -3,6 +3,12 @@ remove_definitions(-DQT_NO_CAST_FROM_ASCII)
 remove_definitions(-DQT_NO_CAST_FROM_BYTEARRAY=0)
 remove_definitions(-DQT_USE_QSTRINGBUILDER)
 
+# Include common directory for MessageHandler
+include_directories(
+    "${CMAKE_SOURCE_DIR}/src/common"
+    "${CMAKE_BINARY_DIR}/src/common"
+)
+
 set(LOGIN_GREETER_SRCS
     main.cpp
     stateconfig.cpp

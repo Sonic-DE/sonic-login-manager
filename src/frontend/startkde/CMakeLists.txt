@@ -1,5 +1,9 @@
 install(FILES plasma-login-x11.target DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 ecm_install_configured_files(INPUT plasma-login-kwin_x11.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+include_directories(
+    "${CMAKE_SOURCE_DIR}/src/common"
+    "${CMAKE_BINARY_DIR}/src/common"
+)
 
 ecm_qt_declare_logging_category(startplasma_SRCS HEADER debug.h IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup)
 

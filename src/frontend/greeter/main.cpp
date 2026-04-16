@@ -18,6 +18,8 @@
 #include "backend/GreeterProxy.h"
 #include "mockbackend/MockGreeterProxy.h"
 
+#include "MessageHandler.h"
+
 #include "blurscreenbridge.h"
 #include "greetereventfilter.h"
 #include "models/sessionmodel.h"
@@ -94,6 +96,8 @@ bool LoginGreeter::testModeEnabled()
 
 int main(int argc, char *argv[])
 {
+    // Install message handler to log to plasmalogin.log
+    qInstallMessageHandler(PLASMALOGIN::GreeterMessageHandler);
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("plasma-login"));
 
     QCommandLineParser parser;

@@ -8,9 +8,13 @@
 #include <QSurfaceFormat>
 
 #include "wallpaperapp.h"
+#include "MessageHandler.h"
 
 int main(int argc, char **argv)
 {
+    // Install message handler to log to plasmalogin.log
+    qInstallMessageHandler(PLASMALOGIN::WallpaperMessageHandler);
+
     QCoreApplication::setApplicationName(QStringLiteral("plasma-login-wallpaper"));
 
     auto format = QSurfaceFormat::defaultFormat();

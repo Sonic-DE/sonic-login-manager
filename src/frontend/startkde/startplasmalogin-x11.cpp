@@ -17,10 +17,13 @@
 #include <qdbusservicewatcher.h>
 #include <signal.h>
 
+#include "MessageHandler.h"
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
 
+    // Install message handler to log to plasmalogin.log
+    qInstallMessageHandler(PLASMALOGIN::StartPlasmaMessageHandler);
     createConfigDirectory();
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);

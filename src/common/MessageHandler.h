@@ -144,6 +144,16 @@ void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &context, co
 {
     messageHandler(type, context, QStringLiteral("GREETER: "), msg);
 }
+
+void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    messageHandler(type, context, QStringLiteral("STARTPLASMA: "), msg);
+}
+
+void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    messageHandler(type, context, QStringLiteral("WALLPAPER: "), msg);
+}
 }
 
 #endif // PLASMALOGIN_MESSAGEHANDLER_H

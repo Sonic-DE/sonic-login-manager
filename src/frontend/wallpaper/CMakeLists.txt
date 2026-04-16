@@ -1,3 +1,9 @@
+# Include common directory for MessageHandler
+include_directories(
+    "${CMAKE_SOURCE_DIR}/src/common"
+    "${CMAKE_BINARY_DIR}/src/common"
+)
+
 add_executable(plasma-login-wallpaper)
 
 ecm_add_qml_module(plasma-login-wallpaper URI "org.kde.plasma.login.wallpaper" GENERATE_PLUGIN_SOURCE)
