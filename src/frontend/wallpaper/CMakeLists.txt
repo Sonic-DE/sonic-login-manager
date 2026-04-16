@@ -45,4 +45,6 @@ qt_add_shaders(plasma-login-wallpaper "wallpaper_shaders"
 ecm_finalize_qml_module(plasma-login-wallpaper)
 
 install(TARGETS plasma-login-wallpaper DESTINATION ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-ecm_install_configured_files(INPUT plasma-wallpaper.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+if(SYSTEMD_FOUND)
+    ecm_install_configured_files(INPUT plasma-wallpaper.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+endif()

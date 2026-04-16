@@ -67,5 +67,7 @@ ecm_finalize_qml_module(plasma-login-greeter)
 
 install(TARGETS plasma-login-greeter DESTINATION ${KDE_INSTALL_LIBEXECDIR})
 
-ecm_install_configured_files(INPUT plasma-login.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+if(SYSTEMD_FOUND)
+    ecm_install_configured_files(INPUT plasma-login.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+endif()
 ki18n_install(po)
