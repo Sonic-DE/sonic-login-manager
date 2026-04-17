@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(PROJECT_VERSION "6.6.3")
+set(PROJECT_VERSION "6.6.4")
 
 project(PLASMALOGIN VERSION ${PROJECT_VERSION})
 
@@ -8,7 +8,7 @@ project(PLASMALOGIN VERSION ${PROJECT_VERSION})
 option(INSTALL_PAM_CONFIGURATION "Install PAM configuration files" ON)
 
 # Version settings
-set(PROJECT_DEP_VERSION "6.6.3")
+set(PROJECT_DEP_VERSION "6.6.4")
 
 set(QT_MIN_VERSION "6.10.0")
 set(KF6_MIN_VERSION "6.22.0")
