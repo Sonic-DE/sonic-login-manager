@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(PROJECT_VERSION "6.6.3")
+set(PROJECT_VERSION "6.5.5")
 
 project(PLASMALOGIN VERSION ${PROJECT_VERSION})
 
@@ -8,7 +8,7 @@ project(PLASMALOGIN VERSION ${PROJECT_VERSION})
 option(INSTALL_PAM_CONFIGURATION "Install PAM configuration files" ON)
 
 # Version settings
-set(PROJECT_DEP_VERSION "6.6.3")
+set(PROJECT_DEP_VERSION "6.5.5")
 
 set(QT_MIN_VERSION "6.10.0")
 set(KF6_MIN_VERSION "6.22.0")
@@ -86,7 +86,11 @@ find_package(utmps)
 add_feature_info("utmps" UTMPS_FOUND "utmps support for non-systemd session tracking")
 
 # Extra default install directories
-set(PAM_CONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pam.d" CACHE PATH "Install directory for PAM configuration")
+if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
+    set(PAM_CONFIG_DIR "/etc/pam.d" CACHE PATH "Install directory for PAM configuration")
+else()
+    set(PAM_CONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pam.d" CACHE PATH "Install directory for PAM configuration")
+endif()
 
 # Set constants
 set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/plasmalogin"                CACHE PATH      "System application data install directory")
