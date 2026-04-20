@@ -79,7 +79,11 @@ if(SYSTEMD_FOUND)
     endif()
 endif()
 
-set(RUNTIME_DIR_DEFAULT "/run/plasmalogin")
+if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
+    set(RUNTIME_DIR_DEFAULT "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/run/plasmalogin")
+else()
+    set(RUNTIME_DIR_DEFAULT "/run/plasmalogin")
+endif()
 
 # utmps - for session tracking on non-systemd systems
 find_package(utmps)
