@@ -6,9 +6,17 @@
 # FreeBSD PAM configuration for plasmalogin autologin
 # This configuration does not use systemd
 
-auth        required    pam_env.so
+# Auth: Allow access without a password
 auth        required    pam_permit.so
+
+# Account: Enforce basic account restrictions (nologin, access.conf)
+account     required    pam_nologin.so
 account     required    pam_login_access.so
-account     required    pam_permit.so
+account     required    pam_unix.so
+
+# Password: Explicitly deny any password change attempts during autologin
 password    required    pam_deny.so
+
+# Session: Record the login and permit the session
+session     required    pam_lastlog.so       no_fail
 session     required    pam_permit.so
