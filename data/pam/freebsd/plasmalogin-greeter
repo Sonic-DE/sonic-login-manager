@@ -6,9 +6,6 @@
 # FreeBSD PAM configuration for plasmalogin greeter
 # This configuration does not use systemd
 
-# Load environment from /etc/environment
-auth        required    pam_env.so
-
 # Always let the greeter start without authentication
 auth        required    pam_permit.so
 
