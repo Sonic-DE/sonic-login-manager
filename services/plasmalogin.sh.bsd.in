@@ -1,32 +1,67 @@
 #!/bin/sh
 # BSD script for plasmalogin
 # PROVIDE: plasmalogin
-# REQUIRE: LOGIN dbus
+# REQUIRE: LOGIN dbus syslogd
+# BEFORE: getty
 # KEYWORD: shutdown
 
 . /etc/rc.subr
 
 name="plasmalogin"
-rcvar=plasmalogin_enable
-command="@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin"
-pidfile="/var/run/plasmalogin/plasmalogin.pid"
-sig_stop=TERM
-sig_reload=USR1
+rcvar="plasmalogin_enable"
 
 load_rc_config $name
 
-# Set environment variables for the daemon
-export PLASMALOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/startplasma-login-x11
+# Binary and state directory paths
+command="@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin"
+pidfile="/var/run/plasmalogin/plasmalogin.pid"
 
-# Create required directories and log file before starting
-plasmalogin_start() {
-    mkdir -p /var/log
-    touch /var/log/plasmalogin.log
-    chown root:adm /var/log/plasmalogin.log
-    chmod 640 /var/log/plasmalogin.log
+# Signals
+sig_stop="TERM"
+sig_reload="USR1"
+
+plasmalogin_prestart() {
+    # 1. Ensure the dedicated group and user exist
+    if ! pw usershow plasmalogin >/dev/null 2>&1; then
+        echo "${name}: searching for an available system UID..."
+        
+        # Loop through the system range (100-999) to find a free UID
+        local free_id=""
+        for id in $(jot 900 100 999); do
+            if ! pw usershow $id >/dev/null 2>&1 && ! pw groupshow $id >/dev/null 2>&1; then
+                free_id=$id
+                break
+            fi
+        done
+
+        if [ -z "$free_id" ]; then
+            echo "${name}: error - no available UIDs found in range 100-999" >&2
+            return 1
+        fi
+
+        if ! pw useradd -n plasmalogin -u "$free_id" -g plasmalogin \
+            -d "@STATE_DIR@" -s /usr/sbin/nologin \
+            -c "PLASMALOGIN Greeter Account" -w no; then
+            echo "${name}: failed to create system user" >&2
+            return 1
+        fi
+        echo "${name}: created system user plasmalogin with UID ${free_id}"
+    fi
+
+    # 2. Setup state and run directories
+    /bin/mkdir -p "@STATE_DIR@"
+    chown -R plasmalogin:plasmalogin "@STATE_DIR@"
+    chmod 700 "@STATE_DIR@"
+
     /bin/mkdir -p /var/run/plasmalogin
     chown root:plasmalogin /var/run/plasmalogin
     chmod 711 /var/run/plasmalogin
+
+    # 3. Setup logging
+    /usr/bin/touch /var/log/plasmalogin.log
+    chown root:plasmalogin /var/log/plasmalogin.log
+    chmod 660 /var/log/plasmalogin.log
 }
 
+start_precmd="plasmalogin_prestart"
 run_rc_command "$1"
