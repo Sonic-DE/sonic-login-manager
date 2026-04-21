@@ -59,6 +59,7 @@ void GreeterProxy::setSessionModel(SessionModel *model)
 void GreeterProxy::login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
     SocketWriter(d->socket) << quint32(GreeterMessages::Login) << user << password << static_cast<uint32_t>(sessionType) << sessionFileName;
+    d->socket->flush();
 }
 
 void GreeterProxy::connected()
