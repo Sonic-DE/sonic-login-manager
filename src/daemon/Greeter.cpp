@@ -117,7 +117,7 @@ bool Greeter::start()
         }
         env.insert(QStringLiteral("XDG_SESSION_CLASS"), QStringLiteral("greeter"));
         env.insert(QStringLiteral("XDG_SESSION_TYPE"), m_display->sessionType());
-        env.insert(QStringLiteral("SDDM_SOCKET"), m_socket);
+        env.insert(QStringLiteral("SONICLOGIN_SOCKET"), m_socket);
 
         m_auth->insertEnvironment(env);
 
