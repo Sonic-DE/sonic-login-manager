@@ -122,7 +122,7 @@ bool Greeter::start()
         m_auth->insertEnvironment(env);
 
         // log message
-        qDebug() << "Greeter starting...";
+        qDebug() << "Greeter attempting to start...";
 
         // start greeter
         m_auth->setUser(QStringLiteral("plasmalogin"));
