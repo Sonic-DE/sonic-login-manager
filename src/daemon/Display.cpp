@@ -281,7 +281,15 @@ void Display::login(QLocalSocket *socket, const QString &user, const QString &pa
     }
 
     // authenticate
-    startAuth(user, password, session);
+    if (!startAuth(user, password, session)) {
+        qWarning() << "Display::login: startAuth failed, notifying greeter with LoginFailed";
+        if (m_socket) {
+            emit loginFailed(m_socket);
+            m_socket = nullptr;
+        }
+    } else {
+        qDebug() << "Display::login: startAuth started successfully for user" << user;
+    }
 }
 
 bool Display::startAuth(const QString &user, const QString &password, const Session &session)
