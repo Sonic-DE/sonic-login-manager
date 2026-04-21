@@ -103,6 +103,18 @@ void SocketServer::newConnection()
 
     // connect signals
     connect(socket, &QLocalSocket::readyRead, this, &SocketServer::readyRead);
+    connect(socket, &QLocalSocket::errorOccurred, this, [socket](QLocalSocket::LocalSocketError error) {
+        qWarning() << "SocketServer: socket error occurred, serverName=" << socket->serverName() << " error=" << error << "=" << socket->errorString();
+    });
+    connect(socket, &QObject::destroyed, this, [](QObject *obj) {
+        qWarning() << "SocketServer: socket object destroyed, ptr=" << obj;
+    });
+    connect(socket, &QLocalSocket::disconnected, this, [socket] {
+        qWarning() << "SocketServer: client disconnected, serverName=" << socket->serverName()
+                   << "socket ptr=" << (void *)socket
+                   << "state=" << socket->state()
+                   << "error=" << socket->errorString();
+    });
     connect(socket, &QLocalSocket::disconnected, socket, &QLocalSocket::deleteLater);
 }
 
