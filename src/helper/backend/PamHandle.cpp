@@ -9,6 +9,12 @@
 #include "PamBackend.h"
 
 #include <QtCore/QDebug>
+#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
+#include <QtCore/QTextStream>
+
+#include <cerrno>
+#include <cstring>
 
 namespace PLASMALOGIN
 {
@@ -148,6 +154,26 @@ int PamHandle::converse(int n, const struct pam_message **msg, struct pam_respon
 
 bool PamHandle::start(const QString &service, const QString &user)
 {
+    const QString pamEtcPath = QStringLiteral("/etc/pam.d/") + service;
+    const QString pamLocalEtcPath = QStringLiteral("/usr/local/etc/pam.d/") + service;
+    const bool hasEtc = QFileInfo::exists(pamEtcPath);
+    const bool hasLocalEtc = QFileInfo::exists(pamLocalEtcPath);
+
+
+    const QString selectedPamFile = hasEtc ? pamEtcPath : (hasLocalEtc ? pamLocalEtcPath : QString());
+    if (!selectedPamFile.isEmpty()) {
+        QFile f(selectedPamFile);
+        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream ts(&f);
+            QStringList preview;
+            for (int i = 0; i < 8 && !ts.atEnd(); ++i) {
+                preview << ts.readLine();
+            }
+        } else {
+            qWarning() << "[PAM] start: could not open service file for preview:" << selectedPamFile;
+        }
+    }
+
     if (user.isEmpty()) {
         m_result = pam_start(qPrintable(service), NULL, &m_conv, &m_handle);
     } else {
@@ -155,8 +181,18 @@ bool PamHandle::start(const QString &service, const QString &user)
     }
     if (m_result != PAM_SUCCESS) {
         qCritical() << "[PAM] start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
-        qCritical() << "[PAM] Check that" << QStringLiteral("/etc/pam.d/%1").arg(service) << "or" << QStringLiteral("/usr/lib/pam.d/%1").arg(service)
-                    << "exists";
+        qCritical() << "[PAM] start FAILED diagnostics: errno=" << errno << "(" << strerror(errno) << ")";
+        if (!selectedPamFile.isEmpty()) {
+            QFileInfo fi(selectedPamFile);
+            qCritical() << "[PAM] start FAILED service file metadata:" << selectedPamFile
+                        << "exists=" << fi.exists()
+                        << "readable=" << fi.isReadable()
+                        << "owner=" << fi.owner()
+                        << "group=" << fi.group()
+                        << "permissions=" << fi.permissions();
+        }
+        qCritical() << "[PAM] Check that" << QStringLiteral("/etc/pam.d/%1").arg(service) << "or" << QStringLiteral("/usr/local/etc/pam.d/%1").arg(service)
+                    << "exists and contains valid FreeBSD PAM syntax/modules";
         return false;
     } else {
         qDebug() << "[PAM] Starting...";
