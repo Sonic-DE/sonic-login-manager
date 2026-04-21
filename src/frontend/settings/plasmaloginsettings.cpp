@@ -44,8 +44,13 @@ PlasmaLoginSettings::~PlasmaLoginSettings()
 
 void PlasmaLoginSettings::getUids()
 {
-    m_minimumUid = std::numeric_limits<unsigned int>::min();
-    m_maximumUid = std::numeric_limits<unsigned int>::max();
+    // Sane defaults, especially for BSD where LOGIN_DEFS_PATH is configured empty
+    m_minimumUid = 1000;
+    m_maximumUid = 60000;
+
+    if (QStringLiteral(LOGIN_DEFS_PATH).isEmpty()) {
+        return;
+    }
 
     QFile loginDefs(QStringLiteral(LOGIN_DEFS_PATH));
     if (!loginDefs.open(QIODevice::ReadOnly | QIODevice::Text)) {
