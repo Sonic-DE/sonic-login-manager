@@ -228,7 +228,7 @@ bool PamBackend::start(const QString &user)
     result = m_pam->start(service, user);
 
     if (!result) {
-        qCritical() << "[PAM Backend] PAM start failed for service:" << service;
+        qCritical() << "[PAM Backend] PAM start failed for service:" << service << "errorString:" << m_pam->errorString();
         m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
     }
 
@@ -241,6 +241,7 @@ bool PamBackend::authenticate()
         m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         return false;
     }
+
     if (!m_pam->acctMgmt()) {
         m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         return false;
@@ -250,13 +251,14 @@ bool PamBackend::authenticate()
 
 bool PamBackend::openSession()
 {
+    QProcessEnvironment sessionEnv = m_app->session()->processEnvironment();
+
     if (!m_pam->setCred(PAM_ESTABLISH_CRED)) {
         qCritical() << "[PAM] openSession: setCred PAM_ESTABLISH_CRED failed:" << m_pam->errorString();
         m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         return false;
     }
 
-    QProcessEnvironment sessionEnv = m_app->session()->processEnvironment();
     const auto sessionType = sessionEnv.value(QStringLiteral("XDG_SESSION_TYPE"));
     const auto sessionClass = sessionEnv.value(QStringLiteral("XDG_SESSION_CLASS"));
     if (sessionEnv.contains(QStringLiteral("XDG_VTNR"))) {
@@ -393,7 +395,12 @@ int PamBackend::converse(int n, const struct pam_message **msg, struct pam_respo
             received = m_app->request(sent);
 
             if (!received.valid()) {
+                qCritical() << "[PAM] Conversation failed: daemon returned invalid response request";
                 return PAM_CONV_ERR;
+            }
+
+            if (received.prompts.length() != sent.prompts.length()) {
+                qWarning() << "[PAM] Response prompt count mismatch. sent:" << sent.prompts.length() << "received:" << received.prompts.length();
             }
 
             m_data->completeRequest(received);
