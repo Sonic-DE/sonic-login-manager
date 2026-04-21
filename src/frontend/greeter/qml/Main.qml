@@ -427,6 +427,16 @@ Item {
             rejectPasswordAnimation.start();
         }
 
+        function onSocketDisconnected() {
+            notificationMessage = i18nd("plasma_login", "Connection to login service lost");
+
+            footer.enabled = true;
+            mainStack.enabled = true;
+            userListComponent.userList.opacity = 1;
+
+            rejectPasswordAnimation.start();
+        }
+
         function onLoginSucceeded() {
             mainStack.opacity = 0;
             footer.opacity = 0;
