@@ -10,8 +10,10 @@
 
 #include <unistd.h>
 #include <fcntl.h>          /* Definition of O_* and S_* constants */
-#include <linux/openat2.h>  /* Definition of RESOLVE_* constants */
 #include <sys/syscall.h>    /* Definition of SYS_* constants */
+#ifdef __linux__
+#include <linux/openat2.h>  /* Definition of RESOLVE_* constants */
+#endif
 
 #include <QBuffer>
 #include <QDBusUnixFileDescriptor>
@@ -217,12 +219,17 @@ ActionReply PlasmaLoginAuthHelper::save(const QVariantMap &args)
             return ActionReply::HelperErrorReply();
         }
 
-         struct open_how how = {
+#ifdef __linux__
+        struct open_how how = {
             .flags = O_CREAT | O_WRONLY | O_TRUNC,
             .mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH,
             .resolve = RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS
         };
-        int outFd = syscall(SYS_openat2, rootWallpaperFd, wallpaper.toUtf8().constData(), &how, sizeof(struct open_how));        
+        int outFd = syscall(SYS_openat2, rootWallpaperFd, wallpaper.toUtf8().constData(), &how, sizeof(struct open_how));
+#else
+        // On BSD, use openat with O_NOFOLLOW
+        int outFd = openat(rootWallpaperFd, wallpaper.toUtf8().constData(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, 0644);
+#endif
         if (outFd < 0) {
             qWarning() << "Could not open wallpaper file." << qPrintable(strerror(errno));
             return ActionReply::HelperErrorReply();
