@@ -180,6 +180,13 @@ void Greeter::finished()
 void Greeter::onRequestChanged()
 {
     m_auth->request()->setFinishAutomatically(true);
+
+    // FreeBSD greeter PAM can produce a prompt during bootstrap and then block
+    // waiting for a response. Complete it explicitly there to avoid deadlock.
+#ifdef Q_OS_FREEBSD
+    m_auth->request()->done();
+#endif
+
 }
 
 void Greeter::onSessionStarted(bool success)
