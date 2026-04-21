@@ -262,7 +262,6 @@ void UserSession::setupChildProcess()
         qCritical() << "setgid(" << pw.pw_gid << ") failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
     }
-#endif
 
     // fetch ambient groups from PAM's environment;
     // these are set by modules such as pam_groups.so
@@ -312,12 +311,13 @@ void UserSession::setupChildProcess()
         qCritical() << "setuid(" << pw.pw_uid << ") failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
     }
-
+    
     if (chdir(pw.pw_dir) != 0) {
         qCritical() << "chdir(" << pw.pw_dir << ") failed for user: " << username;
         qCritical() << "verify directory exist and has sufficient permissions";
         exit(Auth::HELPER_OTHER_ERROR);
     }
+#endif
 
     if (sessionClass != QLatin1String("greeter")) {
         // we cannot use setStandardError file as this code is run in the child process
