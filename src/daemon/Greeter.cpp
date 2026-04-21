@@ -65,12 +65,11 @@ bool Greeter::start()
         return false;
     }
 
-    QString greeterCommand = QStandardPaths::findExecutable(QStringLiteral("startplasma-login-x11"));
-    // allow overriding for test setups.
-    greeterCommand = qEnvironmentVariable("PLASMALOGIN_GREETER_EXEC", greeterCommand);
+    QString greeterCommand = QStringLiteral(BIN_INSTALL_DIR "/startplasma-login-x11");
 
     if (greeterCommand.isEmpty()) {
-        qCritical("Could not find greeter");
+        qCritical("Could not find greeter: %s", qPrintable(greeterCommand));
+        return false;
     }
 
     Q_ASSERT(m_display);
