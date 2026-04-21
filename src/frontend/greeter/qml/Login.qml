@@ -149,9 +149,15 @@ SessionManagementScreen {
             icon.name: text.length === 0 ? (root.LayoutMirroring.enabled ? "go-previous" : "go-next") : ""
 
             text: root.showUsernamePrompt || userList.currentItem.needsPassword ? "" : i18n("Log In")
-            onClicked: startLogin()
-            Keys.onEnterPressed: clicked()
-            Keys.onReturnPressed: clicked()
+            onClicked: {
+                startLogin()
+            }
+            Keys.onEnterPressed: {
+                clicked()
+            }
+            Keys.onReturnPressed: {
+                clicked()
+            }
         }
     }
 
