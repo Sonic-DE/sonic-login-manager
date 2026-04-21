@@ -41,8 +41,10 @@ GreeterProxy::GreeterProxy(QObject *parent)
     connect(d->socket, &QLocalSocket::readyRead, this, &GreeterProxy::readyRead);
     connect(d->socket, &QLocalSocket::errorOccurred, this, &GreeterProxy::error);
 
-    const QString socket = qEnvironmentVariable("SDDM_SOCKET");
-    qDebug() << "TRYING SOCKET" << socket;
+    const QString socket = qEnvironmentVariable("SONICLOGIN_SOCKET");
+    if (socket.isEmpty()) {
+        qCritical() << "GreeterProxy: SONICLOGIN_SOCKET environment variable is empty!";
+    }
     // connect to server
     d->socket->connectToServer(socket);
 }
