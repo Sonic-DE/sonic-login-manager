@@ -76,8 +76,11 @@ bool UserSession::start()
         }
         QString homeDir = processEnvironment().value(QStringLiteral("HOME"));
         if (!homeDir.isEmpty()) {
-            qDebug() << "UserSession::start: setting working dir to HOME:" << homeDir;
-            setWorkingDirectory(homeDir);
+            if (QDir(homeDir).exists()) {
+                setWorkingDirectory(homeDir);
+            } else {
+                qWarning() << "UserSession::start: HOME directory does not exist, keeping default working directory:" << homeDir;
+            }
         }
         QProcess::start();
 
