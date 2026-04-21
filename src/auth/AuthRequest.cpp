@@ -95,6 +95,17 @@ void AuthRequest::setFinishAutomatically(bool value)
 {
     if (value != d->finishAutomatically) {
         d->finishAutomatically = value;
+
+        if (d->finishAutomatically) {
+            for (AuthPrompt *qap : std::as_const(d->prompts)) {
+                connect(qap, &AuthPrompt::responseChanged, d, &AuthRequest::Private::responseChanged, Qt::UniqueConnection);
+            }
+
+            // Handle cases where prompts were already populated before
+            // finishAutomatically was enabled.
+            d->responseChanged();
+        }
+
         Q_EMIT finishAutomaticallyChanged();
     }
 }
