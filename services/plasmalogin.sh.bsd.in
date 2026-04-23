@@ -14,7 +14,6 @@ load_rc_config $name
 
 # Binary and state directory paths
 command="@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin"
-pidfile="/var/run/plasmalogin/plasmalogin.pid"
 
 # Signals
 sig_stop="TERM"
