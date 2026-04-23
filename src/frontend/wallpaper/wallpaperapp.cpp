@@ -60,10 +60,6 @@ void WallpaperApp::adoptScreen(QScreen *screen)
     window->setVisible(true);
     m_windows << window;
 
-    connect(screen, &QScreen::geometryChanged, this, [window](const QRect &geometry) {
-        window->setGeometry(geometry);
-    });
-
     connect(screen, &QObject::destroyed, window, [this, window]() {
         m_windows.removeAll(window);
         window->deleteLater();
