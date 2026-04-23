@@ -5,19 +5,23 @@
 
 # FreeBSD PAM configuration for plasmalogin
 
-# Auth: Checks if the user exists and the password is correct.
-auth        required    pam_unix.so          no_warn try_first_pass nullok
+# Auth: Grab password to unlock wallets
+auth        required    pam_unix.so             no_warn try_first_pass nullok
+auth        optional    pam_gnome_keyring.so
+auth        optional    pam_kwallet5.so
 
-# Account: Checks for expired accounts or login restrictions.
-# Added pam_nologin to prevent logins if /var/run/nologin exists.
+# Account: Standard FreeBSD restrictions
 account     required    pam_nologin.so
 account     required    pam_login_access.so
 account     required    pam_unix.so
 
-# Session: Crucial for X11/Desktop handoff.
-# FreeBSD uses pam_lastlog to record logins.
-session     required    pam_lastlog.so       no_fail
+# Session: Start the keyring/wallet daemons
+session     required    pam_lastlog.so          no_fail
+session     optional    pam_xdg.so
+session     optional    pam_gnome_keyring.so     auto_start
+session     optional    pam_kwallet5.so          auto_start
 session     required    pam_permit.so
 
-# Password: For password changes via the UI.
-password    required    pam_unix.so          no_warn try_first_pass nullok
+# Password: Sync password changes to wallets
+password    required    pam_unix.so             no_warn try_first_pass nullok
+password    optional    pam_kwallet5.so
