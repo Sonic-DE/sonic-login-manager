@@ -25,8 +25,12 @@
 #include <QFile>
 #include <QStandardPaths>
 
+#include <cerrno>
+#include <cstring>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <syslog.h>
 
 #ifdef HAVE_SYSTEMD
 #include <systemd/sd-journal.h>
@@ -69,6 +73,10 @@ static void journaldLogger(QtMsgType type, const QMessageLogContext &context, co
 static void standardLogger(QtMsgType type, const QString &msg)
 {
     static QFile file(QStringLiteral(LOG_FILE));
+    static bool s_openFailureLogged = false;
+
+    // Open syslog if not already opened
+    openlog("plasmalogin", LOG_PID | LOG_CONS, LOG_AUTH);
 
     // Login manager runs before user login, so use system log path only
     if (!file.isOpen()) {
@@ -76,8 +84,61 @@ static void standardLogger(QtMsgType type, const QString &msg)
         // Ensure directory exists for login manager (runs as root before user session)
         QFileInfo info(QStringLiteral(LOG_FILE));
         QDir().mkpath(info.path());
-        file.open(QIODevice::Append | QIODevice::WriteOnly);
+        if (!file.open(QIODevice::Append | QIODevice::WriteOnly) && !s_openFailureLogged) {
+            s_openFailureLogged = true;
+            const int savedErrno = errno;
+
+            QByteArray details;
+            details += "[plasmalogin logger] failed to open log file";
+            details += " path=";
+            details += QFile::encodeName(QStringLiteral(LOG_FILE));
+            details += " uid=" + QByteArray::number(getuid());
+            details += " euid=" + QByteArray::number(geteuid());
+            details += " gid=" + QByteArray::number(getgid());
+            details += " egid=" + QByteArray::number(getegid());
+            details += " qtError=\"" + file.errorString().toLocal8Bit() + "\"";
+            details += " errno=" + QByteArray::number(savedErrno);
+            details += " strerror=\"" + QByteArray(strerror(savedErrno)) + "\"";
+
+            struct stat st;
+            if (::stat(QFile::encodeName(QStringLiteral(LOG_FILE)).constData(), &st) == 0) {
+                details += " fileMode(oct)=" + QByteArray::number(st.st_mode & 07777, 8);
+                details += " fileUid=" + QByteArray::number(st.st_uid);
+                details += " fileGid=" + QByteArray::number(st.st_gid);
+            } else {
+                details += " statErrno=" + QByteArray::number(errno);
+            }
+
+            details += "\n";
+            fputs(details.constData(), stderr);
+            fflush(stderr);
+        }
     }
+
+    // Convert Qt message type to syslog priority
+    int syslogPriority = LOG_INFO;
+    switch (type) {
+    case QtDebugMsg:
+        syslogPriority = LOG_DEBUG;
+        break;
+    case QtInfoMsg:
+        syslogPriority = LOG_INFO;
+        break;
+    case QtWarningMsg:
+        syslogPriority = LOG_WARNING;
+        break;
+    case QtCriticalMsg:
+        syslogPriority = LOG_CRIT;
+        break;
+    case QtFatalMsg:
+        syslogPriority = LOG_ALERT;
+        break;
+    default:
+        break;
+    }
+
+    // Log to syslog
+    syslog(syslogPriority, "%s", qPrintable(msg));
 
     // create timestamp
     QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss.zzz"));
