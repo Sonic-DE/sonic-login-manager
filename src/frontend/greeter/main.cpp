@@ -52,16 +52,13 @@ private:
         window->setScreen(screen);
         window->setColor(s_testMode ? Qt::darkGray : Qt::transparent);
 
-        connect(qApp, &QGuiApplication::screenRemoved, this, [window](QScreen *screenRemoved) {
+        connect(qApp, &QGuiApplication::screenRemoved, window, [window](QScreen *screenRemoved) {
             if (screenRemoved == window->screen()) {
                 delete window;
             }
         });
 
         window->setGeometry(screen->geometry());
-        connect(screen, &QScreen::geometryChanged, this, [window]() {
-            window->setGeometry(window->screen()->geometry());
-        });
 
         if (KWindowSystem::isPlatformWayland()) {
             if (auto layerShellWindow = LayerShellQt::Window::get(window)) {
