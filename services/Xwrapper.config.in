@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# Xorg wrapper configuration for FreeBSD
+# Allows the plasmalogin user to start X server (required for Plasma Login Manager)
+allowed_users = anybody
+needs_root_rights = yes

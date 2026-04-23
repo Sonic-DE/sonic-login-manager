@@ -17,6 +17,13 @@ endif()
 if(NOT SYSTEMD_FOUND)
     if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
         configure_file(plasmalogin.sh.bsd.in plasmalogin.sh)
+
+        # Install Xwrapper.config for FreeBSD to allow plasmalogin user to start X server
+        configure_file(Xwrapper.config.in Xwrapper.config)
+        install(
+            FILES "${CMAKE_CURRENT_BINARY_DIR}/Xwrapper.config"
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/X11"
+        )
     else()
         configure_file(plasmalogin.sh.in plasmalogin.sh)
     endif()
