@@ -60,10 +60,6 @@ plasmalogin_prestart() {
     chown -R plasmalogin:plasmalogin "@STATE_DIR@"
     chmod 700 "@STATE_DIR@"
 
-    /bin/mkdir -p /var/run/plasmalogin
-    chown root:plasmalogin /var/run/plasmalogin
-    chmod 711 /var/run/plasmalogin
-
     # 3. Setup logging
     /usr/bin/touch /var/log/plasmalogin.log
     chown root:plasmalogin /var/log/plasmalogin.log
