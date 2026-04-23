@@ -47,6 +47,14 @@ plasmalogin_prestart() {
         echo "${name}: created system user plasmalogin with UID ${free_id}"
     fi
 
+    # Add plasmalogin user to video and operator groups for device access
+    if pw groupshow video >/dev/null 2>&1; then
+        pw groupmod video -m plasmalogin 2>/dev/null || true
+    fi
+    if pw groupshow operator >/dev/null 2>&1; then
+        pw groupmod operator -m plasmalogin 2>/dev/null || true
+    fi
+
     # 2. Setup state and run directories
     /bin/mkdir -p "@STATE_DIR@"
     chown -R plasmalogin:plasmalogin "@STATE_DIR@"
