@@ -442,6 +442,7 @@ void Display::slotAuthError(const QString &message, Auth::Error error)
 
 void Display::slotHelperFinished(Auth::HelperExitStatus status)
 {
+
 #ifdef Q_OS_FREEBSD
     const bool isGreeterBootstrapHelper = m_auth->isGreeter() && m_auth->user() == QLatin1String("plasmalogin");
     if (isGreeterBootstrapHelper && status == Auth::HELPER_SUCCESS) {
@@ -449,6 +450,7 @@ void Display::slotHelperFinished(Auth::HelperExitStatus status)
         return;
     }
 #endif
+    
     // Don't restart greeter and display server unless plasmalogin-helper exited
     // with an internal error or the user session finished successfully,
     // we want to avoid greeter from restarting when an authentication
