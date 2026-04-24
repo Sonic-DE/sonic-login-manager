@@ -194,10 +194,68 @@ int setUpNewVt()
         return -1;
     }
 
-    // fallback to active VT
+    qDebug() << "VT_OPENQRY returned vt=" << vt;
+
+#ifdef __FreeBSD__
+    // On FreeBSD, VT_OPENQRY may return a VT that appears available but is
+    // actually in use (e.g., VT 2 used by the greeter). We need to verify
+    // the returned VT is actually usable, and if not, find an alternative.
+    //
+    // FreeBSD VT numbering: ttyv0=VT1, ttyv1=VT2, ttyv2=VT3, ... ttyv8=VT9
+    // The greeter typically uses VT2 (ttyv1), so we should use a different VT.
+    // VT8 (ttyv7) or VT9 (ttyv8) are commonly used for X sessions.
+    {
+        int vtActive = getVtActive(fd);
+        qWarning() << "FreeBSD: VT_OPENQRY returned" << vt << ", active VT is" << vtActive;
+
+        // Helper lambda to test if a VT is available
+        auto testVtAvailable = [](int testVt) -> bool {
+            QString vtPath = path(testVt);
+            int testFd = open(qPrintable(vtPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
+            if (testFd >= 0) {
+                close(testFd);
+                return true;
+            }
+            qDebug() << "VT" << testVt << "path:" << vtPath << "not available:" << strerror(errno);
+            return false;
+        };
+
+        // First, check if the VT_OPENQRY result is actually usable
+        if (vt > 0 && vt != vtActive) {
+            if (testVtAvailable(vt)) {
+                qWarning() << "FreeBSD: VT_OPENQRY result" << vt << "is available, using it";
+                return vt;
+            }
+            qWarning() << "FreeBSD: VT_OPENQRY result" << vt << "is not actually available, searching for alternative";
+        }
+
+        // Try preferred VT (VT8 - commonly reserved for X)
+        const int preferredVt = 8;
+        if (preferredVt != vtActive && testVtAvailable(preferredVt)) {
+            qWarning() << "FreeBSD: using preferred VT" << preferredVt;
+            return preferredVt;
+        }
+
+        // Last resort: scan VTs 3-12, skipping active VT
+        qWarning() << "FreeBSD: preferred VT not available, scanning for any available VT";
+        for (int tryVt = 3; tryVt <= 12; tryVt++) {
+            if (tryVt == vtActive) {
+                continue;
+            }
+            if (testVtAvailable(tryVt)) {
+                qWarning() << "FreeBSD: found available VT:" << tryVt;
+                return tryVt;
+            }
+        }
+        qCritical() << "FreeBSD: no available VT found - all VTs appear to be in use";
+        return vtActive;
+    }
+#endif
+
+    // VT_OPENQRY returned an invalid VT number (non-FreeBSD path)
     if (vt <= 0) {
         int vtActive = getVtActive(fd);
-        qWarning() << "New VT" << vt << "is not valid, fall back to" << vtActive;
+        qWarning() << "VT_OPENQRY returned" << vt << "(invalid), fall back to active VT" << vtActive;
         return vtActive;
     }
 
