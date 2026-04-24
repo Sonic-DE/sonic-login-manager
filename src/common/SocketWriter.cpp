@@ -47,9 +47,9 @@ SocketWriter &SocketWriter::operator<<(const QString &s)
     return *this;
 }
 
-// SocketWriter &SocketWriter::operator << (const Session &s) {
-//     *output << s;
-
-//     return *this;
-// }
+SocketWriter &SocketWriter::operator<<(const Session &s)
+{
+    *output << static_cast<quint32>(s.type()) << s.fileName();
+    return *this;
+}
 }
