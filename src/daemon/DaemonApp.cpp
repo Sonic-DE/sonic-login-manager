@@ -80,11 +80,11 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     m_signalHandler = new SignalHandler(this);
 
     // quit when SIGINT, SIGTERM received
-    connect(m_signalHandler, &SignalHandler::sigintReceived, this, [this] {
+    connect(m_signalHandler, &SignalHandler::sigintReceived, this, [] {
         qWarning() << "DaemonApp: SIGINT received, quitting";
         quit();
     });
-    connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [this] {
+    connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [] {
         qWarning() << "DaemonApp: SIGTERM received, quitting";
         quit();
     });
