@@ -191,7 +191,7 @@ void UserSession::setupChildProcess()
         ::close(stdinFd);
     }
 
-    if (vtNumber > 0) {
+    if (vtNumber > 0 && VirtualTerminal::currentVt() != vtNumber) {
         VirtualTerminal::jumpToVt(vtNumber, x11Session);
     }
 
