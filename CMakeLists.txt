@@ -97,20 +97,20 @@ else()
 endif()
 
 # Set constants
-set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/plasmalogin"                CACHE PATH      "System application data install directory")
-set(DBUS_CONFIG_DIR             "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d"       CACHE PATH      "DBus config files directory")
-set(STATE_DIR                   "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/plasmalogin"      CACHE PATH      "State directory")
-set(RUNTIME_DIR                 "${RUNTIME_DIR_DEFAULT}"                            CACHE PATH      "Runtime data storage directory")
+set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/plasmalogin"                     CACHE PATH      "System application data install directory")
+set(DBUS_CONFIG_DIR             "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d"                 CACHE PATH      "DBus config files directory")
+set(STATE_DIR                   "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/plasmalogin"           CACHE PATH      "State directory")
+set(RUNTIME_DIR                 "${RUNTIME_DIR_DEFAULT}"                                        CACHE PATH      "Runtime data storage directory")
 
-set(SESSION_COMMAND             "${DATA_INSTALL_DIR}/scripts/Xsession"              CACHE PATH      "Script to execute when starting the X11 desktop session")
-set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"       CACHE PATH      "Script to execute when starting the Wayland desktop session")
+set(SESSION_COMMAND             "${DATA_INSTALL_DIR}/scripts/Xsession"                          CACHE PATH      "Script to execute when starting the X11 desktop session")
+set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"                   CACHE PATH      "Script to execute when starting the Wayland desktop session")
 
-set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"        CACHE PATH      "Path of the plasmalogin config file")
-set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"      CACHE PATH      "Path of the plasmalogin config directory")
-set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d"      CACHE PATH      "Path of the system plasmalogin config directory")
-set(LOG_FILE                    "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/plasmalogin.log"  CACHE PATH      "Path of the plasmalogin log file")
-set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"               CACHE STRING    "Name of the plasmalogin config file")
-set(PLASMALOGIN_INITIAL_VT             "2"                                                 CACHE STRING    "Initial tty to use")
+set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"             CACHE PATH      "Path of the plasmalogin config file")
+set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"           CACHE PATH      "Path of the plasmalogin config directory")
+set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d"    CACHE PATH      "Path of the system plasmalogin config directory")
+set(LOG_FILE                    "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/plasmalogin.log"       CACHE PATH      "Path of the plasmalogin log file")
+set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the plasmalogin config file")
+set(PLASMALOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
 
 
 # Add subdirectories
