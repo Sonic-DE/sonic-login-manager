@@ -188,21 +188,8 @@ void UserSession::setupChildProcess()
     if (takeControl) {
         if (ioctl(STDIN_FILENO, TIOCSCTTY) < 0) {
             const auto error = strerror(errno);
-#if defined(Q_OS_FREEBSD)
-            // On FreeBSD greeter startup, TIOCSCTTY may return EPERM when the
-            // process already has a controlling TTY from the launch context.
-            // This is non-fatal for greeter sessions and should not restart
-            // the display loop.
-            if (sessionClass == QLatin1String("greeter") && errno == EPERM) {
-                qWarning().nospace() << "TIOCSCTTY returned EPERM for greeter on " << ttyString << ", continuing";
-            } else {
-                qCritical().nospace() << "Failed to take control of " << ttyString << " (" << QFileInfo(ttyString).owner() << "): " << error;
-                _exit(Auth::HELPER_TTY_ERROR);
-            }
-#else
             qCritical().nospace() << "Failed to take control of " << ttyString << " (" << QFileInfo(ttyString).owner() << "): " << error;
             _exit(Auth::HELPER_TTY_ERROR);
-#endif
         }
     }
 
