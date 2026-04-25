@@ -236,8 +236,7 @@ void UserSession::setupChildProcess()
     }
 
 #if defined(Q_OS_FREEBSD)
-    // execve() uses the environment prepared in Backend::openSession(),
-    // therefore environment variables which are set here are ignored.
+    // execve() uses the environment prepared in Backend::openSession()
     if (setusercontext(NULL, &pw, pw.pw_uid, LOGIN_SETALL) != 0) {
         qCritical() << "setusercontext(NULL, *, " << pw.pw_uid << ", LOGIN_SETALL) failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
