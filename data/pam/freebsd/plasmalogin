@@ -7,8 +7,8 @@
 
 # Auth: Grab password to unlock wallets
 auth        required    pam_unix.so             no_warn try_first_pass nullok
-auth        optional    pam_gnome_keyring.so
-auth        optional    pam_kwallet5.so
+auth        optional    pam_gnome_keyring.so    use_authtok
+auth        optional    pam_kwallet5.so         use_authtok
 
 # Account: Standard FreeBSD restrictions
 account     required    pam_nologin.so
@@ -17,9 +17,9 @@ account     required    pam_unix.so
 
 # Session: Start the keyring/wallet daemons
 session     required    pam_lastlog.so          no_fail
-session     optional    pam_xdg.so
-session     optional    pam_gnome_keyring.so     auto_start
-session     optional    pam_kwallet5.so          auto_start
+session     required    pam_xdg.so              runtime_dir_prefix=/var/run/user
+session     optional    pam_gnome_keyring.so    auto_start
+session     optional    pam_kwallet5.so         auto_start
 session     required    pam_permit.so
 
 # Password: Sync password changes to wallets
