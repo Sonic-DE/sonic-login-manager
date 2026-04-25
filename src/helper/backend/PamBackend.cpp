@@ -14,9 +14,11 @@
 #include "VirtualTerminal.h"
 
 #include <QtCore/QDebug>
+#include <QtCore/QFileInfo>
 #include <QtCore/QProcessEnvironment>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QString>
+#include <QtNetwork/QLocalSocket>
 
 #include <pwd.h>
 #include <stdlib.h>
@@ -229,7 +231,9 @@ bool PamBackend::start(const QString &user)
 
     if (!result) {
         qCritical() << "[PAM Backend] PAM start failed for service:" << service << "errorString:" << m_pam->errorString();
-        m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        }
     }
 
     return result;
@@ -238,12 +242,18 @@ bool PamBackend::start(const QString &user)
 bool PamBackend::authenticate()
 {
     if (!m_pam->authenticate()) {
-        m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        qDebug() << "[PAM Backend] authenticate: pam_authenticate FAILED, errorString:" << m_pam->errorString();
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        }
         return false;
     }
 
     if (!m_pam->acctMgmt()) {
-        m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        qDebug() << "[PAM Backend] authenticate: pam_acct_mgmt FAILED, errorString:" << m_pam->errorString();
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        }
         return false;
     }
     return true;
@@ -255,7 +265,9 @@ bool PamBackend::openSession()
 
     if (!m_pam->setCred(PAM_ESTABLISH_CRED)) {
         qCritical() << "[PAM] openSession: setCred PAM_ESTABLISH_CRED failed:" << m_pam->errorString();
-        m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
+        }
         return false;
     }
 
@@ -278,12 +290,16 @@ bool PamBackend::openSession()
 
     if (!m_pam->putEnv(sessionEnv)) {
         qCritical() << "[PAM] openSession: putEnv failed:" << m_pam->errorString();
-        m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        }
         return false;
     }
     if (!m_pam->openSession()) {
         qCritical() << "[PAM] openSession: pam_open_session failed:" << m_pam->errorString();
-        m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+            m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
+        }
         return false;
     }
     sessionEnv.insert(m_pam->getEnv());
@@ -376,7 +392,9 @@ int PamBackend::converse(int n, const struct pam_message **msg, struct pam_respo
             newRequest = m_data->insertPrompt(msg[i], n == 1);
             break;
         case PAM_ERROR_MSG:
-            m_app->error(QString::fromLocal8Bit(msg[i]->msg), Auth::ERROR_AUTHENTICATION);
+            if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
+                m_app->error(QString::fromLocal8Bit(msg[i]->msg), Auth::ERROR_AUTHENTICATION);
+            }
             break;
         case PAM_TEXT_INFO:
             // if there's only the info message, let's predict the prompts too
