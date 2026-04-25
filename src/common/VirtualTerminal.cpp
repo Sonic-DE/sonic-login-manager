@@ -229,13 +229,6 @@ int setUpNewVt()
             qWarning() << "FreeBSD: VT_OPENQRY result" << vt << "is not actually available, searching for alternative";
         }
 
-        // Try preferred VT (VT8 - commonly reserved for X)
-        const int preferredVt = 8;
-        if (preferredVt != vtActive && testVtAvailable(preferredVt)) {
-            qWarning() << "FreeBSD: using preferred VT" << preferredVt;
-            return preferredVt;
-        }
-
         // Last resort: scan VTs 3-12, skipping active VT
         qWarning() << "FreeBSD: preferred VT not available, scanning for any available VT";
         for (int tryVt = 3; tryVt <= 12; tryVt++) {
