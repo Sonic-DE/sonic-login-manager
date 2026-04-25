@@ -28,6 +28,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #ifdef Q_OS_FREEBSD
+#include <sys/stat.h>
+#include <sys/sysctl.h>
+#include <libutil.h>
 #include <login_cap.h>
 #endif
 
@@ -160,37 +163,32 @@ void UserSession::setupChildProcess()
     QString sessionClass = processEnvironment().value(QStringLiteral("XDG_SESSION_CLASS"));
     const bool x11Session = sessionType == QLatin1String("x11");
 
-    // open VT and get the fd
-    int vtNumber = processEnvironment().value(QStringLiteral("XDG_VTNR")).toInt();
-    QString ttyString = VirtualTerminal::path(vtNumber);
-    int vtFd = ::open(qPrintable(ttyString), O_RDWR | O_NOCTTY);
-
-    // when this is true we'll take control of the tty
-    bool takeControl = false;
-
-    if (vtNumber > 0 && vtFd > 0) {
-        dup2(vtFd, STDIN_FILENO);
-        ::close(vtFd);
-        takeControl = true;
-    } else {
-        int stdinFd = ::open("/dev/null", O_RDWR);
-        dup2(stdinFd, STDIN_FILENO);
-        ::close(stdinFd);
-    }
-
-    // set this process as session leader
+    // set this process as session leader first
     if (setsid() < 0) {
         qCritical("Failed to set pid %lld as leader of the new session and process group: %s", QCoreApplication::applicationPid(), strerror(errno));
         _exit(Auth::HELPER_OTHER_ERROR);
     }
 
-    // take control of the tty
-    if (takeControl) {
-        if (ioctl(STDIN_FILENO, TIOCSCTTY) < 0) {
-            const auto error = strerror(errno);
-            qCritical().nospace() << "Failed to take control of " << ttyString << " (" << QFileInfo(ttyString).owner() << "): " << error;
-            _exit(Auth::HELPER_TTY_ERROR);
+    // open VT and get the fd
+    int vtNumber = processEnvironment().value(QStringLiteral("XDG_VTNR")).toInt();
+    QString ttyString = VirtualTerminal::path(vtNumber);
+
+    if (vtNumber > 0) {
+        // Open TTY WITHOUT O_NOCTTY so it automatically becomes the controlling terminal
+        int vtFd = ::open(qPrintable(ttyString), O_RDWR);
+        if (vtFd > 0) {
+            dup2(vtFd, STDIN_FILENO);
+            ::close(vtFd);
+        } else {
+            qWarning() << "Failed to open" << ttyString << ":" << strerror(errno);
+            int stdinFd = ::open("/dev/null", O_RDWR);
+            dup2(stdinFd, STDIN_FILENO);
+            ::close(stdinFd);
         }
+    } else {
+        int stdinFd = ::open("/dev/null", O_RDWR);
+        dup2(stdinFd, STDIN_FILENO);
+        ::close(stdinFd);
     }
 
     if (vtNumber > 0) {
