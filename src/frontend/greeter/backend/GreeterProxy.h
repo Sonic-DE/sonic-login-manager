@@ -43,10 +43,7 @@ public slots:
     void login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const;
 
 private slots:
-    void connected();
-    void disconnected();
     void readyRead();
-    void error();
 
 signals:
     void informationMessage(const QString &message);
