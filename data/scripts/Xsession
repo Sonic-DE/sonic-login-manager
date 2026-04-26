@@ -90,5 +90,12 @@ fi
 if [ -z "$*" ]; then
     exec xmessage -center -buttons OK:0 -default OK "Sorry, $DESKTOP_SESSION is no valid session."
 else
-    exec $@
+    # Start a D-Bus session bus if one is not already available
+    # This is required for kwalletd6 and other KDE services to work properly
+    # Skip this if systemd is the init system, as systemd --user already manages the D-Bus session bus
+    if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && ! [ -d /run/systemd/system ]; then
+        exec dbus-run-session -- $@
+    else
+        exec $@
+    fi
 fi
