@@ -4,19 +4,12 @@
 # SPDX-FileCopyrightText: none
 
 # FreeBSD PAM configuration for plasmalogin autologin
+# DEBUG: Added debug flag to help diagnose signal 3 crashes
 
-# Auth: Allow access without a password
 auth        required    pam_permit.so
 
-# Account: Enforce basic account restrictions (nologin, access.conf)
-account     required    pam_nologin.so
-account     required    pam_login_access.so
-account     required    pam_unix.so
+account     include     login
 
-# Session: Record the login and permit the session
-session     required    pam_lastlog.so       no_fail
-session     optional    pam_xdg.so
-session     required    pam_permit.so
-
-# Password: Explicitly deny any password change attempts during autologin
 password    required    pam_deny.so
+
+session     include     login

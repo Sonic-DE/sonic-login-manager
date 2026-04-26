@@ -5,12 +5,14 @@
 
 # FreeBSD PAM configuration for plasmalogin greeter
 
-# Auth: Often inherited from system, but 'permit' is common for just starting the UI
-auth        required    pam_permit.so
+# Always let the greeter start without authentication
+auth		required pam_permit.so
 
-# Account: We check nologin to see if we should even show a login screen
-account     required    pam_nologin.so
-account     required    pam_unix.so
+# No action required for account management
+account		required pam_permit.so
 
-# Session: Usually minimal for the greeter
-session     required    pam_permit.so
+# Can't change password
+password	required pam_deny.so
+
+# Setup session
+session		required pam_permit.so
