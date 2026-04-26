@@ -262,6 +262,7 @@ void jumpToVt(int vt, bool vt_auto)
 #ifdef __FreeBSD__
     // On FreeBSD, simply opening the target VT device causes the kernel to
     // switch to that VT.
+    Q_UNUSED(vt_auto);
     QString ttyString = path(vt);
     int vtFd = open(qPrintable(ttyString), O_RDWR | O_NOCTTY);
     if (vtFd >= 0) {
