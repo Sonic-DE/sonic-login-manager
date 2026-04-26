@@ -29,6 +29,11 @@
 #include <QTimer>
 
 #include <iostream>
+#include <cstdlib>
+#include <csignal>
+#include <QFile>
+#include <QTextStream>
+#include <QDir>
 
 namespace PLASMALOGIN
 {
@@ -91,8 +96,33 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     connect(this, &QCoreApplication::aboutToQuit, this, [] {
         qWarning() << "DaemonApp: aboutToQuit emitted";
     });
+
+    // Add atexit handler to log when the application exits
+    std::atexit([]() {
+        // Note: This runs after main() exits, so we can't use Qt logging
+        // Write to stderr to ensure it's captured
+        fprintf(stderr, "DaemonApp: atexit handler called - application is exiting\n");
+    });
+
+    // Also add signal handlers for crash signals
+    signal(SIGSEGV, [](int sig) {
+        fprintf(stderr, "DaemonApp: Caught signal %d (SIGSEGV) - crashing!\n", sig);
+        signal(sig, SIG_DFL);
+        raise(sig);
+    });
+    signal(SIGABRT, [](int sig) {
+        fprintf(stderr, "DaemonApp: Caught signal %d (SIGABRT) - crashing!\n", sig);
+        signal(sig, SIG_DFL);
+        raise(sig);
+    });
+    signal(SIGFPE, [](int sig) {
+        fprintf(stderr, "DaemonApp: Caught signal %d (SIGFPE) - crashing!\n", sig);
+        signal(sig, SIG_DFL);
+        raise(sig);
+    });
+
     // log message
-    qDebug() << "Starting...";
+    qDebug() << "DaemonApp: Starting...";
 
     // initialize seats only after signals are connected
     m_seatManager->initialize();
