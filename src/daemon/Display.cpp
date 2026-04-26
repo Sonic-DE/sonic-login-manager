@@ -55,8 +55,25 @@ static int s_ttyFailures = 0;
 
 namespace PLASMALOGIN
 {
-bool isTtyInUse(const QString &desiredTty)
+#ifdef __FreeBSD__
+QString getTtyDevicePath(int vt)
 {
+    // FreeBSD VT numbering: VT1=ttyv0, VT2=ttyv1, VT3=ttyv2, etc.
+    char c = (vt <= 10 ? '0' : 'a') + (vt - 1);
+    return QStringLiteral("/dev/ttyv%1").arg(c);
+}
+#else
+QString getTtyDevicePath(int vt)
+{
+    // Linux VT numbering: VT1=tty1, VT2=tty2, etc.
+    return QStringLiteral("/dev/tty%1").arg(vt);
+}
+#endif
+
+bool isTtyInUse(int vt)
+{
+    QString ttyPath = getTtyDevicePath(vt);
+    
     if (Logind::isAvailable()) {
         OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
         auto reply = manager.ListSessions();
@@ -74,11 +91,11 @@ bool isTtyInUse(const QString &desiredTty)
     }
     // Fallback for non-systemd systems: check if the TTY device is being used
     // by checking for active login sessions via utmp/wtmp or process list
-    QFile ttyFile(QStringLiteral("/dev/%1").arg(desiredTty));
+    QFile ttyFile(ttyPath);
     if (ttyFile.exists()) {
         // On non-systemd systems, we can't reliably track TTY usage
         // Just check if we can open the TTY exclusively
-        int fd = ::open(qPrintable(ttyFile.fileName()), O_RDWR | O_NOCTTY);
+        int fd = ::open(qPrintable(ttyFile.fileName()), O_RDWR | O_NOCTTY | O_NONBLOCK);
         if (fd >= 0) {
             ::close(fd);
             // TTY is available
@@ -93,12 +110,44 @@ bool isTtyInUse(const QString &desiredTty)
 
 int fetchAvailableVt()
 {
-    if (!isTtyInUse(QStringLiteral("tty%1").arg(PLASMALOGIN_INITIAL_VT))) {
+    // Use the correct TTY device path for the platform
+    QString ttyPath = getTtyDevicePath(PLASMALOGIN_INITIAL_VT);
+    
+    // Check if the TTY device file exists and is accessible
+    QFile ttyFile(ttyPath);
+    bool ttyInUse = false;
+    if (ttyFile.exists()) {
+        int fd = ::open(qPrintable(ttyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
+        if (fd >= 0) {
+            ::close(fd);
+            // TTY is available
+            ttyInUse = false;
+        } else {
+            // If we can't open it, it might be in use
+            ttyInUse = true;
+            qWarning() << "fetchAvailableVt: initial VT" << PLASMALOGIN_INITIAL_VT << "might be in use:" << strerror(errno);
+        }
+    } else {
+        qWarning() << "fetchAvailableVt: initial VT" << PLASMALOGIN_INITIAL_VT << "device" << ttyPath << "does not exist";
+    }
+    
+    if (!ttyInUse) {
         return PLASMALOGIN_INITIAL_VT;
     }
+    
     const auto vt = VirtualTerminal::currentVt();
-    if (vt > 0 && !isTtyInUse(QStringLiteral("tty%1").arg(vt))) {
-        return vt;
+    if (vt > 0) {
+        QString currentTtyPath = getTtyDevicePath(vt);
+        QFile currentTtyFile(currentTtyPath);
+        if (currentTtyFile.exists()) {
+            int fd = ::open(qPrintable(currentTtyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
+            if (fd >= 0) {
+                ::close(fd);
+                return vt;
+            } else {
+                qWarning() << "fetchAvailableVt: current VT" << vt << "might be in use:" << strerror(errno);
+            }
+        }
     }
     return VirtualTerminal::setUpNewVt();
 }
@@ -443,13 +492,11 @@ void Display::slotAuthError(const QString &message, Auth::Error error)
 void Display::slotHelperFinished(Auth::HelperExitStatus status)
 {
 
-#ifdef Q_OS_FREEBSD
     const bool isGreeterBootstrapHelper = m_auth->isGreeter() && m_auth->user() == QLatin1String("plasmalogin");
     if (isGreeterBootstrapHelper && status == Auth::HELPER_SUCCESS) {
         qWarning() << "Display::slotHelperFinished: FreeBSD greeter bootstrap helper exited successfully; keeping display/socket server alive";
         return;
     }
-#endif
     
     // Don't restart greeter and display server unless plasmalogin-helper exited
     // with an internal error or the user session finished successfully,
