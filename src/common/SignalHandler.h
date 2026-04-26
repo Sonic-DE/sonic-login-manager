@@ -18,11 +18,45 @@
 #define PLASMALOGIN_SIGNALHANDLER_H
 
 #include <QObject>
+#include <QString>
+#include <QFile>
+#include <QIODevice>
+#include <unistd.h>
+
+#ifdef Q_OS_FREEBSD
+#include <sys/sysctl.h>
+#include <sys/user.h>
+#endif
 
 class QSocketNotifier;
 
 namespace PLASMALOGIN
 {
+// Utility function to get process name by PID
+inline QString getProcessNameByPid(pid_t pid)
+{
+#ifdef Q_OS_FREEBSD
+    int mib[4];
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROC;
+    mib[2] = KERN_PROC_PID;
+    mib[3] = pid;
+
+    struct kinfo_proc proc;
+    size_t len = sizeof(proc);
+    if (sysctl(mib, 4, &proc, &len, NULL, 0) == 0 && len > 0) {
+        return QString::fromLocal8Bit(proc.ki_comm);
+    }
+#else
+    // Linux: read /proc/PID/comm
+    QFile commFile(QStringLiteral("/proc/%1/comm").arg(pid));
+    if (commFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QString::fromLocal8Bit(commFile.readAll()).trimmed();
+    }
+#endif
+    return QStringLiteral("<unknown>");
+}
+
 class SignalHandler : public QObject
 {
     Q_OBJECT

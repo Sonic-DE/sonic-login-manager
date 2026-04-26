@@ -168,6 +168,16 @@ public:
      */
     QString errorString();
 
+    /**
+     * Returns the last PAM result code
+     */
+    int result() const { return m_result; }
+
+    /**
+     * Returns the PAM handle (for diagnostic purposes)
+     */
+    pam_handle_t* handle() const { return m_handle; }
+
 private:
     /**
      * Conversation function for the pam_conv structure

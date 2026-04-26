@@ -44,8 +44,45 @@ HelperApp::HelperApp(int &argc, char **argv)
 {
     qInstallMessageHandler(HelperMessageHandler);
     SignalHandler *s = new SignalHandler(this);
-    QObject::connect(s, &SignalHandler::sigtermReceived, m_session, [] {
+    
+    QObject::connect(s, &SignalHandler::sigtermReceived, this, [this] {
+        pid_t ppid = getppid();
+        QString parentName = getProcessNameByPid(ppid);
+        qWarning() << "HelperApp: Received SIGTERM - diagnostic information:"
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName
+                   << "m_user=" << m_user
+                   << "m_id=" << m_id
+                   << "m_backend=" << (void *)m_backend
+                   << "m_session=" << (void *)m_session
+                   << "socket_state=" << (m_socket ? m_socket->state() : -1)
+                   << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>"))
+                   << "session_path=" << m_session->path()
+                   << "session_processEnvironment=" << m_session->processEnvironment().toStringList()
+                   << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
+                   << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
+                   << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
         QCoreApplication::instance()->exit(-1);
+    });
+
+    s->addCustomSignal(SIGQUIT);
+    QObject::connect(s, &SignalHandler::customSignalReceived, this, [this](int signal) {
+        if (signal == SIGQUIT) {
+            pid_t ppid = getppid();
+            QString parentName = getProcessNameByPid(ppid);
+            qWarning() << "HelperApp: Received SIGQUIT (signal 3) - diagnostic information:"
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName
+                       << "m_user=" << m_user
+                       << "m_id=" << m_id
+                       << "m_backend=" << (void *)m_backend
+                       << "m_session=" << (void *)m_session
+                       << "socket_state=" << (m_socket ? m_socket->state() : -1)
+                       << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>"))
+                       << "session_path=" << m_session->path()
+                       << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
+                       << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
+                       << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
+            QCoreApplication::instance()->exit(-1);
+        }
     });
 
     QTimer::singleShot(0, this, SLOT(setUp()));

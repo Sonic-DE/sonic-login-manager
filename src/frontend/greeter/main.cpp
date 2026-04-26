@@ -19,6 +19,7 @@
 #include "mockbackend/MockGreeterProxy.h"
 
 #include "MessageHandler.h"
+#include "SignalHandler.h"
 
 #include "blurscreenbridge.h"
 #include "greetereventfilter.h"
@@ -26,6 +27,8 @@
 #include "models/usermodel.h"
 #include "plasmaloginsettings.h"
 #include "stateconfig.h"
+
+#include <signal.h>
 
 class LoginGreeter : public QObject
 {
@@ -98,20 +101,52 @@ int main(int argc, char *argv[])
 {
     // Install message handler to log to plasmalogin.log
     qInstallMessageHandler(PLASMALOGIN::GreeterMessageHandler);
+    qDebug() << "Greeter main: Starting...";
+    
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("plasma-login"));
 
     QCommandLineParser parser;
     parser.addOption(QCommandLineOption(QStringLiteral("test"), QStringLiteral("Run in test mode")));
     parser.addHelpOption();
 
+    qDebug() << "Greeter main: Creating QGuiApplication...";
     QGuiApplication app(argc, argv);
+    qDebug() << "Greeter main: QGuiApplication created";
+
+    PLASMALOGIN::SignalHandler signalHandler;
+    QObject::connect(&signalHandler, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [] {
+        pid_t ppid = getppid();
+        QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+        qWarning() << "Greeter: Received SIGTERM - diagnostic information:"
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName
+                   << "screens=" << QGuiApplication::screens().size()
+                   << "testMode=" << LoginGreeter::testModeEnabled()
+                   << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
+        QGuiApplication::instance()->exit(0);
+    });
+    signalHandler.addCustomSignal(SIGQUIT);
+    QObject::connect(&signalHandler, &PLASMALOGIN::SignalHandler::customSignalReceived, &app, [](int signal) {
+        if (signal == SIGQUIT) {
+            pid_t ppid = getppid();
+            QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+            qWarning() << "Greeter: Received SIGQUIT (signal 3) - diagnostic information:"
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName
+                       << "screens=" << QGuiApplication::screens().size()
+                       << "testMode=" << LoginGreeter::testModeEnabled()
+                       << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
+            QGuiApplication::instance()->exit(0);
+        }
+    });
+    
     parser.process(app);
     LoginGreeter::setTestModeEnabled(parser.isSet(QStringLiteral("test")));
 
     QQuickWindow::setDefaultAlphaBuffer(true);
     if (LoginGreeter::testModeEnabled()) {
+        qDebug() << "Greeter main: Test mode enabled, using MockGreeterProxy";
         qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", new MockGreeterProxy);
     } else {
+        qDebug() << "Greeter main: Using real GreeterProxy";
         qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", new PLASMALOGIN::GreeterProxy);
     }
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "SessionModel", new SessionModel);
@@ -121,7 +156,9 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "StateConfig", StateConfig::self());
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
 
+    qDebug() << "Greeter main: Creating LoginGreeter...";
     LoginGreeter greeter;
+    qDebug() << "Greeter main: Entering event loop...";
     return app.exec();
 }
 

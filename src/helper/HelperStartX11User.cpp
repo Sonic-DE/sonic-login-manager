@@ -14,6 +14,8 @@
 #include "MessageHandler.h"
 #include "SignalHandler.h"
 #include "xorguserhelper.h"
+
+#include <QFileInfo>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QProcess>
@@ -31,10 +33,32 @@ int main(int argc, char **argv)
     qInstallMessageHandler(X11UserHelperMessageHandler);
     QCoreApplication app(argc, argv);
     PLASMALOGIN::SignalHandler s;
-    QObject::connect(&s, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [] {
+    QObject::connect(&s, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {
+        pid_t ppid = getppid();
+        QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+        qWarning() << "X11UserHelper: Received SIGTERM - diagnostic information:"
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName
+                   << "arguments=" << QCoreApplication::arguments()
+                   << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
+                   << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>"))
+                   << "uid=" << ::getuid();
         QCoreApplication::instance()->exit(-1);
     });
-
+    s.addCustomSignal(SIGQUIT);
+    QObject::connect(&s, &PLASMALOGIN::SignalHandler::customSignalReceived, &app, [&argc, &argv](int signal) {
+        if (signal == SIGQUIT) {
+            pid_t ppid = getppid();
+            QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+            qWarning() << "X11UserHelper: Received SIGQUIT (signal 3) - diagnostic information:"
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName
+                       << "arguments=" << QCoreApplication::arguments()
+                       << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
+                       << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>"))
+                       << "uid=" << ::getuid();
+            QCoreApplication::instance()->exit(-1);
+        }
+    });
+    
     if (::getuid() == 0) {
         qCritical() << "HelperStartX11User: ERROR - cannot run as root!";
         return 33;

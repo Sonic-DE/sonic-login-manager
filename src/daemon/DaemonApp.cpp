@@ -26,6 +26,7 @@
 #include <QDBusConnectionInterface>
 #include <QDebug>
 #include <QHostInfo>
+#include <QMetaObject>
 #include <QTimer>
 
 #include <iostream>
@@ -34,6 +35,8 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
+#include <QProcess>
+#include <QRegularExpression>
 
 namespace PLASMALOGIN
 {
@@ -84,17 +87,37 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     // create signal handler
     m_signalHandler = new SignalHandler(this);
 
-    // quit when SIGINT, SIGTERM received
-    connect(m_signalHandler, &SignalHandler::sigintReceived, this, [] {
-        qWarning() << "DaemonApp: SIGINT received, quitting";
+    // quit when SIGINT, SIGTERM received, with diagnostic logging
+    connect(m_signalHandler, &SignalHandler::sigintReceived, this, [this] {
+        pid_t ppid = getppid();
+        QString parentName = getProcessNameByPid(ppid);
+        qWarning() << "DaemonApp: SIGINT received - diagnostic information:"
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName
+                   << "hostName=" << hostName()
+                   << "testing=" << m_testing
+                   << "first=" << first
+                   << "lastSessionId=" << m_lastSessionId
+                   << "displayManager=" << (void *)m_displayManager
+                   << "seatManager=" << (void *)m_seatManager;
         quit();
     });
-    connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [] {
-        qWarning() << "DaemonApp: SIGTERM received, quitting";
+    connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [this] {
+        pid_t ppid = getppid();
+        QString parentName = getProcessNameByPid(ppid);
+        qWarning() << "DaemonApp: SIGTERM received - diagnostic information:"
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName
+                   << "hostName=" << hostName()
+                   << "testing=" << m_testing
+                   << "first=" << first
+                   << "lastSessionId=" << m_lastSessionId
+                   << "displayManager=" << (void *)m_displayManager
+                   << "seatManager=" << (void *)m_seatManager;
         quit();
     });
     connect(this, &QCoreApplication::aboutToQuit, this, [] {
-        qWarning() << "DaemonApp: aboutToQuit emitted";
+        pid_t ppid = getppid();
+        QString parentName = getProcessNameByPid(ppid);
+        qWarning() << "DaemonApp: aboutToQuit emitted - parent process (PPID=" << ppid << ") is" << parentName;
     });
 
     // Add atexit handler to log when the application exits

@@ -11,6 +11,7 @@
 
 #include "AuthMessages.h"
 #include "Constants.h"
+#include "PamHandle.h"
 
 #include <QtCore/QObject>
 
@@ -62,6 +63,12 @@ public slots:
     bool closeSession();
 
     QString userName();
+    
+    // Diagnostic methods for signal handling
+    int pamResult() const { return m_pam ? m_pam->result() : -1; }
+    QString pamErrorString() const { return m_pam ? m_pam->errorString() : QStringLiteral("<null>"); }
+    bool isPamOpen() const { return m_pam ? m_pam->isOpen() : false; }
+    PamHandle* pamHandle() const { return m_pam; }
 
 private:
     HelperApp *m_app{nullptr};

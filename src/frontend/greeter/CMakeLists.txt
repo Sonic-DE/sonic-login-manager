@@ -3,7 +3,7 @@ remove_definitions(-DQT_NO_CAST_FROM_ASCII)
 remove_definitions(-DQT_NO_CAST_FROM_BYTEARRAY=0)
 remove_definitions(-DQT_USE_QSTRINGBUILDER)
 
-# Include common directory for MessageHandler
+# Include common directory
 include_directories(
     "${CMAKE_SOURCE_DIR}/src/common"
     "${CMAKE_BINARY_DIR}/src/common"
@@ -17,6 +17,7 @@ set(LOGIN_GREETER_SRCS
     mockbackend/MockGreeterProxy.cpp
     blurscreenbridge.cpp
     greetereventfilter.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
 )
 
 add_definitions(-DTRANSLATION_DOMAIN="plasma_login")
@@ -30,6 +31,9 @@ ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
                             )
 
 add_executable(plasma-login-greeter ${LOGIN_GREETER_SRCS})
+
+# Enable automatic MOC processing for Qt signals/slots
+set_target_properties(plasma-login-greeter PROPERTIES AUTOMOC ON)
 
 # Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
 # This allows using #ifdef HAVE_SYSTEMD in the source code
