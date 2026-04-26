@@ -143,6 +143,24 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         signal(sig, SIG_DFL);
         raise(sig);
     });
+#ifdef Q_OS_FREEBSD
+    // On FreeBSD, the parent shell process (sh) sends SIGQUIT to the daemon
+    // during normal startup transitions. Ignore this signal to prevent
+    // premature shutdown.
+    signal(SIGQUIT, [](int sig) {
+        pid_t pid = getpid();
+        pid_t ppid = getppid();
+        uid_t uid = getuid();
+        fprintf(stderr, "DaemonApp: Ignoring signal %d (SIGQUIT) - PID=%d PPID=%d UID=%d (parent shell may send this during startup)\n", sig, pid, ppid, uid);
+        // Do NOT quit - ignore the signal as it's typically from parent shell
+    });
+#else
+    signal(SIGQUIT, [](int sig) {
+        fprintf(stderr, "DaemonApp: Caught signal %d (SIGQUIT) - initiating graceful shutdown\n", sig);
+        // Use Qt's meta-object system to quit from the main thread
+        QMetaObject::invokeMethod(QCoreApplication::instance(), "quit", Qt::QueuedConnection);
+    });
+#endif
 
     // log message
     qDebug() << "DaemonApp: Starting...";
