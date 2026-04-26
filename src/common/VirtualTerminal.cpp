@@ -259,6 +259,18 @@ void jumpToVt(int vt, bool vt_auto)
 {
     qDebug() << "Jumping to VT" << vt;
 
+#ifdef __FreeBSD__
+    // On FreeBSD, simply opening the target VT device causes the kernel to
+    // switch to that VT.
+    QString ttyString = path(vt);
+    int vtFd = open(qPrintable(ttyString), O_RDWR | O_NOCTTY);
+    if (vtFd >= 0) {
+        qDebug() << "Successfully switched to VT" << vt << "by opening" << ttyString;
+        close(vtFd);
+    } else {
+        qWarning("Failed to open %s for VT switching: %s", qPrintable(ttyString), strerror(errno));
+    }
+#else
     int fd;
 
     int activeVtFd = open(defaultVtPath, O_RDWR | O_NOCTTY);
@@ -318,6 +330,7 @@ void jumpToVt(int vt, bool vt_auto)
     if (vtFd != -1) {
         close(vtFd);
     }
+#endif
 }
 }
 }
