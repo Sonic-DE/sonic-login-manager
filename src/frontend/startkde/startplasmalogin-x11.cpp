@@ -82,7 +82,12 @@ int main(int argc, char **argv)
             return fi.exists() && fi.isDir() && fi.isWritable();
         };
 
-        QString xdgRuntimeDir = QStringLiteral("/tmp/runtime-plasmalogin");
+        // use XDG_RUNTIME_DIR from environment, fall back to /tmp/xauth_<uid> if not set
+        QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (xdgRuntimeDir.isEmpty()) {
+            xdgRuntimeDir = QStringLiteral("/tmp/xauth_%1").arg(getuid());
+            qWarning() << "BSD: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
+        }
         if (!ensureRuntimeDir(xdgRuntimeDir)) {
             qWarning() << "BSD: failed to prepare XDG_RUNTIME_DIR";
         }
