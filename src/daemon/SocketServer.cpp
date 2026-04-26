@@ -157,6 +157,10 @@ void SocketServer::readyRead()
             Session session;
             input >> user >> password >> session;
 
+            if (!socket || user.isEmpty() || !session.isValid()) {
+                qWarning() << "SocketServer::Login: validation failed, not emitting signal";
+                return;
+            }
             // emit signal
             emit login(socket, user, password, session);
         } break;
