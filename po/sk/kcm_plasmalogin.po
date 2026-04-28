@@ -167,8 +167,9 @@ msgid ""
 msgstr ""
 "Automatické prihlásenie nepodporuje automatické odomknutie KDE Peňaženky, "
 "preto vás požiada o jej odomknutie pri každom prihlásení.    <nl/><nl/>    "
-"Aby ste sa tomu vyhli, môžete zmeniť peňaženku na prázdne heslo. Note that "
-"this is insecure and should only be done in a trusted environment."
+"Aby ste sa tomu vyhli, môžete zmeniť peňaženku tak, aby mala prázdne heslo. "
+"Upozorňujeme, že toto nie je bezpečné a malo by sa robiť iba v dôveryhodnom "
+"prostredí."
 
 #: ui/main.qml:192
 #, kde-format
