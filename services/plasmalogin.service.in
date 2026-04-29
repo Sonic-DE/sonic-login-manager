@@ -8,6 +8,7 @@ StartLimitIntervalSec=30
 StartLimitBurst=2
 
 [Service]
+ExecStartPre=-udevadm settle --timeout=10
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin
 Restart=always
 
