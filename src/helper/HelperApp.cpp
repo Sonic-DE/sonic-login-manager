@@ -201,7 +201,6 @@ void HelperApp::doAuth()
             exit(Auth::HELPER_SESSION_ERROR);
             return;
         }
-
         sessionOpened(true);
     } else {
         exit(Auth::HELPER_SUCCESS);
@@ -370,6 +369,8 @@ void HelperApp::utmpLogin(const QString &vt, const QString &displayName, const Q
 
 #if defined(Q_OS_LINUX)
     updwtmpx(authSuccessful ? "/var/log/wtmp" : "/var/log/btmp", &entry);
+#else
+    Q_UNUSED(authSuccessful);
 #endif
 }
 
