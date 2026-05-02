@@ -395,6 +395,8 @@ void Auth::start()
         args << QStringLiteral("--greeter");
     }
     d->child->start(QStringLiteral("%1/plasmalogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
+
+    d->child->waitForStarted(3000);
 }
 
 void Auth::stop()
