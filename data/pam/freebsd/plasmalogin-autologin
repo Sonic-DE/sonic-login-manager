@@ -13,3 +13,4 @@ account     include     login
 password    required    pam_deny.so
 
 session     include     login
+session     optional    pam_ck_connector.so nofail

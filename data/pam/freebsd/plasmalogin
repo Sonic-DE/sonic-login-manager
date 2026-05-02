@@ -12,3 +12,4 @@ account     include     login
 password    include     login
 
 session     include     login
+session     optional    pam_ck_connector.so nofail
