@@ -226,6 +226,7 @@ bool PamBackend::start(const QString &user)
     } else if (m_autologin) {
         service = QStringLiteral("plasmalogin-autologin");
     }
+
     result = m_pam->start(service, user);
 
     if (!result) {
@@ -241,7 +242,7 @@ bool PamBackend::start(const QString &user)
 bool PamBackend::authenticate()
 {
     if (!m_pam->authenticate()) {
-        qDebug() << "[PAM Backend] authenticate: pam_authenticate FAILED, errorString:" << m_pam->errorString();
+        qWarning() << "[PAM Backend] authenticate: pam_authenticate FAILED, errorString:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
             m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         }
@@ -249,7 +250,7 @@ bool PamBackend::authenticate()
     }
 
     if (!m_pam->acctMgmt()) {
-        qDebug() << "[PAM Backend] authenticate: pam_acct_mgmt FAILED, errorString:" << m_pam->errorString();
+        qWarning() << "[PAM Backend] authenticate: pam_acct_mgmt FAILED, errorString:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
             m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         }

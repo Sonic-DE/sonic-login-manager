@@ -156,6 +156,7 @@ void Auth::Private::dataPending()
         str >> m;
         switch (m) {
         case ERROR: {
+            qWarning() << "Auth::dataPending: Got ERROR";
             QString message;
             Error type = ERROR_NONE;
             str >> message >> type;

@@ -159,20 +159,7 @@ bool PamHandle::start(const QString &service, const QString &user)
     const bool hasEtc = QFileInfo::exists(pamEtcPath);
     const bool hasLocalEtc = QFileInfo::exists(pamLocalEtcPath);
 
-
     const QString selectedPamFile = hasEtc ? pamEtcPath : (hasLocalEtc ? pamLocalEtcPath : QString());
-    if (!selectedPamFile.isEmpty()) {
-        QFile f(selectedPamFile);
-        if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream ts(&f);
-            QStringList preview;
-            for (int i = 0; i < 8 && !ts.atEnd(); ++i) {
-                preview << ts.readLine();
-            }
-        } else {
-            qWarning() << "[PAM] start: could not open service file for preview:" << selectedPamFile;
-        }
-    }
 
     if (user.isEmpty()) {
         m_result = pam_start(qPrintable(service), NULL, &m_conv, &m_handle);

@@ -50,7 +50,6 @@ GreeterProxy::GreeterProxy(QObject *parent)
                    << "fullServerName=" << d->socket->fullServerName()
                    << "bytesAvailable=" << d->socket->bytesAvailable();
     });
-
     const QString socket = qEnvironmentVariable("SONICLOGIN_SOCKET");
     if (socket.isEmpty()) {
         qCritical() << "GreeterProxy: SONICLOGIN_SOCKET environment variable is empty!";
@@ -161,7 +160,7 @@ void GreeterProxy::readyRead()
         } break;
         default: {
             // log message
-            qWarning() << "Unknown message received from daemon.";
+            qWarning() << "Unknown message received from daemon, message type:" << message;
         }
         }
     }

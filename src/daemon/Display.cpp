@@ -82,8 +82,8 @@ bool isTtyInUse(int vt)
         const auto info = reply.value();
         for (const SessionInfo &s : info) {
             OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), s.sessionPath.path(), QDBusConnection::systemBus());
-            if (desiredTty == session.tTY() && session.state() != QLatin1String("closing")) {
-                qDebug() << "tty" << desiredTty << "already in use by" << session.user().path.path() << session.state() << session.display()
+            if (ttyPath == session.tTY() && session.state() != QLatin1String("closing")) {
+                qWarning() << "tty" << ttyPath << "already in use by" << session.user().path.path() << session.state() << session.display()
                          << session.desktop() << session.vTNr();
                 return true;
             }
@@ -103,7 +103,7 @@ bool isTtyInUse(int vt)
         }
         // If we can't open it, it might be in use by someone else
         // but we should still try to use it
-        qDebug() << "TTY" << desiredTty << "might be in use, but will attempt to use it anyway";
+        qWarning() << "TTY" << ttyPath << "might be in use, but will attempt to use it anyway";
     }
     return false;
 }
@@ -259,6 +259,7 @@ void Display::startSocketServerAndGreeter()
 {
     // start socket server
     m_socketServer->start(QString());
+
     // change the owner and group of the socket to avoid permission denied errors
     struct passwd *pw = getpwnam("plasmalogin");
     if (pw) {
@@ -325,6 +326,7 @@ void Display::login(QLocalSocket *socket, const QString &user, const QString &pa
     // the PLASMALOGIN user has special privileges that skip password checking so that we can load the greeter
     // block ever trying to log in as the PLASMALOGIN user
     if (user == QLatin1String("plasmalogin")) {
+        qWarning() << "Display::login: Rejecting login for 'plasmalogin' user";
         emit loginFailed(m_socket);
         return;
     }
@@ -346,7 +348,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     qDebug() << "start auth" << "user" << session.isValid() << session.exec();
 
     if (m_auth->isActive()) {
-        qWarning() << "Existing authentication ongoing, aborting";
+        qWarning() << "Display::startAuth: Existing authentication ongoing, aborting";
         return false;
     }
 
@@ -400,7 +402,8 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     }
 
     // some information
-    qDebug() << "Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId << session.xdgSessionType();
+    qDebug() << "Display::startAuth: Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId
+             << "type=" << session.xdgSessionType() << "reuseSessionId=" << m_reuseSessionId;
 
     QProcessEnvironment env;
     env.insert(QStringLiteral("PATH"), mainConfig.Users.DefaultPath.get());
@@ -491,10 +494,9 @@ void Display::slotAuthError(const QString &message, Auth::Error error)
 
 void Display::slotHelperFinished(Auth::HelperExitStatus status)
 {
-
     const bool isGreeterBootstrapHelper = m_auth->isGreeter() && m_auth->user() == QLatin1String("plasmalogin");
     if (isGreeterBootstrapHelper && status == Auth::HELPER_SUCCESS) {
-        qWarning() << "Display::slotHelperFinished: FreeBSD greeter bootstrap helper exited successfully; keeping display/socket server alive";
+        qWarning() << "Display::slotHelperFinished: greeter bootstrap helper exited successfully; keeping display/socket server alive";
         return;
     }
     
@@ -504,6 +506,7 @@ void Display::slotHelperFinished(Auth::HelperExitStatus status)
     // error happens (in this case we want to show the message from the
     // greeter
     if (status != Auth::HELPER_AUTH_ERROR) {
+        qWarning() << "Display::slotHelperFinished: invoking stop() because status != HELPER_AUTH_ERROR";
         stop();
     }
 }

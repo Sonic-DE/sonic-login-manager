@@ -112,9 +112,7 @@ int main(int argc, char *argv[])
     parser.addOption(QCommandLineOption(QStringLiteral("test"), QStringLiteral("Run in test mode")));
     parser.addHelpOption();
 
-    qDebug() << "Greeter main: Creating QGuiApplication...";
     QGuiApplication app(argc, argv);
-    qDebug() << "Greeter main: QGuiApplication created";
 
     PLASMALOGIN::SignalHandler signalHandler;
     QObject::connect(&signalHandler, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [] {
@@ -145,91 +143,22 @@ int main(int argc, char *argv[])
     LoginGreeter::setTestModeEnabled(parser.isSet(QStringLiteral("test")));
 
     QQuickWindow::setDefaultAlphaBuffer(true);
+    PLASMALOGIN::GreeterProxy *authenticator = nullptr;
     if (LoginGreeter::testModeEnabled()) {
         qDebug() << "Greeter main: Test mode enabled, using MockGreeterProxy";
         qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", new MockGreeterProxy);
     } else {
-        qDebug() << "Greeter main: Using real GreeterProxy";
-        qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", new PLASMALOGIN::GreeterProxy);
+        authenticator = new PLASMALOGIN::GreeterProxy();
+        qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", authenticator);
     }
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "SessionModel", new SessionModel);
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "UserModel", new UserModel);
-    
-    // Check DBus connectivity
-    QDBusConnection systemBus = QDBusConnection::systemBus();
-    if (!systemBus.isConnected()) {
-        qWarning() << "DBus: System bus is NOT CONNECTED - restart/shutdown buttons will not be visible";
-    }
-    
-    // Check if org.freedesktop.ConsoleKit is available on DBus
-    QStringList dbusServices = {
-        "org.freedesktop.ConsoleKit",
-        "org.freedesktop.login1",
-        "org.freedesktop.PolicyKit1"
-    };
-
-    for (const QString &service : dbusServices) {
-        QDBusInterface iface(service, "/", "org.freedesktop.DBus.Introspectable", systemBus);
-        if (iface.isValid()) {
-            QDBusReply<QString> reply = iface.call("Introspect");
-            if (!reply.isValid()) {
-                qWarning() << "DBus: Service" << service << "exists but call FAILED:" << reply.error().message();
-            }
-        } else {
-            qWarning() << "DBus: Service" << service << "is NOT AVAILABLE";
-        }
-    }
-    
-    // 2. Check ConsoleKit2 session status
-    QProcess ckProcess;
-    ckProcess.start("ck-list-sessions");
-    if (ckProcess.waitForFinished(5000)) {
-        // Check for active = TRUE and is-local = TRUE
-        QString ckStr = QString::fromUtf8(ckProcess.readAllStandardOutput());
-        bool foundActive = ckStr.contains("active = TRUE");
-        bool foundLocal = ckStr.contains("is-local = TRUE");
-        if (!foundActive || !foundLocal) {
-            qWarning() << "ConsoleKit2: WARNING - Session not marked as active/local, buttons may be hidden!";
-        }
-    } else {
-        qWarning() << "ConsoleKit2: ck-list-sessions FAILED to run with error:" << ckProcess.errorString();
-    }
-    
-    // 3. Check Polkit authorization - use pkaction to list available actions
-    QProcess pkProcess;
-    pkProcess.start("pkaction", QStringList() << "--verbose");
-    if (pkProcess.waitForFinished(5000)) {
-        QByteArray pkOutput = pkProcess.readAllStandardOutput();
-        QString pkStr = QString::fromUtf8(pkOutput);
-        
-        QStringList polkitActions = {
-            "org.freedesktop.consolekit.system.stop",
-            "org.freedesktop.consolekit.system.restart",
-            "org.freedesktop.consolekit.system.suspend",
-            "org.freedesktop.consolekit.system.hibernate",
-            "org.freedesktop.login1.reboot",
-            "org.freedesktop.login1.power-off",
-            "org.freedesktop.login1.suspend",
-            "org.freedesktop.login1.hibernate"
-        };
-        
-        for (const QString &action : polkitActions) {
-            bool actionFound = pkStr.contains(action);
-            if(!actionFound) {
-                qWarning() << "Polkit: Action" << action << "is NOT REGISTERED";
-            }
-        }
-    } else {
-        qWarning() << "Polkit: pkaction command FAILED to run with error:" << pkProcess.errorString();
-    }
     
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Settings", &PlasmaLoginSettings::getInstance());
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "StateConfig", StateConfig::self());
     qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
 
-    qDebug() << "Greeter main: Creating LoginGreeter...";
     LoginGreeter greeter;
-    qDebug() << "Greeter main: Entering event loop...";
     return app.exec();
 }
 

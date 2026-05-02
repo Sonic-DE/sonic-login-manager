@@ -66,7 +66,7 @@ bool Greeter::start()
     }
 
     QString greeterCommand = QStringLiteral(BIN_INSTALL_DIR "/startplasma-login-x11");
-
+    
     if (greeterCommand.isEmpty()) {
         qCritical("Could not find greeter: %s", qPrintable(greeterCommand));
         return false;
@@ -186,7 +186,6 @@ void Greeter::onRequestChanged()
 #ifdef Q_OS_FREEBSD
     m_auth->request()->done();
 #endif
-
 }
 
 void Greeter::onSessionStarted(bool success)
@@ -194,9 +193,9 @@ void Greeter::onSessionStarted(bool success)
     // set flag
     m_started = success;
 
-    // log message with more details
+    // log message
     if (!success) {
-        qCritical() << "Greeter session failed to start! m_auth ptr:" << (void *)m_auth;
+        qCritical() << "Greeter session failed to start!";
     }
 }
 

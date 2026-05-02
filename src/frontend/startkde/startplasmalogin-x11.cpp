@@ -39,6 +39,7 @@ int main(int argc, char **argv)
 
     // Install message handler to log to plasmalogin.log
     qInstallMessageHandler(PLASMALOGIN::StartPlasmaMessageHandler);
+
     createConfigDirectory();
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);
@@ -56,11 +57,11 @@ int main(int argc, char **argv)
             greeterHome = QString::fromLocal8Bit(pw->pw_dir);
         } else {
             greeterHome = QStringLiteral(STATE_DIR);
-            qWarning() << "BSD: plasmalogin pw_dir missing/empty, falling back HOME to STATE_DIR:" << greeterHome;
+            qWarning() << "NON-SYSTEMD: Plasmalogin pw_dir missing/empty, falling back HOME to STATE_DIR:" << greeterHome;
         }
 
         if (!QDir().mkpath(greeterHome)) {
-            qWarning() << "BSD: Failed to create/fetch HOME directory:" << greeterHome;
+            qWarning() << "NON-SYSTEMD: Failed to create/fetch HOME directory:" << greeterHome;
         }
 
         const QString xdgConfigHome = greeterHome + QStringLiteral("/.config");
@@ -86,10 +87,10 @@ int main(int argc, char **argv)
         QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
         if (xdgRuntimeDir.isEmpty()) {
             xdgRuntimeDir = QStringLiteral("/tmp/xauth_%1").arg(getuid());
-            qWarning() << "BSD: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
+            qWarning() << "NON-SYSTEMD: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
         }
         if (!ensureRuntimeDir(xdgRuntimeDir)) {
-            qWarning() << "BSD: failed to prepare XDG_RUNTIME_DIR";
+            qWarning() << "NON-SYSTEMD: Failed to prepare XDG_RUNTIME_DIR";
         }
 
         QDir().mkpath(xdgConfigHome);
@@ -104,7 +105,6 @@ int main(int argc, char **argv)
         if (!xdgRuntimeDir.isEmpty()) {
             qputenv("XDG_RUNTIME_DIR", xdgRuntimeDir.toLocal8Bit());
         }
-
     }
 #endif
 
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
         const QString xdgRuntimeDir = QString::fromLocal8Bit(qgetenv("XDG_RUNTIME_DIR"));
 
         if (greeterHome.isEmpty()) {
-            qWarning() << "BSD mode: HOME unexpectedly empty before child launch; earlier env fix did not persist";
+            qWarning() << "NON-SYSTEMD: HOME unexpectedly empty before child launch; earlier env fix did not persist";
         }
 
         // Create proper environment for greeter processes
@@ -201,10 +201,10 @@ int main(int argc, char **argv)
         kwinProcess->setProcessEnvironment(greeterEnv);
         kwinProcess->start(kwinPath, QStringList());
         if (!kwinProcess->waitForStarted()) {
-            qWarning() << "BSD mode: Failed to start kwin_x11:" << kwinProcess->errorString();
+            qWarning() << "NON-SYSTEMD: Failed to start " << kwinPath << "with error:" << kwinProcess->errorString();
         }
         if (kwinProcess->state() != QProcess::Running) {
-            qWarning() << "BSD mode: kwin_x11 not running after start, state=" << kwinProcess->state()
+            qWarning() << "NON-SYSTEMD: kwin_x11 not running after start, state=" << kwinProcess->state()
                        << "error=" << kwinProcess->errorString();
         }
 
@@ -215,10 +215,10 @@ int main(int argc, char **argv)
         greeterProcess->setProcessEnvironment(greeterEnv);
         greeterProcess->start(greeterPath);
         if (!greeterProcess->waitForStarted()) {
-            qWarning() << "BSD mode: Failed to start greeter:" << greeterProcess->errorString();
+            qWarning() << "NON-SYSTEMD: Failed to start" << greeterPath << "with error:" << greeterProcess->errorString();
         }
         if (greeterProcess->state() != QProcess::Running) {
-            qWarning() << "BSD mode: greeter not running after start, state=" << greeterProcess->state()
+            qWarning() << "NON-SYSTEMD: greeter not running after start, state=" << greeterProcess->state()
                        << "error=" << greeterProcess->errorString();
         }
 
@@ -229,10 +229,10 @@ int main(int argc, char **argv)
         wallpaperProcess->setProcessEnvironment(greeterEnv);
         wallpaperProcess->start(wallpaperPath, QStringList());
         if (!wallpaperProcess->waitForStarted()) {
-            qWarning() << "BSD mode: Failed to start wallpaper:" << wallpaperProcess->errorString();
+            qWarning() << "NON-SYSTEMD: Failed to start" << wallpaperPath << "with error:" << wallpaperProcess->errorString();
         }
         if (wallpaperProcess->state() != QProcess::Running) {
-            qWarning() << "BSD mode: wallpaper not running after start, state=" << wallpaperProcess->state()
+            qWarning() << "NON-SYSTEMD: wallpaper not running after start, state=" << wallpaperProcess->state()
                        << "error=" << wallpaperProcess->errorString();
         }
     }
