@@ -124,6 +124,7 @@ void SocketServer::readyRead()
 
     // check socket
     if (!socket) {
+        qWarning() << "SocketServer::readyRead: socket is null!";
         return;
     }
 
@@ -140,33 +141,48 @@ void SocketServer::readyRead()
         switch (GreeterMessages(message)) {
         case GreeterMessages::Connect: {
             // log message
-            qDebug() << "Message received from greeter: Connect";
-
             // send host name
             SocketWriter(socket) << quint32(DaemonMessages::HostName) << daemonApp->hostName();
+
+            // send session capabilities
+            if (daemonApp->powerManager()) {
+                Capabilities caps = daemonApp->powerManager()->capabilities();
+                SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(caps);
+            } else {
+                qWarning() << "SocketServer::Connect: no PowerManager available, sending zero capabilities";
+                SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(Capability::None);
+            }
 
             // emit signal
             emit connected();
         } break;
-        case GreeterMessages::Login: {
+         case GreeterMessages::Login: {
+             // read username, pasword etc.
+             QString user, password, filename;
+             Session session;
+             input >> user >> password >> session;
+             if (!socket || user.isEmpty() || !session.isValid()) {
+                 qWarning() << "SocketServer::Login: validation failed, not emitting signal";
+                 return;
+             }
+             // emit signal
+             emit login(socket, user, password, session);
+         } break;
+         case GreeterMessages::PowerOff: {
+             powerOff();
+         } break;
+         case GreeterMessages::Reboot: {
+             reboot();
+         } break;
+         case GreeterMessages::Suspend: {
+             suspend();
+         } break;
+         case GreeterMessages::Hibernate: {
+             hibernate();
+         } break;
+         default: {
             // log message
-            qDebug() << "Message received from greeter: Login";
-
-            // read username, pasword etc.
-            QString user, password, filename;
-            Session session;
-            input >> user >> password >> session;
-
-            if (!socket || user.isEmpty() || !session.isValid()) {
-                qWarning() << "SocketServer::Login: validation failed, not emitting signal";
-                return;
-            }
-            // emit signal
-            emit login(socket, user, password, session);
-        } break;
-        default: {
-            // log message
-            qWarning() << "Unknown message" << message;
+            qWarning() << "SocketServer::readyRead: GreeterMessages: Unknown message" << message;
         }
         }
     }
@@ -185,6 +201,49 @@ void SocketServer::loginSucceeded(QLocalSocket *socket)
 void SocketServer::informationMessage(QLocalSocket *socket, const QString &message)
 {
     SocketWriter(socket) << quint32(DaemonMessages::InformationMessage) << message;
+}
+
+void SocketServer::sendSessionCapabilities(QLocalSocket *socket, Capabilities caps)
+{
+    if (socket) {
+        SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(caps);
+    }
+}
+
+void SocketServer::powerOff()
+{
+    if (daemonApp->powerManager()) {
+        daemonApp->powerManager()->powerOff();
+    } else {
+        qWarning() << "SocketServer::powerOff: no PowerManager available!";
+    }
+}
+
+void SocketServer::reboot()
+{
+    if (daemonApp->powerManager()) {
+        daemonApp->powerManager()->reboot();
+    } else {
+        qWarning() << "SocketServer::reboot: no PowerManager available!";
+    }
+}
+
+void SocketServer::suspend()
+{
+    if (daemonApp->powerManager()) {
+        daemonApp->powerManager()->suspend();
+    } else {
+        qWarning() << "SocketServer::suspend: no PowerManager available!";
+    }
+}
+
+void SocketServer::hibernate()
+{
+    if (daemonApp->powerManager()) {
+        daemonApp->powerManager()->hibernate();
+    } else {
+        qWarning() << "SocketServer::hibernate: no PowerManager available!";
+    }
 }
 }
 

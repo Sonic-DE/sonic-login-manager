@@ -71,6 +71,47 @@ void GreeterProxy::setSessionModel(SessionModel *model)
 void GreeterProxy::login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
     SocketWriter(d->socket) << quint32(GreeterMessages::Login) << user << password << static_cast<uint32_t>(sessionType) << sessionFileName;
+    qDebug() << "GreeterProxy::login: Message written, waiting for flush...";
+    const bool flushOk = d->socket->flush();
+    if (!flushOk) {
+        qWarning() << "GreeterProxy::login: flush failed";
+    }
+}
+
+void GreeterProxy::shutdown()
+{
+    SocketWriter(d->socket) << quint32(GreeterMessages::PowerOff);
+    const bool flushOk = d->socket->flush();
+    if (!flushOk) {
+        qWarning() << "GreeterProxy::shutdown: flush failed";
+    }
+}
+
+void GreeterProxy::reboot()
+{
+    SocketWriter(d->socket) << quint32(GreeterMessages::Reboot);
+    const bool flushOk = d->socket->flush();
+    if (!flushOk) {
+        qWarning() << "GreeterProxy::reboot: flush failed";
+    }
+}
+
+void GreeterProxy::suspend()
+{
+    SocketWriter(d->socket) << quint32(GreeterMessages::Suspend);
+    const bool flushOk = d->socket->flush();
+    if (!flushOk) {
+        qWarning() << "GreeterProxy::suspend: flush failed";
+    }
+}
+
+void GreeterProxy::hibernate()
+{
+    SocketWriter(d->socket) << quint32(GreeterMessages::Hibernate);
+    const bool flushOk = d->socket->flush();
+    if (!flushOk) {
+        qWarning() << "GreeterProxy::hibernate: flush failed";
+    }
 }
 
 void GreeterProxy::readyRead()
@@ -103,6 +144,13 @@ void GreeterProxy::readyRead()
 
             // emit signal
             emit loginFailed();
+        } break;
+        case DaemonMessages::SessionCapabilities: {
+            // Read capabilities from daemon
+            quint32 capsValue;
+            input >> capsValue;
+            m_capabilities = static_cast<Capabilities>(capsValue);
+            emit capabilitiesChanged();
         } break;
         case DaemonMessages::InformationMessage: {
             QString message;

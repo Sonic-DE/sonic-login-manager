@@ -42,4 +42,26 @@ void MockGreeterProxy::login(const QString &user, const QString &password, const
     }
 }
 
+void MockGreeterProxy::shutdown()
+{
+    qDebug() << "MockGreeterProxy::shutdown: mock shutdown requested";
+    QCoreApplication::quit();
+}
+
+void MockGreeterProxy::reboot()
+{
+    qDebug() << "MockGreeterProxy::reboot: mock reboot requested";
+    QCoreApplication::quit();
+}
+
+void MockGreeterProxy::suspend()
+{
+    qDebug() << "MockGreeterProxy::suspend: mock suspend requested";
+}
+
+void MockGreeterProxy::hibernate()
+{
+    qDebug() << "MockGreeterProxy::hibernate: mock hibernate requested";
+}
+
 #include "moc_MockGreeterProxy.cpp"

@@ -22,6 +22,7 @@
 #include <QString>
 
 #include "Session.h"
+#include "PowerManager.h"
 
 class QLocalServer;
 class QLocalSocket;
@@ -48,6 +49,11 @@ public slots:
     void informationMessage(QLocalSocket *socket, const QString &message);
     void loginFailed(QLocalSocket *socket);
     void loginSucceeded(QLocalSocket *socket);
+    void sendSessionCapabilities(QLocalSocket *socket, Capabilities caps);
+    void powerOff();
+    void reboot();
+    void suspend();
+    void hibernate();
 
 signals:
     void login(QLocalSocket *socket, const QString &user, const QString &password, const Session &session);

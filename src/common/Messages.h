@@ -21,9 +21,30 @@
 
 namespace PLASMALOGIN
 {
+
+/**
+ * @brief Capability flags for power management operations
+ *
+ * These flags represent the available power management operations
+ * that can be performed on the system.
+ */
+enum Capability {
+    None = 0x00,
+    PowerOff = 0x01,
+    Reboot = 0x02,
+    Suspend = 0x04,
+    Hibernate = 0x08,
+    HybridSleep = 0x10,
+};
+Q_DECLARE_FLAGS(Capabilities, Capability)
+
 enum class GreeterMessages {
     Connect = 0,
     Login,
+    PowerOff,
+    Reboot,
+    Suspend,
+    Hibernate,
 };
 
 enum class DaemonMessages {
@@ -31,7 +52,15 @@ enum class DaemonMessages {
     LoginSucceeded,
     LoginFailed,
     InformationMessage,
+    SessionCapabilities,  // Power management capabilities (sent when greeter connects)
+};
+
+enum class SessionType {
+    X11 = 0,
+    Wayland
 };
 }
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(PLASMALOGIN::Capabilities)
 
 #endif // PLASMALOGIN_MESSAGES_H

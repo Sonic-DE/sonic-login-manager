@@ -22,6 +22,7 @@ set(DAEMON_SOURCES
     DisplayManager.cpp
     LogindDBusTypes.cpp
     Greeter.cpp
+    PowerManager.cpp
     Seat.cpp
     SeatManager.cpp
     SocketServer.cpp

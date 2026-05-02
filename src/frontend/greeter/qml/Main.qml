@@ -177,32 +177,32 @@ Item {
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
                         text: i18ndc("plasma_login", "Suspend to disk", "Hibernate")
-                        visible: PlasmaLogin.SessionManagement.canHibernate
+                        visible: PlasmaLogin.Authenticator.canHibernate
                         onClicked: {
                             PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.SessionManagement.hibernate();
+                            PlasmaLogin.Authenticator.hibernate();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
                         text: i18ndc("plasma_login", "Suspend to RAM", "Sleep")
-                        visible: PlasmaLogin.SessionManagement.canSuspend
+                        visible: PlasmaLogin.Authenticator.canSuspend
                         onClicked: {
                             PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.SessionManagement.suspend();
+                            PlasmaLogin.Authenticator.suspend();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
                         text: i18nd("plasma_login", "Restart")
-                        visible: PlasmaLogin.SessionManagement.canReboot
-                        onClicked: PlasmaLogin.SessionManagement.requestReboot(PlasmaLogin.SessionManagement.ConfirmationMode.Skip)
+                        visible: PlasmaLogin.Authenticator.canReboot
+                        onClicked: PlasmaLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
                         text: i18nd("plasma_login", "Shut Down")
-                        visible: PlasmaLogin.SessionManagement.canShutdown
-                        onClicked: PlasmaLogin.SessionManagement.requestShutdown(PlasmaLogin.SessionManagement.ConfirmationMode.Skip)
+                        visible: PlasmaLogin.Authenticator.canShutdown
+                        onClicked: PlasmaLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-prompt"
@@ -316,32 +316,32 @@ Item {
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
                         text: i18ndc("plasma_login", "Suspend to disk", "Hibernate")
-                        visible: PlasmaLogin.SessionManagement.canHibernate
+                        visible: PlasmaLogin.Authenticator.canHibernate
                         onClicked: {
                             PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.SessionManagement.hibernate();
+                            PlasmaLogin.Authenticator.hibernate();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
                         text: i18ndc("plasma_login", "Suspend to RAM", "Sleep")
-                        visible: PlasmaLogin.SessionManagement.canSuspend
+                        visible: PlasmaLogin.Authenticator.canSuspend
                         onClicked: {
                             PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.SessionManagement.suspend();
+                            PlasmaLogin.Authenticator.suspend();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
                         text: i18nd("plasma_login", "Restart")
-                        visible: PlasmaLogin.SessionManagement.canReboot
-                        onClicked: PlasmaLogin.SessionManagement.requestReboot(PlasmaLogin.SessionManagement.ConfirmationMode.Skip)
+                        visible: PlasmaLogin.Authenticator.canReboot
+                        onClicked: PlasmaLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
                         text: i18nd("plasma_login", "Shut Down")
-                        visible: PlasmaLogin.SessionManagement.canShutdown
-                        onClicked: PlasmaLogin.SessionManagement.requestShutdown(PlasmaLogin.SessionManagement.ConfirmationMode.Skip)
+                        visible: PlasmaLogin.Authenticator.canShutdown
+                        onClicked: PlasmaLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-list"

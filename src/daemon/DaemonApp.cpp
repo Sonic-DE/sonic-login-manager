@@ -18,6 +18,7 @@
 
 #include "DisplayManager.h"
 #include "LogindDBusTypes.h"
+#include "PowerManager.h"
 #include "SeatManager.h"
 #include "SignalHandler.h"
 
@@ -76,6 +77,9 @@ DaemonApp::DaemonApp(int &argc, char **argv)
 
     // create display manager
     m_displayManager = new DisplayManager(this);
+
+    // create power manager
+    m_powerManager = new PowerManager(this);
 
     // create seat manager
     m_seatManager = new SeatManager(this);
@@ -177,6 +181,11 @@ QString DaemonApp::hostName() const
 DisplayManager *DaemonApp::displayManager() const
 {
     return m_displayManager;
+}
+
+PowerManager *DaemonApp::powerManager() const
+{
+    return m_powerManager;
 }
 
 SeatManager *DaemonApp::seatManager() const
