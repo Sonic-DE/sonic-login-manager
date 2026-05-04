@@ -73,6 +73,10 @@ target_link_libraries(plasma-login-greeter PRIVATE
     KF6::ScreenDpms
 )
 
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(plasma-login-greeter PRIVATE PkgConfig::LIBSYSTEMD)
+endif()
+
 ecm_finalize_qml_module(plasma-login-greeter)
 
 install(TARGETS plasma-login-greeter DESTINATION ${KDE_INSTALL_LIBEXECDIR})

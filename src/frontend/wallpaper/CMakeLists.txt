@@ -37,6 +37,10 @@ target_link_libraries(plasma-login-wallpaper PRIVATE
     Plasma::PlasmaQuick
 )
 
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(plasma-login-wallpaper PRIVATE PkgConfig::LIBSYSTEMD)
+endif()
+
 qt_add_shaders(plasma-login-wallpaper "wallpaper_shaders"
     PRECOMPILE
     BATCHABLE

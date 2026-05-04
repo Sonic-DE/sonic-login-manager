@@ -28,6 +28,10 @@ target_link_libraries(startplasma-login-x11 PRIVATE
     PW::KLookAndFeel
 )
 
+if(LIBSYSTEMD_FOUND)
+    target_link_libraries(startplasma-login-x11 PRIVATE PkgConfig::LIBSYSTEMD)
+endif()
+
 kconfig_target_kcfg_file(startplasma-login-x11
     FILE lookandfeelsettings.kcfg
     CLASS_NAME LookAndFeelSettings
