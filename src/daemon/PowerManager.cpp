@@ -24,25 +24,28 @@
 #include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDebug>
 #include <QFileInfo>
 #include <QProcess>
-#include <QDebug>
 
 namespace PLASMALOGIN
 {
 
 /**
  * @brief Abstract base class for power manager backends
- * 
+ *
  * Provides a common interface for different power management systems
  * such as systemd-logind, ConsoleKit2, and UPower.
  */
-class PowerManagerBackend {
+class PowerManagerBackend
+{
 public:
-    PowerManagerBackend() {
+    PowerManagerBackend()
+    {
     }
 
-    virtual ~PowerManagerBackend() {
+    virtual ~PowerManagerBackend()
+    {
     }
 
     virtual Capabilities capabilities() const = 0;
@@ -56,7 +59,7 @@ public:
 
 /**
  * @brief UPower backend implementation
- * 
+ *
  * Provides power management capabilities through the UPower D-Bus interface.
  * Handles suspend and hibernate operations, with fallback to system commands
  * for power off and reboot.
@@ -65,18 +68,22 @@ const QString UPOWER_PATH = QStringLiteral("/org/freedesktop/UPower");
 const QString UPOWER_SERVICE = QStringLiteral("org.freedesktop.UPower");
 const QString UPOWER_OBJECT = QStringLiteral("org.freedesktop.UPower");
 
-class UPowerBackend : public PowerManagerBackend {
+class UPowerBackend : public PowerManagerBackend
+{
 public:
-    UPowerBackend(const QString & service, const QString & path, const QString & interface) {
+    UPowerBackend(const QString &service, const QString &path, const QString &interface)
+    {
         m_interface = new QDBusInterface(service, path, interface, QDBusConnection::systemBus());
         qWarning() << "PowerManager: UPowerBackend created for service:" << service;
     }
 
-    ~UPowerBackend() {
+    ~UPowerBackend()
+    {
         delete m_interface;
     }
 
-    Capabilities capabilities() const {
+    Capabilities capabilities() const override
+    {
         Capabilities caps = Capability::PowerOff | Capability::Reboot;
 
         QDBusReply<bool> reply;
@@ -106,11 +113,12 @@ public:
 
     /**
      * @brief Execute power off operation with systemd detection
-     * 
+     *
      * Attempts to use systemctl if systemd is detected, otherwise falls back
      * to traditional shutdown command.
      */
-    void powerOff() const {
+    void powerOff() const override
+    {
         if (QFileInfo::exists("/usr/bin/systemctl")) {
             QProcess::execute("/usr/bin/systemctl", QStringList() << "poweroff");
         } else {
@@ -120,11 +128,12 @@ public:
 
     /**
      * @brief Execute reboot operation with systemd detection
-     * 
+     *
      * Attempts to use systemctl if systemd is detected, otherwise falls back
      * to traditional shutdown command.
      */
-    void reboot() const {
+    void reboot() const override
+    {
         if (QFileInfo::exists("/usr/bin/systemctl")) {
             QProcess::execute("/usr/bin/systemctl", QStringList() << "reboot");
         } else {
@@ -132,24 +141,27 @@ public:
         }
     }
 
-    void suspend() const {
+    void suspend() const override
+    {
         m_interface->call(QStringLiteral("Suspend"));
     }
 
-    void hibernate() const {
+    void hibernate() const override
+    {
         m_interface->call(QStringLiteral("Hibernate"));
     }
 
-    void hybridSleep() const {
+    void hybridSleep() const override
+    {
     }
 
 private:
-    QDBusInterface *m_interface { nullptr };
+    QDBusInterface *m_interface{nullptr};
 };
 
 /**
  * @brief Seat manager backend implementation for login1 and ConsoleKit2
- * 
+ *
  * Provides power management capabilities through either systemd-logind
  * or ConsoleKit2 D-Bus interfaces. Both services expose similar APIs
  * for power operations, making them interchangeable.
@@ -162,18 +174,22 @@ const QString CK2_SERVICE = QStringLiteral("org.freedesktop.ConsoleKit");
 const QString CK2_PATH = QStringLiteral("/org/freedesktop/ConsoleKit/Manager");
 const QString CK2_OBJECT = QStringLiteral("org.freedesktop.ConsoleKit.Manager");
 
-class SeatManagerBackend : public PowerManagerBackend {
+class SeatManagerBackend : public PowerManagerBackend
+{
 public:
-    SeatManagerBackend(const QString & service, const QString & path, const QString & interface) {
+    SeatManagerBackend(const QString &service, const QString &path, const QString &interface)
+    {
         m_interface = new QDBusInterface(service, path, interface, QDBusConnection::systemBus());
         qWarning() << "PowerManager: SeatManagerBackend created for service:" << service;
     }
 
-    ~SeatManagerBackend() {
+    ~SeatManagerBackend()
+    {
         delete m_interface;
     }
 
-    Capabilities capabilities() const {
+    Capabilities capabilities() const override
+    {
         Capabilities caps = Capability::None;
 
         QDBusReply<QString> reply;
@@ -228,45 +244,52 @@ public:
         return caps;
     }
 
-    void powerOff() const {
+    void powerOff() const override
+    {
         m_interface->call(QStringLiteral("PowerOff"), true);
     }
 
-    void reboot() const {
+    void reboot() const override
+    {
         m_interface->call(QStringLiteral("Reboot"), true);
     }
 
-    void suspend() const {
+    void suspend() const override
+    {
         m_interface->call(QStringLiteral("Suspend"), true);
     }
 
-    void hibernate() const {
+    void hibernate() const override
+    {
         m_interface->call(QStringLiteral("Hibernate"), true);
     }
 
-    void hybridSleep() const {
+    void hybridSleep() const override
+    {
         m_interface->call(QStringLiteral("HybridSleep"), true);
     }
 
 private:
-    QDBusInterface *m_interface { nullptr };
+    QDBusInterface *m_interface{nullptr};
 };
 
 /**
  * @brief PowerManager constructor
- * 
+ *
  * Initializes the power manager by detecting available D-Bus services
  * and creating appropriate backend instances for each available service.
  */
-PowerManager::PowerManager(QObject *parent) : QObject(parent) {
+PowerManager::PowerManager(QObject *parent)
+    : QObject(parent)
+{
     qWarning() << "PowerManager: Initializing PowerManager...";
-    
+
     QDBusConnectionInterface *interface = QDBusConnection::systemBus().interface();
     if (!interface) {
         qWarning() << "PowerManager: No system bus interface available!";
         return;
     }
-    
+
     if (!interface->isServiceRegistered(LOGIN1_SERVICE)) {
         qWarning() << "PowerManager: Service" << LOGIN1_SERVICE << "is NOT registered on system bus";
     }
@@ -294,30 +317,33 @@ PowerManager::PowerManager(QObject *parent) : QObject(parent) {
         qWarning() << "PowerManager: Found UPower service, creating backend";
         m_backends << new UPowerBackend(UPOWER_SERVICE, UPOWER_PATH, UPOWER_OBJECT);
     }
-    
+
     qWarning() << "PowerManager: Total backends created:" << m_backends.size();
 }
 
-PowerManager::~PowerManager() {
+PowerManager::~PowerManager()
+{
     while (!m_backends.empty())
         delete m_backends.takeFirst();
 }
 
-Capabilities PowerManager::capabilities() const {
+Capabilities PowerManager::capabilities() const
+{
     Capabilities caps = Capability::None;
 
-    for (PowerManagerBackend *backend: m_backends) {
+    for (PowerManagerBackend *backend : m_backends) {
         Capabilities backendCaps = backend->capabilities();
         caps |= backendCaps;
         qWarning() << "PowerManager: Backend capabilities:" << backendCaps << "total now:" << caps;
     }
-    
+
     qWarning() << "PowerManager: Final capabilities:" << caps;
     return caps;
 }
 
-void PowerManager::powerOff() const {
-    for (PowerManagerBackend *backend: m_backends) {
+void PowerManager::powerOff() const
+{
+    for (PowerManagerBackend *backend : m_backends) {
         if (backend->capabilities() & Capability::PowerOff) {
             backend->powerOff();
             break;
@@ -325,8 +351,9 @@ void PowerManager::powerOff() const {
     }
 }
 
-void PowerManager::reboot() const {
-    for (PowerManagerBackend *backend: m_backends) {
+void PowerManager::reboot() const
+{
+    for (PowerManagerBackend *backend : m_backends) {
         if (backend->capabilities() & Capability::Reboot) {
             backend->reboot();
             break;
@@ -334,8 +361,9 @@ void PowerManager::reboot() const {
     }
 }
 
-void PowerManager::suspend() const {
-    for (PowerManagerBackend *backend: m_backends) {
+void PowerManager::suspend() const
+{
+    for (PowerManagerBackend *backend : m_backends) {
         if (backend->capabilities() & Capability::Suspend) {
             backend->suspend();
             break;
@@ -343,8 +371,9 @@ void PowerManager::suspend() const {
     }
 }
 
-void PowerManager::hibernate() const {
-    for (PowerManagerBackend *backend: m_backends) {
+void PowerManager::hibernate() const
+{
+    for (PowerManagerBackend *backend : m_backends) {
         if (backend->capabilities() & Capability::Hibernate) {
             backend->hibernate();
             break;
@@ -352,8 +381,9 @@ void PowerManager::hibernate() const {
     }
 }
 
-void PowerManager::hybridSleep() const {
-    for (PowerManagerBackend *backend: m_backends) {
+void PowerManager::hybridSleep() const
+{
+    for (PowerManagerBackend *backend : m_backends) {
         if (backend->capabilities() & Capability::HybridSleep) {
             backend->hybridSleep();
             break;
