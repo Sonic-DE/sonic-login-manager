@@ -28,14 +28,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #ifdef Q_OS_FREEBSD
-#include <sys/stat.h>
-#include <sys/sysctl.h>
 #include <libutil.h>
 #include <login_cap.h>
+#include <sys/stat.h>
+#include <sys/sysctl.h>
 #endif
 
 namespace PLASMALOGIN
 {
+
 UserSession::UserSession(HelperApp *parent)
     : QProcess(parent)
 {
@@ -57,6 +58,12 @@ void UserSession::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatu
 bool UserSession::start()
 {
     QProcessEnvironment env = processEnvironment();
+    qDebug() << "UserSession::start: DEBUG - entering start()";
+    qDebug() << "UserSession::start: DEBUG - XDG_SESSION_TYPE=" << env.value(QStringLiteral("XDG_SESSION_TYPE"));
+    qDebug() << "UserSession::start: DEBUG - XDG_SESSION_CLASS=" << env.value(QStringLiteral("XDG_SESSION_CLASS"));
+    qDebug() << "UserSession::start: DEBUG - m_path=" << m_path;
+    qDebug() << "UserSession::start: DEBUG - m_displayServerCmd=" << m_displayServerCmd;
+    qDebug() << "UserSession::start: DEBUG - SESSION_COMMAND=" << SESSION_COMMAND;
 
     bool isWaylandGreeter = false;
 
@@ -73,9 +80,12 @@ bool UserSession::start()
             auto args = QProcess::splitCommand(command);
             setProgram(args.takeFirst());
             setArguments(args);
+            qDebug() << "UserSession::start: DEBUG - starting directly with program=" << args.first();
         } else {
-            setProgram(QStringLiteral(LIBEXEC_INSTALL_DIR "/plasmalogin-helper-start-x11user"));
+            QString helperPath = QStringLiteral(LIBEXEC_INSTALL_DIR "/plasmalogin-helper-start-x11user");
+            setProgram(helperPath);
             setArguments({m_displayServerCmd, command});
+            qDebug() << "UserSession::start: DEBUG - starting helper=" << helperPath << "with args=" << m_displayServerCmd << command;
         }
         QString homeDir = processEnvironment().value(QStringLiteral("HOME"));
         if (!homeDir.isEmpty()) {
@@ -86,7 +96,7 @@ bool UserSession::start()
             }
         }
         QProcess::start();
-
+        qDebug() << "UserSession::start: DEBUG - QProcess::start() called, state=" << state() << "error=" << error();
     } else if (env.value(QStringLiteral("XDG_SESSION_TYPE")) == QLatin1String("wayland")) {
         if (env.value(QStringLiteral("XDG_SESSION_CLASS")) == QLatin1String("greeter")) {
             isWaylandGreeter = true;
@@ -295,7 +305,7 @@ void UserSession::setupChildProcess()
         qCritical() << "setuid(" << pw.pw_uid << ") failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
     }
-    
+
     if (chdir(pw.pw_dir) != 0) {
         qCritical() << "chdir(" << pw.pw_dir << ") failed for user: " << username;
         qCritical() << "verify directory exist and has sufficient permissions";

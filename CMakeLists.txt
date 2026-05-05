@@ -54,17 +54,8 @@ find_package(PkgConfig)
 # XAU
 pkg_check_modules(LIBXAU REQUIRED "xau" IMPORTED_TARGET)
 
+# Check for systemd to get unit file install directories (runtime detection is used in code)
 pkg_check_modules(SYSTEMD "systemd")
-pkg_check_modules(LIBSYSTEMD "libsystemd" IMPORTED_TARGET)
-
-if(SYSTEMD_FOUND)
-    set(HAVE_SYSTEMD TRUE)
-    message(STATUS "systemd found - enabling systemd support")
-else()
-    set(HAVE_SYSTEMD FALSE)
-    message(STATUS "systemd not found - building without systemd support")
-endif()
-
 if(SYSTEMD_FOUND)
     if (NOT DEFINED SYSTEMD_SYSTEM_UNIT_DIR)
         pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
@@ -111,7 +102,6 @@ set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmal
 set(LOG_FILE                    "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/plasmalogin.log"       CACHE PATH      "Path of the plasmalogin log file")
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the plasmalogin config file")
 set(PLASMALOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
-
 
 # Add subdirectories
 add_subdirectory(data)

@@ -4,11 +4,14 @@
 # SPDX-FileCopyrightText: none
 
 # Artix Linux PAM configuration for plasmalogin autologin
-# Uses elogind instead of systemd-logind
 
-auth        required    pam_env.so
-auth        required    pam_permit.so
-account     required    pam_permit.so
-password    required    pam_deny.so
-session     required    pam_permit.so
-session     optional    pam_elogind.so
+auth        required    pam_env.so auth        required    pam_faillock.so
+preauth auth        required    pam_shells.so
+auth        required    pam_nologin.so auth        required    pam_permit.so
+-auth       optional    pam_gnome_keyring.so
+-auth       optional    pam_kwallet5.so
+account     include     system-local-login
+password    include     system-local-login
+session     include     system-local-login
+-session    optional    pam_gnome_keyring.so auto_start
+-session    optional    pam_kwallet5.so auto_start

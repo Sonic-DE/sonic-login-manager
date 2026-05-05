@@ -35,11 +35,6 @@ add_executable(plasma-login-greeter ${LOGIN_GREETER_SRCS})
 # Enable automatic MOC processing for Qt signals/slots
 set_target_properties(plasma-login-greeter PROPERTIES AUTOMOC ON)
 
-# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
-# This allows using #ifdef HAVE_SYSTEMD in the source code
-if(SYSTEMD_FOUND)
-    target_compile_definitions(plasma-login-greeter PRIVATE HAVE_SYSTEMD)
-endif()
 
 set_source_files_properties(qml/GreeterState.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -73,9 +68,6 @@ target_link_libraries(plasma-login-greeter PRIVATE
     KF6::ScreenDpms
 )
 
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(plasma-login-greeter PRIVATE PkgConfig::LIBSYSTEMD)
-endif()
 
 ecm_finalize_qml_module(plasma-login-greeter)
 
@@ -84,4 +76,5 @@ install(TARGETS plasma-login-greeter DESTINATION ${KDE_INSTALL_LIBEXECDIR})
 if(SYSTEMD_FOUND)
     ecm_install_configured_files(INPUT plasma-login.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 endif()
+
 ki18n_install(po)

@@ -29,46 +29,11 @@
 #include <cstring>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <syslog.h>
-
-#ifdef HAVE_SYSTEMD
-#include <systemd/sd-journal.h>
-#endif
+#include <unistd.h>
 
 namespace PLASMALOGIN
 {
-#ifdef HAVE_SYSTEMD
-static void journaldLogger(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-{
-    int priority = LOG_INFO;
-    switch (type) {
-    case QtDebugMsg:
-        priority = LOG_DEBUG;
-        break;
-    case QtInfoMsg:
-        priority = LOG_INFO;
-        break;
-    case QtWarningMsg:
-        priority = LOG_WARNING;
-        break;
-    case QtCriticalMsg:
-        priority = LOG_CRIT;
-        break;
-    case QtFatalMsg:
-        priority = LOG_ALERT;
-        break;
-    }
-
-    char fileBuffer[PATH_MAX + sizeof("CODE_FILE=")];
-    snprintf(fileBuffer, sizeof(fileBuffer), "CODE_FILE=%s", context.file ? context.file : "unknown");
-
-    char lineBuffer[32];
-    snprintf(lineBuffer, sizeof(lineBuffer), "CODE_LINE=%d", context.line);
-
-    sd_journal_print_with_location(priority, fileBuffer, lineBuffer, context.function ? context.function : "unknown", "%s", qPrintable(msg));
-}
-#endif
 
 static void standardLogger(QtMsgType type, const QString &msg)
 {
@@ -172,18 +137,8 @@ static void standardLogger(QtMsgType type, const QString &msg)
     }
 }
 
-static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &prefix, const QString &msg)
+static void messageHandler(QtMsgType type, const QString &prefix, const QString &msg)
 {
-#ifdef HAVE_SYSTEMD
-    // don't log to journald if running interactively, this is likely
-    // the case when running plasmalogin in test mode
-    // log to journald
-    journaldLogger(type, context, msg);
-    return;
-#else
-    Q_UNUSED(context);
-    Q_UNUSED(isatty);
-#endif
     // prepend program name
     QString logMessage = prefix + msg;
 
@@ -191,29 +146,29 @@ static void messageHandler(QtMsgType type, const QMessageLogContext &context, co
     standardLogger(type, logMessage);
 }
 
-void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, context, QStringLiteral("DAEMON: "), msg);
+    messageHandler(type, QStringLiteral("DAEMON: "), msg);
 }
 
-void HelperMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, context, QStringLiteral("HELPER: "), msg);
+    messageHandler(type, QStringLiteral("HELPER: "), msg);
 }
 
-void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, context, QStringLiteral("GREETER: "), msg);
+    messageHandler(type, QStringLiteral("GREETER: "), msg);
 }
 
-void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, context, QStringLiteral("STARTPLASMA: "), msg);
+    messageHandler(type, QStringLiteral("STARTPLASMA: "), msg);
 }
 
-void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, context, QStringLiteral("WALLPAPER: "), msg);
+    messageHandler(type, QStringLiteral("WALLPAPER: "), msg);
 }
 }
 

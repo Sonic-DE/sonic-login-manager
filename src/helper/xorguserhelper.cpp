@@ -15,14 +15,25 @@
  ***************************************************************************/
 
 #include <QCoreApplication>
-#include <QFile>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusReply>
+#include <QEventLoop>
 #include <QStandardPaths>
+#include <QTimer>
+#include <QVariantMap>
 
 #include "Configuration.h"
+#include "InitSystem.h"
+#include "VirtualTerminal.h"
 
 #include "xorguserhelper.h"
 
 #include <fcntl.h>
+#include <linux/kd.h>
+#include <linux/vt.h>
+#include <signal.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 namespace PLASMALOGIN
@@ -142,19 +153,99 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // Do not leak the read endpoint to the X server process
     fcntl(pipeFds[0], F_SETFD, FD_CLOEXEC);
 
+    // IMPORTANT: The write end of the pipe (pipeFds[1]) must NOT have O_CLOEXEC set,
+    // otherwise Xorg will lose access to it the moment it execs.
+    // QProcess passes the fd number via -displayfd, and Xorg writes to it.
+    // We explicitly clear FD_CLOEXEC on the write end to ensure it survives exec.
+    int writeFlags = fcntl(pipeFds[1], F_GETFD);
+    if (writeFlags >= 0) {
+        fcntl(pipeFds[1], F_SETFD, writeFlags & ~FD_CLOEXEC);
+    }
+
+    // Diagnostic: Log pipe FDs and their cloexec status
+    int readFlags = fcntl(pipeFds[0], F_GETFD);
+    int writeFlagsAfter = fcntl(pipeFds[1], F_GETFD);
+    qInfo() << "XOrgUserHelper::startServer: pipe fds: read=" << pipeFds[0] << "write=" << pipeFds[1] << "read_cloexec=" << (readFlags & FD_CLOEXEC)
+            << "write_cloexec=" << (writeFlagsAfter & FD_CLOEXEC);
+
     // Server environment
-    // Not setting XORG_RUN_AS_USER_OK=1 will make Xorg require root privileges
-    // under Fedora and all distros that use their patch.
-    // https://src.fedoraproject.org/rpms/xorg-x11-server/blob/rawhide/f/0001-Fedora-hack-Make-the-suid-root-wrapper-always-start-.patch
-    // https://fedoraproject.org/wiki/Changes/XorgWithoutRootRights
     auto serverEnv = QProcessEnvironment::systemEnvironment();
-    serverEnv.insert(QStringLiteral("XORG_RUN_AS_USER_OK"), QStringLiteral("1"));
+
+    // Diagnostic: Log critical environment variables for logind/elogind session inheritance
+    qInfo() << "XOrgUserHelper::startServer: Environment diagnostics:"
+            << "XDG_RUNTIME_DIR=" << serverEnv.value(QStringLiteral("XDG_RUNTIME_DIR")) << "XDG_SEAT=" << serverEnv.value(QStringLiteral("XDG_SEAT"))
+            << "XDG_SESSION_ID=" << serverEnv.value(QStringLiteral("XDG_SESSION_ID")) << "XDG_VTNR=" << serverEnv.value(QStringLiteral("XDG_VTNR"))
+            << "DBUS_SESSION_BUS_ADDRESS=" << serverEnv.value(QStringLiteral("DBUS_SESSION_BUS_ADDRESS"))
+            << "ELOGIND_SESSION_ID=" << serverEnv.value(QStringLiteral("ELOGIND_SESSION_ID"))
+            << "XDG_SESSION_TYPE=" << serverEnv.value(QStringLiteral("XDG_SESSION_TYPE"))
+            << "XDG_SESSION_CLASS=" << serverEnv.value(QStringLiteral("XDG_SESSION_CLASS"));
+    // Diagnostic: Log current uid/gid and groups
+    qInfo() << "XOrgUserHelper::startServer: Process diagnostics:"
+            << "uid=" << ::getuid() << "euid=" << ::geteuid() << "gid=" << ::getgid();
+
+    // Detect if we're using elogind (not systemd-logind)
+    bool isElogind = false;
+    QProcess loginctlProcess;
+    loginctlProcess.start(QStringLiteral("loginctl"), {QStringLiteral("--version")});
+    if (loginctlProcess.waitForFinished(2000)) {
+        QString output = QString::fromLocal8Bit(loginctlProcess.readAllStandardOutput());
+        if (output.contains(QLatin1String("elogind"), Qt::CaseInsensitive)) {
+            isElogind = true;
+            qInfo() << "XOrgUserHelper::startServer: Detected elogind via loginctl --version";
+        }
+    }
+
+    // For elogind systems, we need to set up the VT properly before Xorg starts.
+    // Xorg's xf86OpenConsole() calls VT_ACTIVATE which requires CAP_SYS_ADMIN.
+    // Since we're running as an unprivileged user, we can't do VT_ACTIVATE directly.
+    // Instead, we set the VT to KD_GRAPHICS mode and VT_PROCESS mode, which tells
+    // the kernel that we're managing VT switches ourselves. This avoids the need
+    // for VT_ACTIVATE.
+    if (isElogind) {
+        qInfo() << "XOrgUserHelper::startServer: Setting up VT for elogind";
+        QString vtNr = serverEnv.value(QStringLiteral("XDG_VTNR"));
+        if (!vtNr.isEmpty()) {
+            QString ttyPath = QStringLiteral("/dev/tty%1").arg(vtNr);
+            int vtFd = ::open(qPrintable(ttyPath), O_RDWR | O_NOCTTY);
+            if (vtFd >= 0) {
+                // Set VT to KD_GRAPHICS mode
+                if (ioctl(vtFd, KDSETMODE, KD_GRAPHICS) == 0) {
+                    qInfo() << "XOrgUserHelper::startServer: Set" << ttyPath << "to KD_GRAPHICS mode";
+                } else {
+                    qWarning() << "XOrgUserHelper::startServer: Failed to set KD_GRAPHICS mode on" << ttyPath << ":" << strerror(errno);
+                }
+
+                // Set VT to VT_PROCESS mode with dummy signal handlers
+                // This tells the kernel we're managing VT switches
+                vt_mode mode = {};
+                mode.mode = VT_PROCESS;
+                mode.relsig = SIGUSR1;
+                mode.acqsig = SIGUSR1;
+                if (ioctl(vtFd, VT_SETMODE, &mode) == 0) {
+                    qInfo() << "XOrgUserHelper::startServer: Set" << ttyPath << "to VT_PROCESS mode";
+                } else {
+                    qWarning() << "XOrgUserHelper::startServer: Failed to set VT_PROCESS mode on" << ttyPath << ":" << strerror(errno);
+                }
+
+                ::close(vtFd);
+            } else {
+                qWarning() << "XOrgUserHelper::startServer: Failed to open" << ttyPath << ":" << strerror(errno);
+            }
+        }
+        // Don't set XORG_RUN_AS_USER_OK=1 - let xorg-wrap handle VT operations
+    } else {
+        serverEnv.insert(QStringLiteral("XORG_RUN_AS_USER_OK"), QStringLiteral("1"));
+    }
 
     // Append xauth and display fd to the command
     auto args = QStringList() << QStringLiteral("-auth") << m_xauth.authPath() << QStringLiteral("-displayfd") << QString::number(pipeFds[1]);
 
     // Append VT from environment
-    args << QStringLiteral("vt%1").arg(serverEnv.value(QStringLiteral("XDG_VTNR")));
+    // Xorg needs to know which VT to open, regardless of init system.
+    QString vtNr = serverEnv.value(QStringLiteral("XDG_VTNR"));
+    if (!vtNr.isEmpty()) {
+        args << QStringLiteral("vt%1").arg(vtNr);
+    }
 
     // Command string
     serverCmd += QLatin1Char(' ') + args.join(QLatin1Char(' '));
@@ -164,6 +255,7 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     if (!startProcess(serverCmd, serverEnv, &m_serverProcess)) {
         qCritical() << "XOrgUserHelper::startServer: startProcess failed, closing pipe";
         ::close(pipeFds[0]);
+        ::close(pipeFds[1]);
         return false;
     }
 
@@ -233,6 +325,26 @@ void XOrgUserHelper::displayFinished()
             displayStopScript->kill();
         }
         displayStopScript->deleteLater();
+    }
+}
+
+void XOrgUserHelper::onSessionPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties)
+{
+    Q_UNUSED(invalidatedProperties);
+    if (interfaceName != QStringLiteral("org.freedesktop.login1.Session")) {
+        return;
+    }
+    auto it = changedProperties.constFind(QStringLiteral("Active"));
+    if (it != changedProperties.constEnd()) {
+        bool active = it.value().toBool();
+        qInfo() << "XOrgUserHelper::onSessionPropertiesChanged: Active changed to" << active;
+        if (active) {
+            // Session is now active, quit the event loop if it's running
+            // The event loop is stored in a member variable during waitForSessionActive()
+            if (m_waitLoop) {
+                m_waitLoop->quit();
+            }
+        }
     }
 }
 

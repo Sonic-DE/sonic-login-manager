@@ -8,11 +8,7 @@ include_directories("${CMAKE_BINARY_DIR}/src/common")
 
 add_executable(plasmalogin-helper)
 
-# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
-# This allows using #ifdef HAVE_SYSTEMD in the source code
-if(SYSTEMD_FOUND)
-    target_compile_definitions(plasmalogin-helper PRIVATE HAVE_SYSTEMD)
-endif()
+
 
 target_sources(plasmalogin-helper PRIVATE
     ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
@@ -33,9 +29,6 @@ target_link_libraries(plasmalogin-helper
                       Qt6::Network
                       Qt6::DBus
                       Qt6::Qml)
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(plasmalogin-helper PkgConfig::LIBSYSTEMD)
-endif()
 
 target_link_libraries(plasmalogin-helper ${PAM_LIBRARIES})
 
@@ -64,9 +57,9 @@ add_executable(plasmalogin-helper-start-x11user HelperStartX11User.cpp xorguserh
                                                 ${CMAKE_SOURCE_DIR}/src/common/ConfigReader.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
+                                                ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
                                                 )
-target_link_libraries(plasmalogin-helper-start-x11user Qt6::Core PkgConfig::LIBXAU)
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(plasmalogin-helper-start-x11user PkgConfig::LIBSYSTEMD)
-endif()
+target_link_libraries(plasmalogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU)
+
+
 install(TARGETS plasmalogin-helper-start-x11user RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")

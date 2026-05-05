@@ -12,11 +12,6 @@ ecm_qt_declare_logging_category(startplasma_SRCS HEADER debug.h IDENTIFIER PLASM
 
 add_executable(startplasma-login-x11 startplasmalogin-x11.cpp startplasma.cpp ${startplasma_SRCS})
 
-# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
-# This allows using #ifdef HAVE_SYSTEMD in the source code
-if(SYSTEMD_FOUND)
-    target_compile_definitions(startplasma-login-x11 PRIVATE HAVE_SYSTEMD)
-endif()
 
 target_link_libraries(startplasma-login-x11 PRIVATE
     Qt::Core
@@ -28,9 +23,6 @@ target_link_libraries(startplasma-login-x11 PRIVATE
     PW::KLookAndFeel
 )
 
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(startplasma-login-x11 PRIVATE PkgConfig::LIBSYSTEMD)
-endif()
 
 kconfig_target_kcfg_file(startplasma-login-x11
     FILE lookandfeelsettings.kcfg

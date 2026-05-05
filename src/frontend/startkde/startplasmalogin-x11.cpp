@@ -4,8 +4,8 @@
     SPDX-License-Identifier: LGPL-2.0-or-later
 */
 
-#include "startplasma.h"
 #include "Constants.h"
+#include "startplasma.h"
 #include <KConfig>
 #include <KConfigGroup>
 #include <QDBusArgument>
@@ -13,24 +13,25 @@
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDebug>
-#include <QProcess>
-#include <QFile>
-#include <QThread>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QProcess>
+#include <QThread>
 
 #include <QCoreApplication>
 #include <qdbusservicewatcher.h>
 #include <signal.h>
 
-#include <pwd.h>
+#include <cstring>
+#include <errno.h>
 #include <grp.h>
+#include <pwd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <errno.h>
-#include <cstring>
 
+#include "InitSystem.h"
 #include "MessageHandler.h"
 
 int main(int argc, char **argv)
@@ -44,10 +45,10 @@ int main(int argc, char **argv)
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);
 
-#ifndef HAVE_SYSTEMD
-    // non-systemd: Fix environment BEFORE setupPlasmaEnvironment() is called
+    // Non-systemd: Fix environment BEFORE setupPlasmaEnvironment() is called
     // The parent process runs as root, so we need to set correct home for greeter
-    {
+    // This is only needed when not running under systemd (which handles environment differently)
+    if (detectInitSystem() != InitSystem::Systemd) {
         // Get the greeter user's home directory for proper environment
         // Some setups may have an empty pw_dir for system users.
         // In that case, fall back to STATE_DIR.
@@ -106,7 +107,6 @@ int main(int argc, char **argv)
             qputenv("XDG_RUNTIME_DIR", xdgRuntimeDir.toLocal8Bit());
         }
     }
-#endif
 
     // Query whether org.freedesktop.locale1 is available. If it is, try to
     // set XKB_DEFAULT_{MODEL,LAYOUT,VARIANT,OPTIONS} accordingly.
@@ -149,9 +149,9 @@ int main(int argc, char **argv)
         return 1;
     };
 
-#ifdef HAVE_SYSTEMD
-    // Linux: use systemd to start the Plasma session components
-    {
+    // Start greeter session components
+    if (detectInitSystem() == InitSystem::Systemd) {
+        // systemd: use DBus to start the Plasma session components
         auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
                                                   QStringLiteral("/org/freedesktop/systemd1"),
                                                   QStringLiteral("org.freedesktop.systemd1.Manager"),
@@ -161,10 +161,9 @@ int main(int argc, char **argv)
         if (!reply.isValid()) {
             qWarning() << "Could not start systemd managed Plasma session:" << reply.error().name() << reply.error().message();
         }
-    }
-#else
-    // No systemd, manually start kwin and greeter
-    {
+    } else {
+        // Generic non-systemd: spawn greeter components directly via QProcess
+        // This path is used by OpenRC, sysvinit, dinit, runit, s6, etc.
         // Reuse the already-corrected environment from the earlier env fix.
         const QString greeterHome = QString::fromLocal8Bit(qgetenv("HOME"));
         const QString xdgConfigHome = QString::fromLocal8Bit(qgetenv("XDG_CONFIG_HOME"));
@@ -191,7 +190,7 @@ int main(int argc, char **argv)
         if (!socketPath.isEmpty()) {
             greeterEnv.insert("SONICLOGIN_SOCKET", socketPath);
         } else {
-            qWarning() << "BSD mode: SONICLOGIN_SOCKET is empty!";
+            qWarning() << "NON-SYSTEMD: SONICLOGIN_SOCKET is empty!";
         }
 
         // Start KWin X11 first (required for the greeter)
@@ -204,8 +203,7 @@ int main(int argc, char **argv)
             qWarning() << "NON-SYSTEMD: Failed to start " << kwinPath << "with error:" << kwinProcess->errorString();
         }
         if (kwinProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: kwin_x11 not running after start, state=" << kwinProcess->state()
-                       << "error=" << kwinProcess->errorString();
+            qWarning() << "NON-SYSTEMD: kwin_x11 not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
         }
 
         // Start the greeter
@@ -218,8 +216,7 @@ int main(int argc, char **argv)
             qWarning() << "NON-SYSTEMD: Failed to start" << greeterPath << "with error:" << greeterProcess->errorString();
         }
         if (greeterProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: greeter not running after start, state=" << greeterProcess->state()
-                       << "error=" << greeterProcess->errorString();
+            qWarning() << "NON-SYSTEMD: greeter not running after start, state=" << greeterProcess->state() << "error=" << greeterProcess->errorString();
         }
 
         // Start the wallpaper service
@@ -232,20 +229,18 @@ int main(int argc, char **argv)
             qWarning() << "NON-SYSTEMD: Failed to start" << wallpaperPath << "with error:" << wallpaperProcess->errorString();
         }
         if (wallpaperProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: wallpaper not running after start, state=" << wallpaperProcess->state()
-                       << "error=" << wallpaperProcess->errorString();
+            qWarning() << "NON-SYSTEMD: wallpaper not running after start, state=" << wallpaperProcess->state() << "error=" << wallpaperProcess->errorString();
         }
     }
-#endif
 
     // stopped by the sigterm handler
     app.exec();
 
     qDebug() << "stopping";
 
-#ifdef HAVE_SYSTEMD
-    // Linux: use systemd to stop the Plasma session components
-    {
+    // Stop greeter session components
+    if (detectInitSystem() == InitSystem::Systemd) {
+        // systemd: use DBus to stop the Plasma session components
         auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
                                                   QStringLiteral("/org/freedesktop/systemd1"),
                                                   QStringLiteral("org.freedesktop.systemd1.Manager"),
@@ -255,24 +250,25 @@ int main(int argc, char **argv)
         if (!reply.isValid()) {
             qWarning() << "Could not stop systemd managed Plasma session:" << reply.error().name() << reply.error().message();
         }
-    }
 
-    qDebug() << "final cleanup";
+        qDebug() << "final cleanup";
 
-    // systemd returns when the call is made, but not all jobs are torn down
-    // this waits until kwin is definitely gone too, which helps logind
-    {
-        auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
-                                                  QStringLiteral("/org/freedesktop/systemd1"),
-                                                  QStringLiteral("org.freedesktop.systemd1.Manager"),
-                                                  QStringLiteral("StopUnit"));
-        msg << QStringLiteral("plasma-login-kwin_x11.service") << QStringLiteral("fail");
-        QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
-        if (!reply.isValid()) {
-            qWarning() << "Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();
+        // systemd returns when the call is made, but not all jobs are torn down
+        // this waits until kwin is definitely gone too, which helps logind
+        {
+            auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
+                                                      QStringLiteral("/org/freedesktop/systemd1"),
+                                                      QStringLiteral("org.freedesktop.systemd1.Manager"),
+                                                      QStringLiteral("StopUnit"));
+            msg << QStringLiteral("plasma-login-kwin_x11.service") << QStringLiteral("fail");
+            QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
+            if (!reply.isValid()) {
+                qWarning() << "Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();
+            }
         }
     }
-#endif
+    // Non-systemd: child processes are children of startplasma-login-x11.
+    // They receive SIGTERM when this process exits via sigtermHandler.
 
     return 0;
 }

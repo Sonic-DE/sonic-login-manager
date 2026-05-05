@@ -4,7 +4,6 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
-configure_file(config.h.in config.h IMMEDIATE @ONLY)
 set(DAEMON_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SafeDataStream.cpp
@@ -57,14 +56,5 @@ target_link_libraries(plasmalogin
                       KF6::ConfigCore
                       KF6::ConfigGui)
 
-# Only define HAVE_SYSTEMD when systemd is found - on non-systemd systems, don't define it at all
-# This allows using #ifdef HAVE_SYSTEMD in the source code
-if(LIBSYSTEMD_FOUND)
-    target_compile_definitions(plasmalogin PRIVATE HAVE_SYSTEMD)
-endif()
-
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(plasmalogin PkgConfig::LIBSYSTEMD)
-endif()
 
 install(TARGETS plasmalogin DESTINATION "${CMAKE_INSTALL_BINDIR}")

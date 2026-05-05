@@ -15,17 +15,16 @@
 #include "SignalHandler.h"
 #include "xorguserhelper.h"
 
-#include <QFileInfo>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QFileInfo>
 #include <QProcess>
 #include <QTextStream>
 #include <signal.h>
 #include <unistd.h>
-
-void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    PLASMALOGIN::messageHandler(type, context, QStringLiteral("X11UserHelper: "), msg);
+    PLASMALOGIN::messageHandler(type, QStringLiteral("X11UserHelper: "), msg);
 }
 
 int main(int argc, char **argv)
@@ -37,11 +36,9 @@ int main(int argc, char **argv)
         pid_t ppid = getppid();
         QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
         qWarning() << "X11UserHelper: Received SIGTERM - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName
-                   << "arguments=" << QCoreApplication::arguments()
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                    << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
-                   << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>"))
-                   << "uid=" << ::getuid();
+                   << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();
         QCoreApplication::instance()->exit(-1);
     });
     s.addCustomSignal(SIGQUIT);
@@ -50,19 +47,18 @@ int main(int argc, char **argv)
             pid_t ppid = getppid();
             QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
             qWarning() << "X11UserHelper: Received SIGQUIT (signal 3) - diagnostic information:"
-                       << "parentProcess(PPID)=" << ppid << "=" << parentName
-                       << "arguments=" << QCoreApplication::arguments()
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                        << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
-                       << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>"))
-                       << "uid=" << ::getuid();
+                       << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();
             QCoreApplication::instance()->exit(-1);
         }
     });
-    
+
     if (::getuid() == 0) {
         qCritical() << "HelperStartX11User: ERROR - cannot run as root!";
         return 33;
     }
+
     if (argc != 3) {
         qCritical() << "HelperStartX11User: ERROR - wrong number of arguments:" << argc << "(expected 3)";
         QTextStream(stderr) << "Wrong number of arguments\n";

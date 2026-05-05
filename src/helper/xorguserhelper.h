@@ -17,6 +17,7 @@
 #ifndef XORGUSERHELPER_H
 #define XORGUSERHELPER_H
 
+#include <QEventLoop>
 #include <QProcess>
 
 #include "XAuth.h"
@@ -42,10 +43,14 @@ public:
 Q_SIGNALS:
     void displayChanged(const QString &display);
 
+private Q_SLOTS:
+    void onSessionPropertiesChanged(const QString &interfaceName, const QVariantMap &changedProperties, const QStringList &invalidatedProperties);
+
 private:
     QString m_display = QStringLiteral(":0");
     XAuth m_xauth;
     QProcess *m_serverProcess = nullptr;
+    QEventLoop *m_waitLoop = nullptr;
 
     bool startProcess(const QString &cmd, const QProcessEnvironment &env, QProcess **p = nullptr);
     bool startServer(const QString &cmd);
