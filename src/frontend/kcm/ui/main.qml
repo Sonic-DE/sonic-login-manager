@@ -335,7 +335,7 @@ KCM.SimpleKCM {
                     implicitWidth: Kirigami.Units.gridUnit * 12
                     model: kcm.sessionModel
                     textRole: "display"
-                    valueRole: "path"
+                    valueRole: "fileName"
                     onActivated: kcm.settings.preselectedSession = currentValue
 
                     Component.onCompleted: updateCurrentIndex()
