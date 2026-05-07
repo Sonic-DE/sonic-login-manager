@@ -47,7 +47,7 @@ SessionManagementScreen {
     }
 
     function focusFirstVisibleFormControl() {
-        const nextControl = (userNameInput.visible
+        const nextControl = (userNameInput.visible && !userNameInput.text
             ? userNameInput
             : (passwordBox.visible
                 ? passwordBox
@@ -173,8 +173,9 @@ SessionManagementScreen {
                 root.userList.currentIndex = SonicLogin.GreeterState.userListIndex;
                 passwordBox.text = SonicLogin.GreeterState.userListPassword;
             } else {
-                userNameInput.text = SonicLogin.GreeterState.userPromptUsername;
+                userNameInput.text = SonicLogin.StateConfig.lastLoggedInUser;
                 passwordBox.text = SonicLogin.GreeterState.userPromptPassword;
+                focusFirstVisibleFormControl();
             }
 
             passwordBox.showPassword = SonicLogin.GreeterState.showPassword;
