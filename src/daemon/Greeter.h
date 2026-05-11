@@ -26,8 +26,6 @@ class QProcess;
 namespace PLASMALOGIN
 {
 class Display;
-class ThemeMetadata;
-class ThemeConfig;
 
 class Greeter : public QObject
 {
@@ -64,9 +62,6 @@ private:
 
     Display *const m_display{nullptr};
     QString m_socket;
-    QString m_themePath;
-    ThemeMetadata *m_metadata{nullptr};
-    ThemeConfig *m_themeConfig{nullptr};
 
     Auth *m_auth{nullptr};
     QProcess *m_process{nullptr};
