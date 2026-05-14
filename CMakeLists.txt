@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(PROJECT_VERSION "6.6.80")
+set(PROJECT_VERSION "6.6.90")
 
 project(SONICLOGIN VERSION ${PROJECT_VERSION})
 
