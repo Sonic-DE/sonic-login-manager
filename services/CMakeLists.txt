@@ -4,7 +4,11 @@ option(INSTALL_SYSTEMD "Install systemd unit files" OFF)
 option(INSTALL_OPENRC "Install OpenRC init script" OFF)
 option(INSTALL_BSD_RC "Install BSD rc.d init script" OFF)
 option(INSTALL_SYSVINIT_RC "Install generic sysvinit/rc.d init script" OFF)
+option(INSTALL_RUNIT "Install runit service files" OFF)
+option(INSTALL_DINIT "Install dinit service files" OFF)
+option(INSTALL_S6 "Install s6 service files" OFF)
 
+# systemd service - install if detected or if explicitly requested via -DINSTALL_SYSTEMD=ON
 if(SYSTEMD_FOUND OR INSTALL_SYSTEMD)
     configure_file(plasmalogin.service.in plasmalogin.service)
     install(
@@ -20,13 +24,88 @@ if(SYSTEMD_FOUND OR INSTALL_SYSTEMD)
     )
 endif()
 
-# OpenRC script - install only if explicitly requested via -DINSTALL_OPENRC=ON
-if(INSTALL_OPENRC)
+# OpenRC script - install if detected or if explicitly requested via -DINSTALL_OPENRC=ON
+if(OPENRC_FOUND OR INSTALL_OPENRC)
     configure_file(plasmalogin.openrc plasmalogin.openrc @ONLY)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.openrc"
         DESTINATION "/etc/init.d"
         RENAME plasmalogin
+    )
+endif()
+
+# runit service - install if detected or if explicitly requested via -DINSTALL_RUNIT=ON
+if(RUNIT_FOUND OR INSTALL_RUNIT)
+    configure_file(plasmalogin.runit plasmalogin.runit @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.runit"
+        DESTINATION "etc/sv/plasmalogin"
+        RENAME run
+    )
+endif()
+
+# dinit service - install if detected or if explicitly requested via -DINSTALL_DINIT=ON
+if(DINIT_FOUND OR INSTALL_DINIT)
+    configure_file(plasmalogin.dinit plasmalogin.dinit @ONLY)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.dinit"
+        DESTINATION "etc/dinit.d"
+        RENAME plasmalogin
+    )
+
+    configure_file(plasmalogin-setup.dinit plasmalogin-setup.dinit @ONLY)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-setup.dinit"
+        DESTINATION "etc/dinit.d"
+        RENAME plasmalogin-setup
+    )
+
+    configure_file(plasmalogin.dinit-setup plasmalogin.dinit-setup @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.dinit-setup"
+        DESTINATION "${KDE_INSTALL_LIBEXECDIR}"
+        RENAME plasmalogin-setup
+    )
+endif()
+
+# s6 service - install if detected or if explicitly requested via -DINSTALL_S6=ON
+if(S6_FOUND OR INSTALL_S6)
+    configure_file(plasmalogin.s6-run plasmalogin.s6-run @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-run"
+        DESTINATION "etc/s6/sv/plasmalogin"
+        RENAME run
+    )
+
+    configure_file(plasmalogin.s6-setup plasmalogin.s6-setup @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-setup"
+        DESTINATION "etc/s6/sv/plasmalogin"
+        RENAME setup
+    )
+
+    configure_file(plasmalogin.s6-finish plasmalogin.s6-finish @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-finish"
+        DESTINATION "etc/s6/sv/plasmalogin"
+        RENAME finish
+    )
+endif()
+
+# sysvinit script - install if detected or if explicitly requested via -DINSTALL_SYSVINIT_RC=ON
+if(SYSVINIT_FOUND OR INSTALL_SYSVINIT_RC)
+    configure_file(plasmalogin.sh.in plasmalogin.sh)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh"
+        DESTINATION "etc/init.d"
+        RENAME plasmalogin
+    )
+
+    configure_file(plasmalogin-tmpfiles.conf.in plasmalogin-tmpfiles.conf)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-tmpfiles.conf"
+        DESTINATION "lib/tmpfiles.d"
+        RENAME plasmalogin.conf
     )
 endif()
 
@@ -47,9 +126,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFree
     )
 endif()
 
-# Generic Linux rc.d script (sysvinit, etc.) - install if detected or if explicitly requested via -DINSTALL_SYSVINIT_RC=ON
+# Generic fallback - install only if no other init system is detected and not explicitly disabled
 set(IS_BSD_SYSTEM CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
-if((NOT SYSTEMD_FOUND AND NOT IS_BSD_SYSTEM) OR INSTALL_SYSVINIT_RC)
+if(NOT SYSTEMD_FOUND AND NOT IS_BSD_SYSTEM AND NOT OPENRC_FOUND AND NOT RUNIT_FOUND AND NOT DINIT_FOUND AND NOT S6_FOUND AND NOT SYSVINIT_FOUND AND NOT INSTALL_SYSTEMD AND NOT INSTALL_OPENRC AND NOT INSTALL_RUNIT AND NOT INSTALL_DINIT AND NOT INSTALL_S6 AND NOT INSTALL_SYSVINIT_RC AND NOT INSTALL_BSD_RC)
     configure_file(plasmalogin.sh.in plasmalogin.sh)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh"

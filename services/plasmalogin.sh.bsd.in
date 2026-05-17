@@ -23,7 +23,7 @@ plasmalogin_prestart() {
     # 1. Ensure the dedicated group and user exist
     if ! pw usershow plasmalogin >/dev/null 2>&1; then
         echo "${name}: searching for an available system UID..."
-        
+
         # Loop through the system range (100-999) to find a free UID
         local free_id=""
         for id in $(jot 900 100 999); do
@@ -63,7 +63,7 @@ plasmalogin_prestart() {
     # 3. Setup logging
     /usr/bin/touch /var/log/plasmalogin.log
     chown root:plasmalogin /var/log/plasmalogin.log
-    chmod 660 /var/log/plasmalogin.log
+    chmod 640 /var/log/plasmalogin.log
 }
 
 start_precmd="plasmalogin_prestart"

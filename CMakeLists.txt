@@ -70,6 +70,52 @@ if(SYSTEMD_FOUND)
     endif()
 endif()
 
+# Auto-detect init systems for automatic installation
+# OpenRC detection
+find_program(OPENRC_OPENRC_EXECUTABLE NAMES openrc)
+find_program(OPENRC_RC_EXECUTABLE NAMES rc)
+if(OPENRC_OPENRC_EXECUTABLE OR OPENRC_RC_EXECUTABLE)
+    set(OPENRC_FOUND TRUE)
+else()
+    set(OPENRC_FOUND FALSE)
+endif()
+
+# runit detection
+find_program(RUNIT_RUNSVDIR_EXECUTABLE NAMES runsvdir)
+if(RUNIT_RUNSVDIR_EXECUTABLE)
+    set(RUNIT_FOUND TRUE)
+else()
+    set(RUNIT_FOUND FALSE)
+endif()
+
+# dinit detection
+find_program(DINIT_DAEMON_EXECUTABLE NAMES dinit)
+if(DINIT_DAEMON_EXECUTABLE)
+    set(DINIT_FOUND TRUE)
+else()
+    set(DINIT_FOUND FALSE)
+endif()
+
+# s6 detection
+find_program(S6_SVSCAN_EXECUTABLE NAMES s6-svscan)
+if(S6_SVSCAN_EXECUTABLE)
+    set(S6_FOUND TRUE)
+else()
+    set(S6_FOUND FALSE)
+endif()
+
+# sysvinit detection - check for /etc/inittab and telinit command
+if(EXISTS "/etc/inittab")
+    find_program(SYSVINIT_TELINIT_EXECUTABLE NAMES telinit)
+    if(SYSVINIT_TELINIT_EXECUTABLE)
+        set(SYSVINIT_FOUND TRUE)
+    else()
+        set(SYSVINIT_FOUND FALSE)
+    endif()
+else()
+    set(SYSVINIT_FOUND FALSE)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
     set(RUNTIME_DIR_DEFAULT "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/run/plasmalogin")
 else()
