@@ -100,11 +100,27 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     auto *process = new QProcess(this);
     process->setProcessEnvironment(env);
     process->setInputChannelMode(QProcess::ForwardedInputChannel);
-    connect(process, &QProcess::readyReadStandardError, this, [process] {
-        qWarning() << process->readAllStandardError();
-    });
-    connect(process, &QProcess::readyReadStandardOutput, this, [process] {
-        qInfo() << process->readAllStandardOutput();
+
+    // Helper lambda to filter and log Xorg output line by line
+    // Only log errors (EE), warnings (WW), and key events - skip verbose informational output
+    auto filterAndLogOutput = [process, &program](QProcess::ProcessChannel channel) {
+        QByteArray output = channel == QProcess::StandardError ? process->readAllStandardError() : process->readAllStandardOutput();
+        QList<QByteArray> lines = output.split('\n');
+        for (const QByteArray &line : lines) {
+            if (line.isEmpty()) {
+                continue;
+            }
+            // Only log lines that contain relevant information:
+            // (EE) errors, (WW) warnings, (!!) notices, or lines about module loading failures
+            if (line.contains("(EE)") || line.contains("(WW)") || line.contains("(!!)") || line.contains("Failed to load") || line.contains("exited")
+                || line.contains("error") || line.contains("Error")) {
+                qWarning("[%s] %s", qPrintable(program), line.constData());
+            }
+        }
+    };
+
+    connect(process, &QProcess::readyReadStandardError, this, [filterAndLogOutput] {
+        filterAndLogOutput(QProcess::StandardError);
     });
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [program](int exitCode, QProcess::ExitStatus exitStatus) {
         if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
