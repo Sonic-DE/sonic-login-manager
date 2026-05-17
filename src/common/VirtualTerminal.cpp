@@ -111,6 +111,7 @@ static bool handleVtSwitches(int fd)
     return ok;
 }
 
+#ifndef Q_OS_FREEBSD
 static void fixVtMode(int fd, bool vt_auto)
 {
     vt_mode getmodeReply{};
@@ -161,6 +162,7 @@ out:
         qDebug() << "VT mode didn't need to be fixed";
     }
 }
+#endif // Q_OS_FREEBSD
 
 int currentVt()
 {
