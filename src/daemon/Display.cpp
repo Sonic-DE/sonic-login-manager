@@ -33,18 +33,11 @@
 #include <QLocalSocket>
 #include <QTimer>
 
+#include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
-#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
-
-#include <fcntl.h>
-#include <sys/ioctl.h>
-
-#include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusReply>
 
 #include <KConfigGroup>
 #include <KDesktopFile>
@@ -167,68 +160,6 @@ Display::Display(Seat *parent)
     }
     qDebug("Using VT %d", m_terminalId);
 
-    // Elogind-specific workaround for VT access.
-    //
-    // Xorg's xf86OpenConsole() calls VT_ACTIVATE which requires either CAP_SYS_ADMIN
-    // or the VT to be owned by the user. Under systemd-logind, this is handled properly
-    // for all session types. Under elogind, session_chown_tty() only runs for SESSION_TTY
-    // type sessions, not for SESSION_X11 sessions (like the greeter).
-    //
-    // Since Xorg calls xf86OpenConsole() before elogind's TakeControl takes effect,
-    // we need to chown the VT here (as root) to ensure Xorg can access it.
-    //
-    // Detect elogind by executing loginctl --version and checking the output.
-    // elogind outputs "elogind 255.x" while systemd-logind outputs "systemd 255".
-    if (m_terminalId > 0 && Logind::isAvailable()) {
-        // Check if we're using elogind (not systemd-logind)
-        bool isElogind = false;
-
-        QProcess loginctlProcess;
-        loginctlProcess.start(QStringLiteral("loginctl"), {QStringLiteral("--version")});
-        if (loginctlProcess.waitForFinished(2000)) {
-            QString output = QString::fromLocal8Bit(loginctlProcess.readAllStandardOutput());
-            qInfo() << "Display::Display: loginctl --version output:" << output.trimmed();
-            if (output.contains(QLatin1String("elogind"), Qt::CaseInsensitive)) {
-                isElogind = true;
-                qInfo() << "Display::Display: Detected elogind via loginctl --version";
-            }
-        } else {
-            qWarning() << "Display::Display: Failed to execute loginctl --version";
-        }
-
-        if (isElogind) {
-            QString ttyPath = getTtyDevicePath(m_terminalId);
-            struct passwd *pw = getpwnam("plasmalogin");
-            if (pw) {
-                // Log VT permissions before chown
-                struct stat stBefore;
-                if (stat(qPrintable(ttyPath), &stBefore) == 0) {
-                    qInfo() << "Display::Display: VT permissions BEFORE chown:" << ttyPath << "uid=" << stBefore.st_uid << "gid=" << stBefore.st_gid
-                            << "mode=" << QString::number(stBefore.st_mode, 8);
-                }
-
-                if (chown(qPrintable(ttyPath), pw->pw_uid, -1) == 0) {
-                    qInfo() << "Display::Display: Chowned" << ttyPath << "to plasmalogin user (uid=" << pw->pw_uid << ") for elogind";
-                    // Verify the chown took effect
-                    struct stat stAfter;
-                    if (stat(qPrintable(ttyPath), &stAfter) == 0) {
-                        qInfo() << "Display::Display: VT permissions AFTER chown:" << ttyPath << "uid=" << stAfter.st_uid << "gid=" << stAfter.st_gid
-                                << "mode=" << QString::number(stAfter.st_mode, 8);
-                        if (stAfter.st_uid != (uid_t)pw->pw_uid) {
-                            qWarning() << "Display::Display: WARNING - chown did not take effect! Expected uid=" << pw->pw_uid << "but got" << stAfter.st_uid;
-                        }
-                    } else {
-                        qWarning() << "Display::Display: Failed to stat" << ttyPath << "after chown:" << strerror(errno);
-                    }
-                } else {
-                    qWarning() << "Display::Display: Failed to chown" << ttyPath << "to plasmalogin:" << strerror(errno);
-                }
-            } else {
-                qWarning() << "Display::Display: Could not find plasmalogin user for chown";
-            }
-        }
-    }
-
     // respond to authentication requests
     m_auth->setVerbose(true);
     connect(m_auth, &Auth::requestChanged, this, &Display::slotRequestChanged);
@@ -338,23 +269,6 @@ void Display::startSocketServerAndGreeter()
 
     // Set up display server for the greeter
     m_greeter->setDisplayServerCommand(XorgUserDisplayServer::command(this));
-    qDebug() << "Display::startSocketServerAndGreeter: set X11 display server for greeter:" << XorgUserDisplayServer::command(this);
-
-    // Log VT permissions just before starting the greeter's X server
-    if (m_terminalId > 0) {
-        QString ttyPath = getTtyDevicePath(m_terminalId);
-        struct stat st;
-        if (stat(qPrintable(ttyPath), &st) == 0) {
-            struct passwd *pw = getpwuid(st.st_uid);
-            struct group *gr = getgrgid(st.st_gid);
-            qInfo() << "Display::startSocketServerAndGreeter: VT permissions BEFORE X11 start:" << ttyPath << "uid=" << st.st_uid << "("
-                    << (pw ? pw->pw_name : "unknown") << ")"
-                    << "gid=" << st.st_gid << "(" << (gr ? gr->gr_name : "unknown") << ")"
-                    << "mode=" << QString::number(st.st_mode, 8);
-        } else {
-            qWarning() << "Display::startSocketServerAndGreeter: Failed to stat" << ttyPath << ":" << strerror(errno);
-        }
-    }
 
     // start greeter
     m_greeter->start();
