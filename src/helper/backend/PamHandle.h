@@ -171,12 +171,18 @@ public:
     /**
      * Returns the last PAM result code
      */
-    int result() const { return m_result; }
+    int result() const
+    {
+        return m_result;
+    }
 
     /**
      * Returns the PAM handle (for diagnostic purposes)
      */
-    pam_handle_t* handle() const { return m_handle; }
+    pam_handle_t *handle() const
+    {
+        return m_handle;
+    }
 
 private:
     /**
@@ -194,6 +200,7 @@ private:
     pam_handle_t *m_handle{nullptr}; ///< the actual PAM handle
     int m_result{0}; ///< PAM result
     bool m_open{false}; ///< whether the session is open
+    QString m_specificError; ///< specific error message for non-PAM errors (e.g., missing config file)
 };
 }
 

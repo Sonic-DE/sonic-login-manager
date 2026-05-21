@@ -154,12 +154,16 @@ int PamHandle::converse(int n, const struct pam_message **msg, struct pam_respon
 
 bool PamHandle::start(const QString &service, const QString &user)
 {
-    const QString pamEtcPath = QStringLiteral("/etc/pam.d/") + service;
-    const QString pamLocalEtcPath = QStringLiteral("/usr/local/etc/pam.d/") + service;
-    const bool hasEtc = QFileInfo::exists(pamEtcPath);
-    const bool hasLocalEtc = QFileInfo::exists(pamLocalEtcPath);
+    const QStringList pamSearchPaths = {QStringLiteral("/etc/pam.d/"), QStringLiteral("/usr/local/etc/pam.d/"), QStringLiteral("/usr/lib/pam.d/")};
 
-    const QString selectedPamFile = hasEtc ? pamEtcPath : (hasLocalEtc ? pamLocalEtcPath : QString());
+    QString selectedPamFile;
+    for (const QString &path : pamSearchPaths) {
+        const QString pamPath = path + service;
+        if (QFileInfo::exists(pamPath)) {
+            selectedPamFile = pamPath;
+            break;
+        }
+    }
 
     if (user.isEmpty()) {
         m_result = pam_start(qPrintable(service), NULL, &m_conv, &m_handle);
@@ -167,19 +171,14 @@ bool PamHandle::start(const QString &service, const QString &user)
         m_result = pam_start(qPrintable(service), qPrintable(user), &m_conv, &m_handle);
     }
     if (m_result != PAM_SUCCESS) {
-        qCritical() << "[PAM] start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
-        qCritical() << "[PAM] start FAILED diagnostics: errno=" << errno << "(" << strerror(errno) << ")";
         if (!selectedPamFile.isEmpty()) {
             QFileInfo fi(selectedPamFile);
-            qCritical() << "[PAM] start FAILED service file metadata:" << selectedPamFile
-                        << "exists=" << fi.exists()
-                        << "readable=" << fi.isReadable()
-                        << "owner=" << fi.owner()
-                        << "group=" << fi.group()
-                        << "permissions=" << fi.permissions();
+            qCritical() << "[PAM] start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
+            qCritical() << "[PAM] start FAILED diagnostics: errno:" << errno << QStringLiteral("(%1)").arg(strerror(errno));
+        } else {
+            m_specificError = QStringLiteral("PAM configuration file not found.");
+            qCritical() << "[PAM] " << m_specificError;
         }
-        qCritical() << "[PAM] Check that" << QStringLiteral("/etc/pam.d/%1").arg(service) << "or" << QStringLiteral("/usr/local/etc/pam.d/%1").arg(service)
-                    << "exists and contains valid FreeBSD PAM syntax/modules";
         return false;
     } else {
         qDebug() << "[PAM] Starting...";
@@ -205,6 +204,9 @@ bool PamHandle::end(int flags)
 
 QString PamHandle::errorString()
 {
+    if (!m_specificError.isEmpty()) {
+        return m_specificError;
+    }
     return QString::fromLocal8Bit(pam_strerror(m_handle, m_result));
 }
 
