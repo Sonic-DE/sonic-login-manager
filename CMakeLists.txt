@@ -145,7 +145,7 @@ set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"   
 set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"             CACHE PATH      "Path of the plasmalogin config file")
 set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"           CACHE PATH      "Path of the plasmalogin config directory")
 set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d"    CACHE PATH      "Path of the system plasmalogin config directory")
-set(LOG_FILE                    "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/plasmalogin.log"       CACHE PATH      "Path of the plasmalogin log file")
+set(LOG_FILE                    "/var/log/sonic/loginmanager.log"                               CACHE PATH      "Path of the plasmalogin log file")
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the plasmalogin config file")
 set(PLASMALOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
 

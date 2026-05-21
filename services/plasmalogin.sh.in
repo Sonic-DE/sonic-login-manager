@@ -22,10 +22,15 @@ export PLASMALOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/startplasma-login-x1
 
 # Create required directories and log file before starting
 plasmalogin_start() {
-    mkdir -p /var/log
-    touch /var/log/plasmalogin.log
-    chown root:adm /var/log/plasmalogin.log
-    chmod 640 /var/log/plasmalogin.log
+    mkdir -p /var/log/sonic
+    chown root:root /var/log/sonic
+    chmod 777 /var/log/sonic
+    # Rotate log file
+    [ -f /var/log/sonic/loginmanager.log.old ] && rm -f /var/log/sonic/loginmanager.log.old
+    [ -f /var/log/sonic/loginmanager.log ] && mv /var/log/sonic/loginmanager.log /var/log/sonic/loginmanager.log.old
+    touch /var/log/sonic/loginmanager.log
+    chown plasmalogin:plasmalogin /var/log/sonic/loginmanager.log
+    chmod 666 /var/log/sonic/loginmanager.log
     /bin/mkdir -p /run/plasmalogin
     chown root:plasmalogin /run/plasmalogin
     chmod 711 /run/plasmalogin

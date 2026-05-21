@@ -61,13 +61,23 @@ setup() {
     fi
 
     # Create log file with correct ownership so plasmalogin helper can write to it
-    # The parent /var/log directory already exists
+    # The parent /var/log/sonic directory must be created
+    # Rotate log file
+    if [ -f "${PLASMALOGIN_LOG_FILE}.old" ]; then
+        rm -f "${PLASMALOGIN_LOG_FILE}.old"
+    fi
+    if [ -f "${PLASMALOGIN_LOG_FILE}" ]; then
+        mv "${PLASMALOGIN_LOG_FILE}" "${PLASMALOGIN_LOG_FILE}.old"
+    fi
     if [ ! -f "${PLASMALOGIN_LOG_FILE}" ]; then
+        mkdir -p "$(dirname "${PLASMALOGIN_LOG_FILE}")"
         touch "${PLASMALOGIN_LOG_FILE}"
     fi
 
+    chown root:root "$(dirname "${PLASMALOGIN_LOG_FILE}")"
+    chmod 777 "$(dirname "${PLASMALOGIN_LOG_FILE}")"
     chown plasmalogin:plasmalogin "${PLASMALOGIN_LOG_FILE}"
-    chmod 0640 "${PLASMALOGIN_LOG_FILE}"
+    chmod 0666 "${PLASMALOGIN_LOG_FILE}"
 
     # Clean up old auth sockets
     rm -f /tmp/plasmalogin-auth*

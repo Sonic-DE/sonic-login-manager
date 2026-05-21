@@ -61,9 +61,15 @@ plasmalogin_prestart() {
     chmod 700 "@STATE_DIR@"
 
     # 3. Setup logging
-    /usr/bin/touch /var/log/plasmalogin.log
-    chown root:plasmalogin /var/log/plasmalogin.log
-    chmod 640 /var/log/plasmalogin.log
+    /bin/mkdir -p /var/log/sonic
+    chmod 777 /var/log/sonic
+    chown root:root /var/log/sonic
+    # Rotate log file
+    [ -f /var/log/sonic/loginmanager.log.old ] && rm -f /var/log/sonic/loginmanager.log.old
+    [ -f /var/log/sonic/loginmanager.log ] && mv /var/log/sonic/loginmanager.log /var/log/sonic/loginmanager.log.old
+    /usr/bin/touch /var/log/sonic/loginmanager.log
+    chown plasmalogin:plasmalogin /var/log/sonic/loginmanager.log
+    chmod 666 /var/log/sonic/loginmanager.log
 }
 
 start_precmd="plasmalogin_prestart"
