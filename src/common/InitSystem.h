@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QString>
+#include <QTextStream>
 
 // Enum for possible init systems detected at runtime.
 enum class InitSystem {
@@ -158,6 +159,35 @@ inline InitSystem detectInitSystem()
     qWarning() << "detectInitSystem: Returning Unknown";
     return InitSystem::Unknown;
 #endif
+}
+
+// Check if systemd-logind is handling login1, vs elogind
+// Both use the same org.freedesktop.login1 bus name, but the service file differs
+inline bool isSystemdLogind()
+{
+    // systemd-logind uses /lib/systemd/systemd-logind
+    // elogind uses /lib/elogind/elogind
+    QString serviceFile = QStringLiteral("/usr/share/dbus-1/system-services/org.freedesktop.login1.service");
+
+    // Read the service file to determine which backend is in use
+    QFile file(serviceFile);
+    if (file.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&file);
+        while (!stream.atEnd()) {
+            QString line = stream.readLine().trimmed();
+            if (line.startsWith(QStringLiteral("Exec="))) {
+                QString execPath = line.mid(5).trimmed();
+                if (execPath.contains(QStringLiteral("/elogind/"))) {
+                    return false; // elogind - use sharevts
+                }
+                return true; // systemd-logind or other - don't use sharevts
+            }
+        }
+        file.close();
+    }
+
+    // Fallback: assume systemd-logind (most common)
+    return true;
 }
 
 // Get the initial VT based on the detected init system.

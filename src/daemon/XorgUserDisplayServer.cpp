@@ -17,6 +17,8 @@
 #include "XorgUserDisplayServer.h"
 #include "Configuration.h"
 #include "Display.h"
+#include "InitSystem.h"
+#include "LogindDBusTypes.h"
 #include "Seat.h"
 
 namespace PLASMALOGIN
@@ -27,7 +29,17 @@ QString XorgUserDisplayServer::command(Display *display)
     QStringList args;
     args << mainConfig.X11.ServerPath.get() << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")
-         << QStringLiteral("-novtswitch") << QStringLiteral("-sharevts") << QStringLiteral("-verbose") << QStringLiteral("3");
+         << QStringLiteral("-novtswitch");
+
+    // Only add -sharevts when using elogind (not systemd-logind)
+    // With systemd-logind, VT management is handled by logind and -sharevts
+    // can cause permission denied errors on modesetting
+    // elogind requires -sharevts because it doesn't handle VT sharing the same way
+    if (Logind::isAvailable() && !isSystemdLogind()) {
+        args << QStringLiteral("-sharevts");
+    }
+
+    args << QStringLiteral("-verbose") << QStringLiteral("3");
 
     return args.join(QLatin1Char(' '));
 }
