@@ -20,6 +20,7 @@
 #include "LogindDBusTypes.h"
 #include "PowerManager.h"
 #include "SeatManager.h"
+#include "SelfProvisioner.h"
 #include "SignalHandler.h"
 
 #include "MessageHandler.h"
@@ -30,14 +31,14 @@
 #include <QMetaObject>
 #include <QTimer>
 
-#include <iostream>
-#include <cstdlib>
-#include <csignal>
-#include <QFile>
-#include <QTextStream>
 #include <QDir>
+#include <QFile>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QTextStream>
+#include <csignal>
+#include <cstdlib>
+#include <iostream>
 
 namespace PLASMALOGIN
 {
@@ -96,26 +97,16 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGINT received - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName
-                   << "hostName=" << hostName()
-                   << "testing=" << m_testing
-                   << "first=" << first
-                   << "lastSessionId=" << m_lastSessionId
-                   << "displayManager=" << (void *)m_displayManager
-                   << "seatManager=" << (void *)m_seatManager;
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing << "first=" << first
+                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager << "seatManager=" << (void *)m_seatManager;
         quit();
     });
     connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [this] {
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGTERM received - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName
-                   << "hostName=" << hostName()
-                   << "testing=" << m_testing
-                   << "first=" << first
-                   << "lastSessionId=" << m_lastSessionId
-                   << "displayManager=" << (void *)m_displayManager
-                   << "seatManager=" << (void *)m_seatManager;
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing << "first=" << first
+                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager << "seatManager=" << (void *)m_seatManager;
         quit();
     });
     connect(this, &QCoreApplication::aboutToQuit, this, [] {
@@ -218,6 +209,16 @@ int main(int argc, char **argv)
                   << "  --test-mode         Start daemon in test mode" << std::endl;
 
         return EXIT_FAILURE;
+    }
+
+    // Self-provision: create user, directories, setup logging, clean up stale sockets
+    // This MUST be done before DaemonApp construction since it needs root privileges
+    {
+        PLASMALOGIN::SelfProvisioner provisioner;
+        if (!provisioner.provision()) {
+            std::cerr << "FATAL: Self-provisioning failed. Cannot continue." << std::endl;
+            return EXIT_FAILURE;
+        }
     }
 
     // create application

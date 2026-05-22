@@ -39,12 +39,24 @@ static void standardLogger(QtMsgType type, const QString &msg)
 {
     static QFile file(QStringLiteral(LOG_FILE));
     static bool s_openFailureLogged = false;
+    static bool s_journalctlChecked = false;
+    static bool s_hasJournalctl = false;
+
+    // Detect journalctl availability once at first call
+    if (!s_journalctlChecked) {
+        s_journalctlChecked = true;
+        // Check if journalctl exists on the system
+        if (QFile::exists(QStringLiteral("/usr/bin/journalctl")) || QFile::exists(QStringLiteral("/bin/journalctl"))) {
+            s_hasJournalctl = true;
+        }
+    }
 
     // Open syslog if not already opened
     openlog("plasmalogin", LOG_PID | LOG_CONS, LOG_AUTH);
 
-    // Login manager runs before user login, so use system log path only
-    if (!file.isOpen()) {
+    // Only use log file when journalctl is NOT available
+    // When journalctl is present, syslog output goes to the journal
+    if (!s_hasJournalctl && !file.isOpen()) {
         file.setFileName(QStringLiteral(LOG_FILE));
         // Ensure directory exists for login manager (runs as root before user session)
         QFileInfo info(QStringLiteral(LOG_FILE));
@@ -102,8 +114,13 @@ static void standardLogger(QtMsgType type, const QString &msg)
         break;
     }
 
-    // Log to syslog
+    // Log to syslog (journalctl picks this up on systemd systems)
     syslog(syslogPriority, "%s", qPrintable(msg));
+
+    // Only write to log file when journalctl is NOT available
+    if (s_hasJournalctl) {
+        return;
+    }
 
     // create timestamp
     QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss.zzz"));

@@ -5,18 +5,5 @@
 # s6 service run script for Sonic Login Manager
 # Install as /etc/s6/sv/plasmalogin/run
 
-# Configuration
-importas -u PLASMALOGIN_INITIAL_VT PLASMALOGIN_INITIAL_VT {
-    ${PLASMALOGIN_INITIAL_VT:-7}
-}
-importas -u PLASMALOGIN_STATE_DIR PLASMALOGIN_STATE_DIR {@STATE_DIR@}
-importas -u PLASMALOGIN_RUNTIME_DIR PLASMALOGIN_RUNTIME_DIR {@RUNTIME_DIR@}
-importas -u PLASMALOGIN_LOG_FILE PLASMALOGIN_LOG_FILE {@LOG_FILE@}
-
-# Run setup
-foreground {
-    /etc/s6/sv/plasmalogin/setup
-}
-
 # exec replaces the shell with the daemon process (required for proper signal handling)
 exec @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin

@@ -52,20 +52,6 @@ if(DINIT_FOUND OR INSTALL_DINIT)
         DESTINATION "/etc/dinit.d"
         RENAME plasmalogin
     )
-
-    configure_file(plasmalogin-main.dinit plasmalogin-main.dinit @ONLY)
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-main.dinit"
-        DESTINATION "/etc/dinit.d"
-        RENAME plasmalogin-main
-    )
-
-    configure_file(plasmalogin-setup plasmalogin-setup @ONLY)
-    install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-setup"
-        DESTINATION "${KDE_INSTALL_LIBEXECDIR}"
-        RENAME plasmalogin-setup
-    )
 endif()
 
 # s6 service - install if detected or if explicitly requested via -DINSTALL_S6=ON
@@ -75,13 +61,6 @@ if(S6_FOUND OR INSTALL_S6)
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-run"
         DESTINATION "etc/s6/sv/plasmalogin"
         RENAME run
-    )
-
-    configure_file(plasmalogin.s6-setup plasmalogin.s6-setup @ONLY)
-    install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-setup"
-        DESTINATION "etc/s6/sv/plasmalogin"
-        RENAME setup
     )
 
     configure_file(plasmalogin.s6-finish plasmalogin.s6-finish @ONLY)

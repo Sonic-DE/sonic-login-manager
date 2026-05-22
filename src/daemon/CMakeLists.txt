@@ -24,6 +24,7 @@ set(DAEMON_SOURCES
     PowerManager.cpp
     Seat.cpp
     SeatManager.cpp
+    SelfProvisioner.cpp
     SocketServer.cpp
     XorgUserDisplayServer.cpp
 )
