@@ -49,20 +49,20 @@ if(DINIT_FOUND OR INSTALL_DINIT)
     configure_file(plasmalogin.dinit plasmalogin.dinit @ONLY)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.dinit"
-        DESTINATION "etc/dinit.d"
+        DESTINATION "/etc/dinit.d"
         RENAME plasmalogin
     )
 
-    configure_file(plasmalogin-setup.dinit plasmalogin-setup.dinit @ONLY)
+    configure_file(plasmalogin-main.dinit plasmalogin-main.dinit @ONLY)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-setup.dinit"
-        DESTINATION "etc/dinit.d"
-        RENAME plasmalogin-setup
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-main.dinit"
+        DESTINATION "/etc/dinit.d"
+        RENAME plasmalogin-main
     )
 
-    configure_file(plasmalogin.dinit-setup plasmalogin.dinit-setup @ONLY)
+    configure_file(plasmalogin-setup plasmalogin-setup @ONLY)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.dinit-setup"
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-setup"
         DESTINATION "${KDE_INSTALL_LIBEXECDIR}"
         RENAME plasmalogin-setup
     )
