@@ -33,8 +33,10 @@
 #include <qscopeguard.h>
 #include <sys/ioctl.h>
 
+#ifndef Q_OS_FREEBSD
 #define RELEASE_DISPLAY_SIGNAL (SIGRTMAX)
 #define ACQUIRE_DISPLAY_SIGNAL (SIGRTMAX - 1)
+#endif
 
 namespace PLASMALOGIN
 {
@@ -77,6 +79,7 @@ int getVtActive(int fd)
 }
 #endif
 
+#ifndef Q_OS_FREEBSD
 static void onAcquireDisplay([[maybe_unused]] int signal)
 {
     int fd = open(defaultVtPath, O_RDWR | O_NOCTTY);
@@ -111,7 +114,6 @@ static bool handleVtSwitches(int fd)
     return ok;
 }
 
-#ifndef Q_OS_FREEBSD
 static void fixVtMode(int fd, bool vt_auto)
 {
     vt_mode getmodeReply{};
