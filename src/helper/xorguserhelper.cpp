@@ -103,7 +103,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
 
     // Helper lambda to filter and log Xorg output line by line
     // Only log errors (EE), warnings (WW), and key events - skip verbose informational output
-    auto filterAndLogOutput = [process, &program](QProcess::ProcessChannel channel) {
+    auto filterAndLogOutput = [process, program](QProcess::ProcessChannel channel) {
         QByteArray output = channel == QProcess::StandardError ? process->readAllStandardError() : process->readAllStandardOutput();
         QList<QByteArray> lines = output.split('\n');
         for (const QByteArray &line : lines) {
