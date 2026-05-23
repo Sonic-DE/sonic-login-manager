@@ -210,6 +210,16 @@ void HelperApp::doAuth()
 
 void HelperApp::sessionFinished(int status)
 {
+    if (status != Auth::HELPER_SUCCESS) {
+        qWarning() << "HelperApp::sessionFinished() CALLED - TRACE:"
+                   << "status=" << status
+                   << "m_user=" << m_user
+                   << "m_id=" << m_id
+                   << "session_pid=" << m_session->processId()
+                   << "session_state=" << m_session->state()
+                   << "session_program=" << m_session->program()
+                   << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
+    }
     exit(status);
 }
 
