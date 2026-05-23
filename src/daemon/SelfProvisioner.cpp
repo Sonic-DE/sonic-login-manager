@@ -190,7 +190,12 @@ bool SelfProvisioner::createPlasmaloginUser()
     }
 
     // Add plasmalogin user to required groups (video, input, render)
+#ifndef Q_OS_FREEBSD
     const QStringList groups = {QStringLiteral("video"), QStringLiteral("input"), QStringLiteral("render")};
+#else
+    // On FreeBSD, operator group is needed for console/device access
+    const QStringList groups = {QStringLiteral("video"), QStringLiteral("input"), QStringLiteral("render"), QStringLiteral("operator")};
+#endif
     for (const QString &grp : groups) {
         // Check if group exists
         QProcess getgrent;
