@@ -45,10 +45,13 @@ int main(int argc, char **argv)
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);
 
+    // Detect init system once and reuse the result
+    const InitSystem initSystem = detectInitSystem();
+
     // Non-systemd: Fix environment BEFORE setupPlasmaEnvironment() is called
     // The parent process runs as root, so we need to set correct home for greeter
     // This is only needed when not running under systemd (which handles environment differently)
-    if (detectInitSystem() != InitSystem::Systemd) {
+    if (initSystem != InitSystem::Systemd) {
         // Get the greeter user's home directory for proper environment
         // Some setups may have an empty pw_dir for system users.
         // In that case, fall back to STATE_DIR.
@@ -150,7 +153,7 @@ int main(int argc, char **argv)
     };
 
     // Start greeter session components
-    if (detectInitSystem() == InitSystem::Systemd) {
+    if (initSystem == InitSystem::Systemd) {
         // systemd: use DBus to start the Plasma session components
         auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
                                                   QStringLiteral("/org/freedesktop/systemd1"),
@@ -239,7 +242,7 @@ int main(int argc, char **argv)
     qDebug() << "stopping";
 
     // Stop greeter session components
-    if (detectInitSystem() == InitSystem::Systemd) {
+    if (initSystem == InitSystem::Systemd) {
         // systemd: use DBus to stop the Plasma session components
         auto msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
                                                   QStringLiteral("/org/freedesktop/systemd1"),
