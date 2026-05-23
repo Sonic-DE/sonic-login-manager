@@ -6,7 +6,6 @@
 
 type = process
 command = @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin
-logfile = @LOG_FILE@
 restart = true
 working-dir = /
 run-as = root
