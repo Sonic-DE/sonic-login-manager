@@ -90,7 +90,7 @@ endif()
 
 # BSD rc.d script - install if detected or if explicitly requested via -DINSTALL_BSD_RC=ON
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD" OR INSTALL_BSD_RC)
-    configure_file(plasmalogin.sh.bsd.in plasmalogin.sh.bsd)
+    configure_file(plasmalogin.sh.bsd.in plasmalogin.sh.bsd @ONLY)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh.bsd"
         DESTINATION "etc/rc.d"
