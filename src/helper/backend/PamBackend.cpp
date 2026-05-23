@@ -14,6 +14,7 @@
 #include "VirtualTerminal.h"
 
 #include <QtCore/QDebug>
+#include <QtCore/QDir>
 #include <QtCore/QFileInfo>
 #include <QtCore/QProcessEnvironment>
 #include <QtCore/QRegularExpression>
@@ -22,8 +23,13 @@
 
 #include <pwd.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #if defined(Q_OS_FREEBSD)
+#include <sys/stat.h>
+#include <sys/types.h>
+#else
+#include <sys/stat.h>
 #include <sys/types.h>
 #endif
 
@@ -315,11 +321,49 @@ bool PamBackend::openSession()
         env.insert(QStringLiteral("USER"), QString::fromLocal8Bit(pw->pw_name));
         env.insert(QStringLiteral("LOGNAME"), QString::fromLocal8Bit(pw->pw_name));
 
+        // Diagnostic: Log XDG_RUNTIME_DIR state for non-systemd systems
+        QString xdgRuntimeDir = env.value(QStringLiteral("XDG_RUNTIME_DIR"));
+
+        // Check if runtime directory exists and create it if needed
+        if (!xdgRuntimeDir.isEmpty()) {
+            QDir runtimeDir(xdgRuntimeDir);
+            bool dirExists = runtimeDir.exists();
+
+            if (!dirExists) {
+                // Try to create the runtime directory
+                if (runtimeDir.mkpath(xdgRuntimeDir)) {
+                    ::chmod(qPrintable(xdgRuntimeDir), 0700);
+                    ::chown(qPrintable(xdgRuntimeDir), pw->pw_uid, pw->pw_gid);
+                    qInfo() << "[PAM] openSession: DEBUG - Created XDG_RUNTIME_DIR with uid=" << pw->pw_uid << "gid=" << pw->pw_gid;
+                } else {
+                    qWarning() << "[PAM] openSession: DEBUG - Failed to create XDG_RUNTIME_DIR=" << xdgRuntimeDir;
+                }
+            }
+        } else {
+            // XDG_RUNTIME_DIR not set by PAM - create it
+            QString defaultRuntimeDir = QStringLiteral("/var/run/user/%1").arg(pw->pw_uid);
+            QDir runtimeDir(defaultRuntimeDir);
+            if (!runtimeDir.exists()) {
+                // Create parent directory if needed
+                QDir parentDir(QFileInfo(defaultRuntimeDir).absolutePath());
+                if (!parentDir.exists()) {
+                    parentDir.mkpath(parentDir.absolutePath());
+                    ::chmod(qPrintable(parentDir.absolutePath()), 0755);
+                }
+                runtimeDir.mkpath(defaultRuntimeDir);
+                ::chmod(qPrintable(defaultRuntimeDir), 0700);
+                ::chown(qPrintable(defaultRuntimeDir), pw->pw_uid, pw->pw_gid);
+            }
+            env.insert(QStringLiteral("XDG_RUNTIME_DIR"), defaultRuntimeDir);
+            qInfo() << "[PAM] openSession: DEBUG - Set XDG_RUNTIME_DIR=" << defaultRuntimeDir;
+        }
     }
+
     if (env.value(QStringLiteral("XDG_SESSION_CLASS")) == QLatin1String("greeter")) {
         env.insert(QStringLiteral("QT_NO_XDG_DESKTOP_PORTAL"), QStringLiteral("1"));
     }
     m_app->session()->setProcessEnvironment(env);
+
     return m_app->session()->start();
 }
 
