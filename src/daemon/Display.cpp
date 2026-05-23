@@ -272,6 +272,11 @@ void Display::startSocketServerAndGreeter()
 
     // start greeter
     m_greeter->start();
+
+    // Track that the greeter was started, even if it later crashes (e.g. OOM).
+    // This is needed so that startAuth() knows to allocate a new VT for the user
+    // session, since the greeter's VT may still be locked after a crash.
+    m_greeterWasStarted = true;
 }
 
 bool Display::handleAutologinFailure()
@@ -389,10 +394,15 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
 
     m_sessionTerminalId = m_terminalId;
 
-    if (m_greeter->isRunning()) {
-        // Create a new VT when we need to have another compositor running
+    if (m_greeter->isRunning() || m_greeterWasStarted) {
+        // Create a new VT when we need to have another compositor running.
+        // Also allocate a new VT if the greeter was previously started but is
+        // no longer running (e.g. it was killed by the OOM killer). In that case
+        // the greeter's VT may still be locked and cannot be reused.
         if (seat()->canTTY()) {
             m_sessionTerminalId = VirtualTerminal::setUpNewVt();
+        } else {
+            qWarning() << "Display::startAuth: seat()->canTTY() is false, cannot allocate new VT";
         }
     }
 

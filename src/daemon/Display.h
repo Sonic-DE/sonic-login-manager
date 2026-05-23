@@ -79,6 +79,8 @@ private:
     int m_terminalId = -1;
     int m_sessionTerminalId = 0;
 
+    bool m_greeterWasStarted{false};
+
     QString m_passPhrase;
     QString m_sessionName;
     QString m_reuseSessionId;
