@@ -149,11 +149,12 @@ void Greeter::stop()
 {
     // check flag
     if (!m_started) {
+        qWarning() << "Greeter::stop() called but m_started=false, returning";
         return;
     }
 
     // log message
-    qDebug() << "Greeter stopping...";
+    qWarning() << "Greeter::stop() CALLED - TRACE: auth_user=" << m_auth->user() << "auth_isGreeter=" << m_auth->isGreeter();
     m_auth->stop();
 }
 
