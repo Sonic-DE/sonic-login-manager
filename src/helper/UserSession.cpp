@@ -50,7 +50,16 @@ UserSession::UserSession(HelperApp *parent)
 void UserSession::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
     if (exitStatus == QProcess::CrashExit) {
-        qWarning() << "UserSession: process crashed";
+        // A CrashExit means the process was killed by a signal.
+        // This is expected when Auth::stop() sends SIGTERM to terminate the helper.
+        // Only log as "crashed" if the exit code suggests an abnormal condition.
+        pid_t pid = processId();
+        qDebug() << "UserSession: process exited with signal"
+                 << "pid=" << pid
+                 << "exitCode=" << exitCode
+                 << "program=" << program()
+                 << "arguments=" << arguments()
+                 << "state=" << state();
     }
     Q_EMIT finished(exitCode);
 }
@@ -125,18 +134,27 @@ bool UserSession::start()
 
 void UserSession::stop()
 {
+    qWarning() << "UserSession::stop() CALLED - TRACE:"
+               << "program=" << program()
+               << "pid=" << processId()
+               << "state=" << state()
+               << "sessionClass=" << processEnvironment().value(QStringLiteral("XDG_SESSION_CLASS"))
+               << "sessionType=" << processEnvironment().value(QStringLiteral("XDG_SESSION_TYPE"))
+               << "user=" << processEnvironment().value(QStringLiteral("USER"));
     if (state() != QProcess::NotRunning) {
         terminate();
         const bool isGreeter = processEnvironment().value(QStringLiteral("XDG_SESSION_CLASS")) == QLatin1String("greeter");
 
         // Wait longer for a session than a greeter
         if (!waitForFinished(isGreeter ? 5000 : 60000)) {
+            qWarning() << "UserSession::stop() process did not finish in time, sending SIGKILL to pid" << processId();
             kill();
             if (!waitForFinished(5000)) {
                 qWarning() << "Could not fully finish the process" << program();
             }
         }
     } else {
+        qWarning() << "UserSession::stop() process not running, emitting finished(HELPER_OTHER_ERROR)";
         Q_EMIT finished(Auth::HELPER_OTHER_ERROR);
     }
 }
