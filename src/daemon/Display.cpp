@@ -301,21 +301,31 @@ void Display::stop()
 {
     // check flag
     if (!m_started) {
+        qWarning() << "Display::stop() called but m_started=false, returning";
         return;
     }
 
+    qWarning() << "Display::stop() CALLED - TRACE:"
+               << "auth_user=" << m_auth->user()
+               << "auth_isGreeter=" << m_auth->isGreeter()
+               << "greeter_running=" << m_greeter->isRunning();
+
     // stop the greeter
+    qWarning() << "Display::stop() stopping greeter";
     m_greeter->stop();
 
+    qWarning() << "Display::stop() stopping auth";
     m_auth->stop();
 
     // stop socket server
+    qWarning() << "Display::stop() stopping socket server";
     m_socketServer->stop();
 
     // reset flag
     m_started = false;
 
     // emit signal
+    qWarning() << "Display::stop() emitting stopped()";
     emit stopped();
 }
 
@@ -394,6 +404,12 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
 
     m_sessionTerminalId = m_terminalId;
 
+    qDebug() << "Display::startAuth: VT allocation check:"
+             << "m_greeter->isRunning()" << m_greeter->isRunning()
+             << "m_greeterWasStarted" << m_greeterWasStarted
+             << "seat()->canTTY()" << seat()->canTTY()
+             << "m_terminalId" << m_terminalId;
+
     if (m_greeter->isRunning() || m_greeterWasStarted) {
         // Create a new VT when we need to have another compositor running.
         // Also allocate a new VT if the greeter was previously started but is
@@ -401,9 +417,12 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
         // the greeter's VT may still be locked and cannot be reused.
         if (seat()->canTTY()) {
             m_sessionTerminalId = VirtualTerminal::setUpNewVt();
+            qDebug() << "Display::startAuth: setUpNewVt() returned VT" << m_sessionTerminalId;
         } else {
             qWarning() << "Display::startAuth: seat()->canTTY() is false, cannot allocate new VT";
         }
+    } else {
+        qDebug() << "Display::startAuth: greeter not running and was never started, reusing VT" << m_terminalId;
     }
 
     // some information
@@ -532,6 +551,10 @@ void Display::slotSessionStarted(bool success)
 {
     qDebug() << "Session started" << success;
     if (success) {
+        // Stop the greeter after a short delay once the user session has started.
+        // The delay gives the user session time to fully initialize before we
+        // tear down the greeter's X server.
+        qDebug() << "slotSessionStarted: User session started, scheduling greeter stop in 5 seconds";
         QTimer::singleShot(5000, m_greeter, &Greeter::stop);
     }
 }
