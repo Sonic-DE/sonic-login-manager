@@ -90,7 +90,7 @@ void XOrgUserHelper::stop()
     }
 }
 
-bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment &env, QProcess **p)
+bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment &env, QProcess **p, bool quitOnFinish)
 {
     auto args = QProcess::splitCommand(cmd);
     const auto program = args.takeFirst();
@@ -122,10 +122,16 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     connect(process, &QProcess::readyReadStandardError, this, [filterAndLogOutput] {
         filterAndLogOutput(QProcess::StandardError);
     });
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [program](int exitCode, QProcess::ExitStatus exitStatus) {
-        if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-            qCritical() << "XOrgUserHelper: process" << program << "exited abnormally with exitCode:" << exitCode << ", quitting helper";
-            QCoreApplication::instance()->quit();
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [program, process, quitOnFinish](int exitCode, QProcess::ExitStatus exitStatus) {
+        qCritical() << "XOrgUserHelper: process" << program << "finished with exitCode:" << exitCode << "exitStatus:" << exitStatus << "error:" << process->error() << process->errorString();
+        if (quitOnFinish) {
+            if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
+                qCritical() << "XOrgUserHelper: ABNORMAL EXIT - process" << program << "exited with exitCode:" << exitCode << "- calling QCoreApplication::quit()";
+                QCoreApplication::instance()->quit();
+            } else {
+                qWarning() << "XOrgUserHelper: process" << program << "exited normally with exitCode:" << exitCode << "- calling QCoreApplication::quit()";
+                QCoreApplication::instance()->quit();
+            }
         }
     });
 
@@ -195,6 +201,9 @@ bool XOrgUserHelper::startServer(const QString &cmd)
         ::close(pipeFds[1]);
         return false;
     }
+    
+    // THEORY 2: Check if m_serverProcess is null after startProcess
+    qInfo("XOrgUserHelper::startServer: m_serverProcess=%p after startProcess", (void*)m_serverProcess);
 
     // Close the other side of pipe in our process, otherwise reading
     // from it may stuck even X server exit
@@ -244,11 +253,16 @@ void XOrgUserHelper::startDisplayCommand()
     auto cmd = DATA_INSTALL_DIR "/scripts/Xsetup";
     qInfo("Running display setup script: %s", cmd);
     QProcess *displayScript = nullptr;
-    if (startProcess(cmd, env, &displayScript)) {
+    if (startProcess(cmd, env, &displayScript, false)) {
+        // THEORY 1: Check if Xsetup script exit code causes helper to quit
+        qInfo("XOrgUserHelper::startDisplayCommand: Xsetup finished with exitCode=%d", displayScript->exitCode());
         if (!displayScript->waitForFinished(30000)) {
+            qWarning("XOrgUserHelper::startDisplayCommand: Xsetup timed out, killing");
             displayScript->kill();
         }
         displayScript->deleteLater();
+    } else {
+        qCritical("XOrgUserHelper::startDisplayCommand: startProcess for Xsetup failed!");
     }
 }
 

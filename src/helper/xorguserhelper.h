@@ -47,7 +47,7 @@ private:
     XAuth m_xauth;
     QProcess *m_serverProcess = nullptr;
 
-    bool startProcess(const QString &cmd, const QProcessEnvironment &env, QProcess **p = nullptr);
+    bool startProcess(const QString &cmd, const QProcessEnvironment &env, QProcess **p = nullptr, bool quitOnFinish = true);
     bool startServer(const QString &cmd);
     void startDisplayCommand();
     void displayFinished();
