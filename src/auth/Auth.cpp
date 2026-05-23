@@ -402,7 +402,15 @@ void Auth::start()
 
 void Auth::stop()
 {
+    qWarning() << "Auth::stop() CALLED - TRACE:"
+               << "child_state=" << (d->child ? d->child->state() : QProcess::NotRunning)
+               << "child_pid=" << (d->child ? d->child->processId() : 0)
+               << "user=" << d->user
+               << "greeter=" << d->greeter
+               << "autologin=" << d->autologin
+               << "sessionPath=" << d->sessionPath;
     if (d->child->state() == QProcess::NotRunning) {
+        qWarning() << "Auth::stop() child already not running, returning";
         return;
     }
 
@@ -410,7 +418,7 @@ void Auth::stop()
 
     // wait for finished
     if (!d->child->waitForFinished(5000)) {
-        qWarning() << "Auth::stop: child process did not terminate gracefully, killing";
+        qWarning() << "Auth::stop: child process did not terminate gracefully after 5s, sending SIGKILL to pid" << d->child->processId();
         d->child->kill();
     }
 }
