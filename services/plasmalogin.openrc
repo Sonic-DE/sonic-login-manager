@@ -12,9 +12,6 @@ depend() {
     use xdm
 }
 
-# Configuration
-: ${PLASMALOGIN_INITIAL_VT:=7}
-
 # Start the service
 start() {
     ebegin "Starting Plasma Login Manager"
