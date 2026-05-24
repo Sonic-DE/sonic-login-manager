@@ -191,12 +191,12 @@ inline bool isSystemdLogind()
 }
 
 // Get the initial VT based on the detected init system.
-// OpenRC uses VT 2 by default (VT 1 is often used by getty/agetty).
+// OpenRC, runit, and s6 use VT 2 by default (VT 1 is often used by getty/agetty).
 // systemd and other init systems use VT 1 by default.
 inline int getInitialVt()
 {
     InitSystem init = detectInitSystem();
-    if (init == InitSystem::OpenRC) {
+    if (init == InitSystem::OpenRC || init == InitSystem::Runit || init == InitSystem::S6) {
         return 2;
     }
     return 1;
