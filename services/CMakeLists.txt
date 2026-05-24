@@ -39,8 +39,15 @@ if(RUNIT_FOUND OR INSTALL_RUNIT)
     configure_file(plasmalogin.runit plasmalogin.runit @ONLY)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.runit"
-        DESTINATION "etc/sv/plasmalogin"
+        DESTINATION "/etc/runit/sv/plasmalogin"
         RENAME run
+    )
+
+    configure_file(plasmalogin-finish.runit plasmalogin-finish.runit @ONLY)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-finish.runit"
+        DESTINATION "/etc/runit/sv/plasmalogin"
+        RENAME finish
     )
 endif()
 

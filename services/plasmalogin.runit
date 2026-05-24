@@ -3,7 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 #
 # runit service script for Sonic Login Manager
-# Install as /etc/sv/plasmalogin/run
+# Install as /etc/runit/sv/plasmalogin/run
 
-# exec replaces the shell with the daemon process (required for proper signal handling)
+# Ensure optional dependencies are available if present.
+# runit has no built-in dependency system; sv start is the standard pattern.
+sv start dbus >/dev/null 2>&1 || true
+sv start elogind >/dev/null 2>&1 || true
+
+# exec replaces the shell with the daemon process so runsv can monitor the pid directly
 exec @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin
