@@ -22,20 +22,16 @@
 #include <QTextStream>
 #include <signal.h>
 #include <unistd.h>
-void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    PLASMALOGIN::messageHandler(type, QStringLiteral("X11UserHelper: "), msg);
-}
 
 int main(int argc, char **argv)
 {
-    qInstallMessageHandler(X11UserHelperMessageHandler);
+    qInstallMessageHandler(PLASMALOGIN::X11UserHelperMessageHandler);
     QCoreApplication app(argc, argv);
     PLASMALOGIN::SignalHandler s;
     QObject::connect(&s, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {
         pid_t ppid = getppid();
         QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
-        qWarning() << "X11UserHelper: Received SIGTERM - diagnostic information:"
+        qWarning() << "HelperStartX11User: Received SIGTERM - diagnostic information:"
                    << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                    << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
                    << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();
@@ -46,7 +42,7 @@ int main(int argc, char **argv)
         if (signal == SIGQUIT) {
             pid_t ppid = getppid();
             QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
-            qWarning() << "X11UserHelper: Received SIGQUIT (signal 3) - diagnostic information:"
+            qWarning() << "HelperStartX11User: Received SIGQUIT (signal 3) - diagnostic information:"
                        << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                        << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
                        << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();

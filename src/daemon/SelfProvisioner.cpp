@@ -310,7 +310,7 @@ bool SelfProvisioner::setupLogging()
     qDebug() << "SelfProvisioner: No journalctl - creating log directory and file.";
 
     // Rotate log file
-    QString oldLog = m_logFile + QStringLiteral(".old");
+    QString oldLog = m_logFile + QStringLiteral(".last");
     if (QFile::exists(oldLog)) {
         QFile::remove(oldLog);
     }

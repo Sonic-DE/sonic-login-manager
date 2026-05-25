@@ -191,14 +191,14 @@ const Request &PamData::getRequest() const
 void PamData::completeRequest(const Request &request)
 {
     if (request.prompts.length() != m_currentRequest.prompts.length()) {
-        qWarning() << "[PAM] Different request/response list length, ignoring";
+        qWarning() << "PamBackend: Different request/response list length, ignoring";
         return;
     }
 
     for (int i = 0; i < request.prompts.length(); i++) {
         if (request.prompts[i].type != m_currentRequest.prompts[i].type || request.prompts[i].message != m_currentRequest.prompts[i].message
             || request.prompts[i].hidden != m_currentRequest.prompts[i].hidden) {
-            qWarning() << "[PAM] Order or type of the messages doesn't match, ignoring";
+            qWarning() << "PamBackend: Order or type of the messages doesn't match, ignoring";
             return;
         }
     }
@@ -270,7 +270,7 @@ bool PamBackend::openSession()
     QProcessEnvironment sessionEnv = m_app->session()->processEnvironment();
 
     if (!m_pam->setCred(PAM_ESTABLISH_CRED)) {
-        qCritical() << "[PAM] openSession: setCred PAM_ESTABLISH_CRED failed:" << m_pam->errorString();
+        qCritical() << "PamBackend: openSession: setCred PAM_ESTABLISH_CRED failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
             m_app->error(m_pam->errorString(), Auth::ERROR_AUTHENTICATION);
         }
@@ -295,14 +295,14 @@ bool PamBackend::openSession()
     }
 
     if (!m_pam->putEnv(sessionEnv)) {
-        qCritical() << "[PAM] openSession: putEnv failed:" << m_pam->errorString();
+        qCritical() << "PamBackend: openSession: putEnv failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
             m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
         }
         return false;
     }
     if (!m_pam->openSession()) {
-        qCritical() << "[PAM] openSession: pam_open_session failed:" << m_pam->errorString();
+        qCritical() << "PamBackend: openSession: pam_open_session failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
             m_app->error(m_pam->errorString(), Auth::ERROR_INTERNAL);
         }
@@ -334,9 +334,9 @@ bool PamBackend::openSession()
                 if (runtimeDir.mkpath(xdgRuntimeDir)) {
                     ::chmod(qPrintable(xdgRuntimeDir), 0700);
                     ::chown(qPrintable(xdgRuntimeDir), pw->pw_uid, pw->pw_gid);
-                    qInfo() << "[PAM] openSession: DEBUG - Created XDG_RUNTIME_DIR with uid=" << pw->pw_uid << "gid=" << pw->pw_gid;
+                    qInfo() << "PamBackend: openSession: DEBUG - Created XDG_RUNTIME_DIR with uid=" << pw->pw_uid << "gid=" << pw->pw_gid;
                 } else {
-                    qWarning() << "[PAM] openSession: DEBUG - Failed to create XDG_RUNTIME_DIR=" << xdgRuntimeDir;
+                    qWarning() << "PamBackend: openSession: DEBUG - Failed to create XDG_RUNTIME_DIR=" << xdgRuntimeDir;
                 }
             }
         } else {
@@ -355,7 +355,7 @@ bool PamBackend::openSession()
                 ::chown(qPrintable(defaultRuntimeDir), pw->pw_uid, pw->pw_gid);
             }
             env.insert(QStringLiteral("XDG_RUNTIME_DIR"), defaultRuntimeDir);
-            qInfo() << "[PAM] openSession: DEBUG - Set XDG_RUNTIME_DIR=" << defaultRuntimeDir;
+            qInfo() << "PamBackend: openSession: DEBUG - Set XDG_RUNTIME_DIR=" << defaultRuntimeDir;
         }
     }
 
@@ -370,12 +370,12 @@ bool PamBackend::openSession()
 bool PamBackend::closeSession()
 {
     if (m_pam->isOpen()) {
-        qDebug() << "[PAM] Closing session";
+        qDebug() << "PamBackend: Closing session";
         m_pam->closeSession();
         m_pam->setCred(PAM_DELETE_CRED);
         return true;
     }
-    qWarning() << "[PAM] Asked to close the session but it wasn't previously open";
+    qWarning() << "PamBackend: Asked to close the session but it wasn't previously open";
     return true;
 }
 
@@ -386,7 +386,7 @@ QString PamBackend::userName()
 
 int PamBackend::converse(int n, const struct pam_message **msg, struct pam_response **resp)
 {
-    qDebug() << "[PAM] Conversation with" << n << "messages";
+    qDebug() << "PamBackend: Conversation with" << n << "messages";
 
     bool newRequest = false;
 
@@ -422,12 +422,12 @@ int PamBackend::converse(int n, const struct pam_message **msg, struct pam_respo
             received = m_app->request(sent);
 
             if (!received.valid()) {
-                qCritical() << "[PAM] Conversation failed: daemon returned invalid response request";
+                qCritical() << "PamBackend: Conversation failed: daemon returned invalid response request";
                 return PAM_CONV_ERR;
             }
 
             if (received.prompts.length() != sent.prompts.length()) {
-                qWarning() << "[PAM] Response prompt count mismatch. sent:" << sent.prompts.length() << "received:" << received.prompts.length();
+                qWarning() << "PamBackend: Response prompt count mismatch. sent:" << sent.prompts.length() << "received:" << received.prompts.length();
             }
 
             m_data->completeRequest(received);

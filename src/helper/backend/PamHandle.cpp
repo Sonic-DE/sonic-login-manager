@@ -24,7 +24,7 @@ bool PamHandle::putEnv(const QProcessEnvironment &env)
     for (const QString &s : envs) {
         m_result = pam_putenv(m_handle, qPrintable(s));
         if (m_result != PAM_SUCCESS) {
-            qWarning() << "[PAM] putEnv:" << pam_strerror(m_handle, m_result);
+            qWarning() << "PamHandle: putEnv:" << pam_strerror(m_handle, m_result);
             return false;
         }
     }
@@ -37,7 +37,7 @@ QProcessEnvironment PamHandle::getEnv()
     // get pam environment
     char **envlist = pam_getenvlist(m_handle);
     if (envlist == NULL) {
-        qWarning() << "[PAM] getEnv: Returned NULL";
+        qWarning() << "PamHandle: getEnv: Returned NULL";
         return env;
     }
 
@@ -63,7 +63,7 @@ bool PamHandle::chAuthTok(int flags)
 {
     m_result = pam_chauthtok(m_handle, flags | m_silent);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] chAuthTok:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: chAuthTok:" << pam_strerror(m_handle, m_result);
     }
     return m_result == PAM_SUCCESS;
 }
@@ -75,7 +75,7 @@ bool PamHandle::acctMgmt(int flags)
         // TODO see if this should really return the value or just true regardless of the outcome
         return chAuthTok(PAM_CHANGE_EXPIRED_AUTHTOK);
     } else if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] acctMgmt:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: acctMgmt:" << pam_strerror(m_handle, m_result);
         return false;
     }
     return true;
@@ -83,12 +83,12 @@ bool PamHandle::acctMgmt(int flags)
 
 bool PamHandle::authenticate(int flags)
 {
-    qDebug() << "[PAM] Authenticating...";
+    qDebug() << "PamHandle: Authenticating...";
     m_result = pam_authenticate(m_handle, flags | m_silent);
     if (m_result != PAM_SUCCESS) {
-        qCritical() << "[PAM] authenticate FAILED:" << m_result << "-" << pam_strerror(m_handle, m_result);
+        qCritical() << "PamHandle: authenticate FAILED:" << m_result << "-" << pam_strerror(m_handle, m_result);
     } else {
-        qDebug() << "[PAM] Authentication successful";
+        qDebug() << "PamHandle: Authentication successful";
     }
     return m_result == PAM_SUCCESS;
 }
@@ -97,7 +97,7 @@ bool PamHandle::setCred(int flags)
 {
     m_result = pam_setcred(m_handle, flags | m_silent);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] setCred:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: setCred:" << pam_strerror(m_handle, m_result);
     }
     return m_result == PAM_SUCCESS;
 }
@@ -106,7 +106,7 @@ bool PamHandle::openSession()
 {
     m_result = pam_open_session(m_handle, m_silent);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] openSession:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: openSession:" << pam_strerror(m_handle, m_result);
     }
     m_open = m_result == PAM_SUCCESS;
     return m_open;
@@ -116,7 +116,7 @@ bool PamHandle::closeSession()
 {
     m_result = pam_close_session(m_handle, m_silent);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] closeSession:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: closeSession:" << pam_strerror(m_handle, m_result);
     }
     return m_result == PAM_SUCCESS;
 }
@@ -130,7 +130,7 @@ bool PamHandle::setItem(int item_type, const void *item)
 {
     m_result = pam_set_item(m_handle, item_type, item);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] setItem:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: setItem:" << pam_strerror(m_handle, m_result);
     }
     return m_result == PAM_SUCCESS;
 }
@@ -140,14 +140,14 @@ const void *PamHandle::getItem(int item_type)
     const void *item;
     m_result = pam_get_item(m_handle, item_type, &item);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] getItem:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: getItem:" << pam_strerror(m_handle, m_result);
     }
     return item;
 }
 
 int PamHandle::converse(int n, const struct pam_message **msg, struct pam_response **resp, void *data)
 {
-    qDebug() << "[PAM] Preparing to converse...";
+    qDebug() << "PamHandle: Preparing to converse...";
     PamBackend *c = static_cast<PamBackend *>(data);
     return c->converse(n, msg, resp);
 }
@@ -173,15 +173,15 @@ bool PamHandle::start(const QString &service, const QString &user)
     if (m_result != PAM_SUCCESS) {
         if (!selectedPamFile.isEmpty()) {
             QFileInfo fi(selectedPamFile);
-            qCritical() << "[PAM] start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
-            qCritical() << "[PAM] start FAILED diagnostics: errno:" << errno << QStringLiteral("(%1)").arg(strerror(errno));
+            qCritical() << "PamHandle: start FAILED for service:" << service << "error:" << m_result << "-" << pam_strerror(m_handle, m_result);
+            qCritical() << "PamHandle: start FAILED diagnostics: errno:" << errno << QStringLiteral("(%1)").arg(strerror(errno));
         } else {
             m_specificError = QStringLiteral("PAM configuration file not found.");
-            qCritical() << "[PAM] " << m_specificError;
+            qCritical() << "PamHandle: " << m_specificError;
         }
         return false;
     } else {
-        qDebug() << "[PAM] Starting...";
+        qDebug() << "PamHandle: Starting...";
     }
     return true;
 }
@@ -193,10 +193,10 @@ bool PamHandle::end(int flags)
     }
     m_result = pam_end(m_handle, m_silent | flags);
     if (m_result != PAM_SUCCESS) {
-        qWarning() << "[PAM] end:" << pam_strerror(m_handle, m_result);
+        qWarning() << "PamHandle: end:" << pam_strerror(m_handle, m_result);
         return false;
     } else {
-        qDebug() << "[PAM] Ended.";
+        qDebug() << "PamHandle: Ended.";
     }
     m_handle = NULL;
     return true;

@@ -34,61 +34,29 @@
 
 namespace PLASMALOGIN
 {
+inline void ensureLogFileExists(const QString &s_logFilePath)
+{
+    // Only check/create the file, not the directory (directory is created at install time)
+    QFile logFile(s_logFilePath);
+    if (!logFile.exists()) {
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            logFile.close();
+        }
+        chmod(s_logFilePath.toUtf8().constData(), 0666);
+    }
+}
 
 static void standardLogger(QtMsgType type, const QString &msg)
 {
-    static QFile file(QStringLiteral(LOG_FILE));
-    static bool s_openFailureLogged = false;
-    static bool s_journalctlChecked = false;
-    static bool s_hasJournalctl = false;
+    static bool journalctlChecked = false;
+    static bool hasJournalctl = false;
 
     // Detect journalctl availability once at first call
-    if (!s_journalctlChecked) {
-        s_journalctlChecked = true;
+    if (!journalctlChecked) {
+        journalctlChecked = true;
         // Check if journalctl exists on the system
-        if (QFile::exists(QStringLiteral("/usr/bin/journalctl")) || QFile::exists(QStringLiteral("/bin/journalctl"))) {
-            s_hasJournalctl = true;
-        }
-    }
-
-    // Open syslog if not already opened
-    openlog("plasmalogin", LOG_PID | LOG_CONS, LOG_AUTH);
-
-    // Only use log file when journalctl is NOT available
-    // When journalctl is present, syslog output goes to the journal
-    if (!s_hasJournalctl && !file.isOpen()) {
-        file.setFileName(QStringLiteral(LOG_FILE));
-        // Ensure directory exists for login manager (runs as root before user session)
-        QFileInfo info(QStringLiteral(LOG_FILE));
-        QDir().mkpath(info.path());
-        if (!file.open(QIODevice::Append | QIODevice::WriteOnly) && !s_openFailureLogged) {
-            s_openFailureLogged = true;
-            const int savedErrno = errno;
-
-            QByteArray details;
-            details += "[plasmalogin logger] failed to open log file";
-            details += " path=";
-            details += QFile::encodeName(QStringLiteral(LOG_FILE));
-            details += " uid=" + QByteArray::number(getuid());
-            details += " euid=" + QByteArray::number(geteuid());
-            details += " gid=" + QByteArray::number(getgid());
-            details += " egid=" + QByteArray::number(getegid());
-            details += " qtError=\"" + file.errorString().toLocal8Bit() + "\"";
-            details += " errno=" + QByteArray::number(savedErrno);
-            details += " strerror=\"" + QByteArray(strerror(savedErrno)) + "\"";
-
-            struct stat st;
-            if (::stat(QFile::encodeName(QStringLiteral(LOG_FILE)).constData(), &st) == 0) {
-                details += " fileMode(oct)=" + QByteArray::number(st.st_mode & 07777, 8);
-                details += " fileUid=" + QByteArray::number(st.st_uid);
-                details += " fileGid=" + QByteArray::number(st.st_gid);
-            } else {
-                details += " statErrno=" + QByteArray::number(errno);
-            }
-
-            details += "\n";
-            fputs(details.constData(), stderr);
-            fflush(stderr);
+        if (!QStandardPaths::findExecutable(QStringLiteral("journalctl")).isEmpty()) {
+            hasJournalctl = true;
         }
     }
 
@@ -114,50 +82,49 @@ static void standardLogger(QtMsgType type, const QString &msg)
         break;
     }
 
-    // Log to syslog (journalctl picks this up on systemd systems)
-    syslog(syslogPriority, "%s", qPrintable(msg));
-
-    // Only write to log file when journalctl is NOT available
-    if (s_hasJournalctl) {
+    // Only write to syslog when journalctl is available
+    if (hasJournalctl) {
+        openlog("plasmalogin", LOG_PID | LOG_CONS, LOG_AUTH);
+        syslog(syslogPriority, "%s", qPrintable(msg));
         return;
     }
 
-    // create timestamp
-    QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("hh:mm:ss.zzz"));
+    ensureLogFileExists(QStringLiteral(LOG_FILE));
+    static QFile logFile(QStringLiteral(LOG_FILE));
+    if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&logFile);
+        const QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
+        QString logPriority;
+        switch (type) {
+        case QtInfoMsg:
+            logPriority = QStringLiteral("(II) ");
+            break;
+        case QtDebugMsg:
+            logPriority = QStringLiteral("(DD) ");
+            break;
+        case QtWarningMsg:
+            logPriority = QStringLiteral("(WW) ");
+            break;
+        case QtCriticalMsg:
+        case QtFatalMsg:
+            logPriority = QStringLiteral("(EE) ");
+            break;
+        default:
+            logPriority = QStringLiteral("");
+            break;
+        }
 
-    // set log priority
-    QString logPriority = QStringLiteral("(II)");
-    switch (type) {
-    case QtDebugMsg:
-        break;
-    case QtWarningMsg:
-        logPriority = QStringLiteral("(WW)");
-        break;
-    case QtCriticalMsg:
-    case QtFatalMsg:
-        logPriority = QStringLiteral("(EE)");
-        break;
-    default:
-        break;
-    }
-
-    // prepare log message
-    QString logMessage = QStringLiteral("[%1] %2 %3\n").arg(timestamp).arg(logPriority).arg(msg);
-
-    // log message
-    if (file.isOpen()) {
-        file.write(logMessage.toLocal8Bit());
-        file.flush();
-    } else {
-        fputs(qPrintable(logMessage), stderr);
-        fflush(stderr);
+        // prepare log message
+        out << timestamp << " " << logPriority << msg << "\n";
+        out.flush();
+        logFile.close();
     }
 }
 
 static void messageHandler(QtMsgType type, const QString &prefix, const QString &msg)
 {
     // prepend program name
-    QString logMessage = prefix + msg;
+    QString logMessage = QStringLiteral("[") + prefix + QStringLiteral("] ") + msg;
 
     // log to file or stderr
     standardLogger(type, logMessage);
@@ -165,27 +132,32 @@ static void messageHandler(QtMsgType type, const QString &prefix, const QString 
 
 void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("DAEMON: "), msg);
+    messageHandler(type, QStringLiteral("PLASMALOGIN DAEMON"), msg);
 }
 
 void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("HELPER: "), msg);
+    messageHandler(type, QStringLiteral("PLASMALOGIN HELPER"), msg);
 }
 
 void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("GREETER: "), msg);
+    messageHandler(type, QStringLiteral("PLASMALOGIN GREETER"), msg);
 }
 
 void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("STARTPLASMA: "), msg);
+    messageHandler(type, QStringLiteral("PLASMALOGIN STARTPLASMA"), msg);
 }
 
 void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("WALLPAPER: "), msg);
+    messageHandler(type, QStringLiteral("PLASMALOGIN WALLPAPER"), msg);
+}
+
+void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    PLASMALOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
 }
 }
 
