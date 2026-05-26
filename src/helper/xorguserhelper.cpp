@@ -177,6 +177,11 @@ bool XOrgUserHelper::startServer(const QString &cmd)
 
     // Server environment
     auto serverEnv = QProcessEnvironment::systemEnvironment();
+    // Explicitly preserve XDG_SESSION_ID so it survives privilege drops and Qt filtering
+    const QByteArray xdgSessionId = qgetenv("XDG_SESSION_ID");
+    if (!xdgSessionId.isEmpty()) {
+        serverEnv.insert(QStringLiteral("XDG_SESSION_ID"), QString::fromLocal8Bit(xdgSessionId));
+    }
     // Set XORG_RUN_AS_USER_OK=1 to allow Xorg to run as an unprivileged user.
     serverEnv.insert(QStringLiteral("XORG_RUN_AS_USER_OK"), QStringLiteral("1"));
 
