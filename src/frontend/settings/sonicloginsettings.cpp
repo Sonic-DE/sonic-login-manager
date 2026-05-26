@@ -120,6 +120,7 @@ void SonicLoginSettings::getWallpaperPlugins()
         QStringLiteral("org.kde.haenau"),
         QStringLiteral("org.kde.potd"),
         QStringLiteral("org.kde.hunyango"),
+        QStringLiteral("online.knowmad.shaderwallpaper"),
         // slideshow is explicitly not included as we only sync one file
     };
 
