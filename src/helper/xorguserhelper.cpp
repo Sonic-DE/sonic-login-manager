@@ -122,18 +122,24 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     connect(process, &QProcess::readyReadStandardError, this, [filterAndLogOutput] {
         filterAndLogOutput(QProcess::StandardError);
     });
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), process, [program, process, quitOnFinish](int exitCode, QProcess::ExitStatus exitStatus) {
-        qCritical() << "XOrgUserHelper: process" << program << "finished with exitCode:" << exitCode << "exitStatus:" << exitStatus << "error:" << process->error() << process->errorString();
-        if (quitOnFinish) {
-            if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-                qCritical() << "XOrgUserHelper: ABNORMAL EXIT - process" << program << "exited with exitCode:" << exitCode << "- calling QCoreApplication::quit()";
-                QCoreApplication::instance()->quit();
-            } else {
-                qWarning() << "XOrgUserHelper: process" << program << "exited normally with exitCode:" << exitCode << "- calling QCoreApplication::quit()";
-                QCoreApplication::instance()->quit();
-            }
-        }
-    });
+    connect(process,
+            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            process,
+            [program, process, quitOnFinish](int exitCode, QProcess::ExitStatus exitStatus) {
+                qCritical() << "XOrgUserHelper: process" << program << "finished with exitCode:" << exitCode << "exitStatus:" << exitStatus
+                            << "error:" << process->error() << process->errorString();
+                if (quitOnFinish) {
+                    if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
+                        qCritical() << "XOrgUserHelper: ABNORMAL EXIT - process" << program << "exited with exitCode:" << exitCode
+                                    << "- calling QCoreApplication::quit()";
+                        QCoreApplication::instance()->quit();
+                    } else {
+                        qWarning() << "XOrgUserHelper: process" << program << "exited normally with exitCode:" << exitCode
+                                   << "- calling QCoreApplication::quit()";
+                        QCoreApplication::instance()->quit();
+                    }
+                }
+            });
 
     process->start(program, args);
     if (!process->waitForStarted(10000)) {
@@ -206,9 +212,9 @@ bool XOrgUserHelper::startServer(const QString &cmd)
         ::close(pipeFds[1]);
         return false;
     }
-    
+
     // THEORY 2: Check if m_serverProcess is null after startProcess
-    qInfo("XOrgUserHelper::startServer: m_serverProcess=%p after startProcess", (void*)m_serverProcess);
+    qInfo("XOrgUserHelper::startServer: m_serverProcess=%p after startProcess", (void *)m_serverProcess);
 
     // Close the other side of pipe in our process, otherwise reading
     // from it may stuck even X server exit
