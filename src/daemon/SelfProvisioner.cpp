@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+#include "Constants.h"
+
 #include "SelfProvisioner.h"
 
 #include "InitSystem.h"
@@ -24,15 +26,6 @@ namespace PLASMALOGIN
 SelfProvisioner::SelfProvisioner()
     : m_hasJournalctl(false)
 {
-    // State directory - where plasmalogin user data is stored
-    m_stateDir = QStringLiteral("/var/lib/plasmalogin");
-
-    // Runtime directory - for transient runtime files
-    m_runtimeDir = QStringLiteral("/run/plasmalogin");
-
-    // Log directory and file - only used when journalctl is NOT available
-    m_logDir = QStringLiteral("/var/log/sonic");
-    m_logFile = QStringLiteral("/var/log/sonic/loginmanager.log");
 }
 
 SelfProvisioner::~SelfProvisioner() = default;
@@ -144,14 +137,15 @@ bool SelfProvisioner::createPlasmaloginUser()
         // Ensure home directory points to state dir
         QString output = QString::fromLocal8Bit(getent.readAll());
         QString currentHome = output.section(QLatin1Char(':'), 5, 5);
-        if (currentHome != m_stateDir) {
-            qDebug() << "SelfProvisioner: Updating plasmalogin home directory to" << m_stateDir;
+        if (currentHome != QStringLiteral(STATE_DIR)) {
+            qDebug() << "SelfProvisioner: Updating plasmalogin home directory to" << QStringLiteral(STATE_DIR);
 #ifdef Q_OS_FREEBSD
             // BSD uses different syntax
-            runCommandIgnorableFailure(QStringLiteral("pw"), {QStringLiteral("usermod"), QStringLiteral("plasmalogin"), QStringLiteral("-d"), m_stateDir});
+            runCommandIgnorableFailure(QStringLiteral("pw"),
+                                       {QStringLiteral("usermod"), QStringLiteral("plasmalogin"), QStringLiteral("-d"), QStringLiteral(STATE_DIR)});
 #else
             // Linux uses usermod -d
-            runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-d"), m_stateDir, QStringLiteral("plasmalogin")});
+            runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-d"), QStringLiteral(STATE_DIR), QStringLiteral("plasmalogin")});
 #endif
         }
     } else {
@@ -164,7 +158,7 @@ bool SelfProvisioner::createPlasmaloginUser()
                                          QStringLiteral("-n"),
                                          QStringLiteral("plasmalogin"),
                                          QStringLiteral("-d"),
-                                         m_stateDir,
+                                         QStringLiteral(STATE_DIR),
                                          QStringLiteral("-s"),
                                          QStringLiteral("/usr/sbin/nologin"),
                                          QStringLiteral("-c"),
@@ -179,7 +173,7 @@ bool SelfProvisioner::createPlasmaloginUser()
                                          QStringLiteral("-s"),
                                          QStringLiteral("/sbin/nologin"),
                                          QStringLiteral("-d"),
-                                         m_stateDir,
+                                         QStringLiteral(STATE_DIR),
                                          QStringLiteral("-c"),
                                          QStringLiteral("Sonic Login Greeter Account"),
                                          QStringLiteral("plasmalogin")})) {
@@ -235,21 +229,21 @@ bool SelfProvisioner::createPlasmaloginUser()
 
 bool SelfProvisioner::createStateDirectory()
 {
-    qDebug() << "SelfProvisioner: Setting up state directory:" << m_stateDir;
+    qDebug() << "SelfProvisioner: Setting up state directory:" << QStringLiteral(STATE_DIR);
 
     QDir dir;
-    if (dir.exists(m_stateDir)) {
+    if (dir.exists(QStringLiteral(STATE_DIR))) {
         qDebug() << "SelfProvisioner: State directory already exists.";
     } else {
-        if (!dir.mkpath(m_stateDir)) {
-            qCritical() << "SelfProvisioner: Failed to create state directory:" << m_stateDir;
+        if (!dir.mkpath(QStringLiteral(STATE_DIR))) {
+            qCritical() << "SelfProvisioner: Failed to create state directory:" << QStringLiteral(STATE_DIR);
             return false;
         }
         qDebug() << "SelfProvisioner: Created state directory.";
     }
 
     // Set directory permissions (750 - owner rwx, group r-x, others none)
-    ::chmod(m_stateDir.toLocal8Bit().constData(), 0750);
+    ::chmod(QStringLiteral(STATE_DIR).toLocal8Bit().constData(), 0750);
 
     // Set ownership to plasmalogin user/group
     QProcess idProc;
@@ -269,7 +263,7 @@ bool SelfProvisioner::createStateDirectory()
     gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
 
     if (ok1 && ok2) {
-        ::chown(m_stateDir.toLocal8Bit().constData(), uid, gid);
+        ::chown(QStringLiteral(STATE_DIR).toLocal8Bit().constData(), uid, gid);
     }
 
     return true;
@@ -277,22 +271,22 @@ bool SelfProvisioner::createStateDirectory()
 
 bool SelfProvisioner::createRuntimeDirectory()
 {
-    qDebug() << "SelfProvisioner: Setting up runtime directory:" << m_runtimeDir;
+    qDebug() << "SelfProvisioner: Setting up runtime directory:" << QStringLiteral(RUNTIME_DIR);
 
     QDir dir;
-    if (dir.exists(m_runtimeDir)) {
+    if (dir.exists(QStringLiteral(RUNTIME_DIR))) {
         qDebug() << "SelfProvisioner: Runtime directory already exists.";
     } else {
-        if (!dir.mkpath(m_runtimeDir)) {
-            qCritical() << "SelfProvisioner: Failed to create runtime directory:" << m_runtimeDir;
+        if (!dir.mkpath(QStringLiteral(RUNTIME_DIR))) {
+            qCritical() << "SelfProvisioner: Failed to create runtime directory:" << QStringLiteral(RUNTIME_DIR);
             return false;
         }
         qDebug() << "SelfProvisioner: Created runtime directory.";
     }
 
     // Runtime dir is owned by root, 711
-    ::chmod(m_runtimeDir.toLocal8Bit().constData(), 0711);
-    ::chown(m_runtimeDir.toLocal8Bit().constData(), 0, 0);
+    ::chmod(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0711);
+    ::chown(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0, 0);
 
     return true;
 }
@@ -309,32 +303,33 @@ bool SelfProvisioner::setupLogging()
     // No journalctl - create log directory and file
     qDebug() << "SelfProvisioner: No journalctl - creating log directory and file.";
 
-    // Rotate log file
-    QString oldLog = m_logFile + QStringLiteral(".last");
-    if (QFile::exists(oldLog)) {
-        QFile::remove(oldLog);
-    }
-    if (QFile::exists(m_logFile)) {
-        QFile::rename(m_logFile, oldLog);
-    }
-
     // Create log directory
-    QDir logDirObj(m_logDir);
-    if (!logDirObj.exists()) {
-        if (!logDirObj.mkpath(m_logDir)) {
-            qCritical() << "SelfProvisioner: Failed to create log directory:" << m_logDir;
+    QFileInfo logFileInfo(QStringLiteral(LOG_FILE));
+    QDir logDirectory = logFileInfo.absoluteDir();
+    if (!logDirectory.exists()) {
+        if (!logDirectory.mkpath(logDirectory.absolutePath())) {
+            qCritical() << "SelfProvisioner: Failed to create log directory:" << logDirectory.absolutePath();
             return false;
         }
     }
 
+    // Rotate log file
+    QString oldLog = QStringLiteral(LOG_FILE) + QStringLiteral(".last");
+    if (QFile::exists(oldLog)) {
+        QFile::remove(oldLog);
+    }
+    if (QFile::exists(QStringLiteral(LOG_FILE))) {
+        QFile::rename(QStringLiteral(LOG_FILE), oldLog);
+    }
+
     // Set directory permissions (777 so plasmalogin helper can write)
-    ::chmod(m_logDir.toLocal8Bit().constData(), 0777);
+    ::chmod(logDirectory.absolutePath().toUtf8().constData(), 0777);
 
     // Create log file
-    if (!QFile::exists(m_logFile)) {
-        QFile file(m_logFile);
+    if (!QFile::exists(QStringLiteral(LOG_FILE))) {
+        QFile file(QStringLiteral(LOG_FILE));
         if (!file.open(QIODevice::WriteOnly)) {
-            qCritical() << "SelfProvisioner: Failed to create log file:" << m_logFile;
+            qCritical() << "SelfProvisioner: Failed to create log file:" << QStringLiteral(LOG_FILE);
             return false;
         }
         file.close();
@@ -358,9 +353,9 @@ bool SelfProvisioner::setupLogging()
     gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
 
     if (ok1 && ok2) {
-        ::chown(m_logFile.toLocal8Bit().constData(), uid, gid);
+        ::chown(QStringLiteral(LOG_FILE).toLocal8Bit().constData(), uid, gid);
     }
-    ::chmod(m_logFile.toLocal8Bit().constData(), 0666);
+    ::chmod(QStringLiteral(LOG_FILE).toLocal8Bit().constData(), 0666);
 
     qDebug() << "SelfProvisioner: Log file setup complete.";
     return true;
