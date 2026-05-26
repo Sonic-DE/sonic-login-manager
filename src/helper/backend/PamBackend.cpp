@@ -25,6 +25,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <fstream>
+#include <string>
+
 #if defined(Q_OS_FREEBSD)
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -265,6 +268,45 @@ bool PamBackend::authenticate()
     return true;
 }
 
+static bool migrateToRootCgroup()
+{
+    std::ifstream cgroupFile("/proc/self/cgroup");
+    if (!cgroupFile.is_open()) {
+        qWarning() << "PamBackend: migrateToRootCgroup: cannot open /proc/self/cgroup";
+        return false;
+    }
+
+    std::string line;
+    while (std::getline(cgroupFile, line)) {
+        if (line.empty() || line[0] != '0') {
+            continue;
+        }
+        const size_t prefixPos = line.find("::");
+        if (prefixPos == std::string::npos) {
+            continue;
+        }
+        const std::string cgroupPath = line.substr(prefixPos + 2);
+        if (cgroupPath.empty() || cgroupPath == "/") {
+            return true;
+        }
+
+        std::ofstream procsFile("/sys/fs/cgroup/cgroup.procs");
+        if (!procsFile.is_open()) {
+            qCritical() << "PamBackend: migrateToRootCgroup: failed to open /sys/fs/cgroup/cgroup.procs";
+            return false;
+        }
+        procsFile << getpid();
+        if (!procsFile.good()) {
+            qCritical() << "PamBackend: migrateToRootCgroup: failed to write PID to root cgroup.procs";
+            return false;
+        }
+        qInfo() << "PamBackend: migrateToRootCgroup: moved PID" << getpid() << "from nested cgroup" << QString::fromStdString(cgroupPath) << "to root cgroup";
+        return true;
+    }
+
+    return true;
+}
+
 bool PamBackend::openSession()
 {
     QProcessEnvironment sessionEnv = m_app->session()->processEnvironment();
@@ -301,6 +343,11 @@ bool PamBackend::openSession()
         }
         return false;
     }
+
+    // Ensure elogind creates the session cgroup at the root level by migrating
+    // out of any supervisor-imposed nested cgroup before pam_open_session.
+    migrateToRootCgroup();
+
     if (!m_pam->openSession()) {
         qCritical() << "PamBackend: openSession: pam_open_session failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
