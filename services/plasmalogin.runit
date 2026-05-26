@@ -1,8 +1,6 @@
-sh#!/bin/sh
-sv check dbus >/dev/null || exit 1
+#!/bin/sh
 
-# respect system locale
-[ -r /etc/locale.conf ] && . /etc/locale.conf && export LANG
-[ -f ./conf ] && . ./conf
+sv check elogind || exit 1
+sv check dbus || exit 1
 
 exec @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin
