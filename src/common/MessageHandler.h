@@ -55,7 +55,7 @@ static void standardLogger(QtMsgType type, const QString &msg)
     if (!journalctlChecked) {
         journalctlChecked = true;
         // Check if journalctl exists on the system
-        if (!QStandardPaths::findExecutable(QStringLiteral("journalctl")).isEmpty()) {
+        if (QFile::exists(QStringLiteral("/run/systemd/journal/socket"))) {
             hasJournalctl = true;
         }
     }
