@@ -1,25 +1,5 @@
-#!/bin/sh
-set -e
+sh#!/bin/sh
 sv check dbus >/dev/null || exit 1
-
-# Ensure cgroups are available for elogind session tracking
-# elogind requires cgroups to properly track session ownership
-if [ ! -d /sys/fs/cgroup/systemd ]; then
-    mkdir -p /sys/fs/cgroup/systemd
-fi
-
-if ! mountpoint -q /sys/fs/cgroup/systemd; then
-    mount -t cgroup -o none,name=systemd,nosuid,noexec,nodev cgroup /sys/fs/cgroup/systemd || :
-fi
-
-export SYSTEMD_CGROUP=/sys/fs/cgroup/systemd
-
-if [ -x /usr/bin/elogind-inhibit ]; then
-        dbus-send --system --print-reply --dest=org.freedesktop.DBus \
-                /org/freedesktop/DBus                           \
-                org.freedesktop.DBus.StartServiceByName         \
-                string:org.freedesktop.login1 uint32:0 >/dev/null 2>&1 &
-fi
 
 # respect system locale
 [ -r /etc/locale.conf ] && . /etc/locale.conf && export LANG
