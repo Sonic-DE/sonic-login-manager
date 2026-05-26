@@ -22,6 +22,7 @@
 
 struct Logind {
     static bool isAvailable();
+    static bool isELogind();
     static QString serviceName();
     static QString managerPath();
     static QString managerIfaceName();

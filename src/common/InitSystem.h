@@ -161,35 +161,6 @@ inline InitSystem detectInitSystem()
 #endif
 }
 
-// Check if systemd-logind is handling login1, vs elogind
-// Both use the same org.freedesktop.login1 bus name, but the service file differs
-inline bool isSystemdLogind()
-{
-    // systemd-logind uses /lib/systemd/systemd-logind
-    // elogind uses /lib/elogind/elogind
-    QString serviceFile = QStringLiteral("/usr/share/dbus-1/system-services/org.freedesktop.login1.service");
-
-    // Read the service file to determine which backend is in use
-    QFile file(serviceFile);
-    if (file.open(QIODevice::ReadOnly)) {
-        QTextStream stream(&file);
-        while (!stream.atEnd()) {
-            QString line = stream.readLine().trimmed();
-            if (line.startsWith(QStringLiteral("Exec="))) {
-                QString execPath = line.mid(5).trimmed();
-                if (execPath.contains(QStringLiteral("/elogind/"))) {
-                    return false; // elogind - use sharevts
-                }
-                return true; // systemd-logind or other - don't use sharevts
-            }
-        }
-        file.close();
-    }
-
-    // Fallback: assume systemd-logind (most common)
-    return true;
-}
-
 // Get the initial VT based on the detected init system.
 // OpenRC, runit, and s6 use VT 2 by default (VT 1 is often used by getty/agetty).
 // systemd and other init systems use VT 1 by default.

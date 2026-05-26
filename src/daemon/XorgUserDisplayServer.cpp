@@ -35,7 +35,7 @@ QString XorgUserDisplayServer::command(Display *display)
     // With systemd-logind, VT management is handled by logind and -sharevts
     // can cause permission denied errors on modesetting
     // elogind requires -sharevts because it doesn't handle VT sharing the same way
-    if (Logind::isAvailable() && !isSystemdLogind()) {
+    if (Logind::isAvailable() && Logind::isELogind()) {
         args << QStringLiteral("-sharevts");
     }
 

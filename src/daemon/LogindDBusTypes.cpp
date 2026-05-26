@@ -20,8 +20,9 @@
 
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
-
 #include <QDebug>
+#include <QFile>
+#include <QTextStream>
 
 class LogindPathInternal
 {
@@ -63,7 +64,11 @@ LogindPathInternal::LogindPathInternal()
     qDBusRegisterMetaType<UserInfoList>();
 
     if (QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.login1"))) {
-        qDebug() << "Logind interface found";
+        if (Logind::isELogind()) {
+            qDebug() << "elogind login interface found";
+        } else {
+            qDebug() << "logind login interface found";
+        }
         available = true;
         serviceName = QStringLiteral("org.freedesktop.login1");
         managerPath = QStringLiteral("/org/freedesktop/login1");
@@ -75,7 +80,7 @@ LogindPathInternal::LogindPathInternal()
     }
 
     if (QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.ConsoleKit"))) {
-        qDebug() << "Console kit interface found";
+        qDebug() << "Console Kit login interface found";
         available = true;
         serviceName = QStringLiteral("org.freedesktop.ConsoleKit");
         managerPath = QStringLiteral("/org/freedesktop/ConsoleKit/Manager");
@@ -123,4 +128,31 @@ QString Logind::sessionIfaceName()
 QString Logind::userIfaceName()
 {
     return s_instance->userIfaceName;
+}
+
+bool Logind::isELogind()
+{
+    // systemd-logind uses /lib/systemd/systemd-logind
+    // elogind uses /lib/elogind/elogind
+    QString serviceFile = QStringLiteral("/usr/share/dbus-1/system-services/org.freedesktop.login1.service");
+
+    // Read the service file to determine which backend is in use
+    QFile file(serviceFile);
+    if (file.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&file);
+        while (!stream.atEnd()) {
+            QString line = stream.readLine().trimmed();
+            if (line.startsWith(QStringLiteral("Exec="))) {
+                QString execPath = line.mid(5).trimmed();
+                if (execPath.contains(QStringLiteral("/elogind/"))) {
+                    return true; // elogind
+                }
+                return false; // systemd-logind
+            }
+        }
+        file.close();
+    }
+
+    // Fallback: assume systemd-logind (most common)
+    return false;
 }
