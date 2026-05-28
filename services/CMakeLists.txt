@@ -56,18 +56,55 @@ endif()
 
 # s6 service - install if detected or if explicitly requested via -DINSTALL_S6=ON
 if(S6_FOUND OR INSTALL_S6)
-    configure_file(plasmalogin.s6-run plasmalogin.s6-run @ONLY)
+    # s6 service directory contents are in the s6/ subdirectory
+    # They install into /etc/s6/sv/plasmalogin/ (type, notification-fd, run, finish, dependencies.d/*)
+
+    configure_file(s6/s6-run s6-run @ONLY)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-run"
-        DESTINATION "etc/s6/sv/plasmalogin"
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6-run"
+        DESTINATION "/etc/s6/sv/plasmalogin"
         RENAME run
     )
 
-    configure_file(plasmalogin.s6-finish plasmalogin.s6-finish @ONLY)
+    configure_file(s6/s6-finish s6-finish @ONLY)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.s6-finish"
-        DESTINATION "etc/s6/sv/plasmalogin"
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6-finish"
+        DESTINATION "/etc/s6/sv/plasmalogin"
         RENAME finish
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-type"
+        DESTINATION "/etc/s6/sv/plasmalogin"
+        RENAME type
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-notification-fd"
+        DESTINATION "/etc/s6/sv/plasmalogin"
+        RENAME notification-fd
+    )
+
+    # dependency files (empty marker files in dependencies.d/)
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-logind"
+        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
+        RENAME logind
+    )
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-mount-tmpfs"
+        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
+        RENAME mount-tmpfs
+    )
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-tmpfiles-setup"
+        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
+        RENAME tmpfiles-setup
+    )
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-udevadm"
+        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
+        RENAME udevadm
     )
 endif()
 

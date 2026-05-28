@@ -1,9 +1,0 @@
-#!/bin/execlineb
-# Copyright 2026 SonicDE Community
-# Distributed under the terms of the GNU General Public License v2
-#
-# s6 service run script for Sonic Login Manager
-# Install as /etc/s6/sv/plasmalogin/run
-
-# exec replaces the shell with the daemon process (required for proper signal handling)
-exec @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin

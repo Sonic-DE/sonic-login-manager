@@ -1,0 +1,24 @@
+#!/bin/execlineb -S0
+# Copyright 2026 SonicDE Community
+# Distributed under the terms of the GNU General Public License v2
+#
+# s6 service run script for Sonic Login Manager
+# Install as /etc/s6/sv/plasmalogin/run
+#
+# In s6, run scripts must exec into a long-lived process without forking.
+# s6-supervise monitors this process; if it dies, ./finish is spawned,
+# then ./run is spawned again unless the service has been told to stay down.
+#
+# s6-notifywhenup is used to signal readiness to s6-rc. When the daemon is
+# ready to accept connections, it will signal fd 3 (see notification-fd).
+# This prevents dependent services from starting before the display manager
+# has finished initialising its IPC socket and greeter.
+
+# Ensure the daemon does not inadvertently read from stdin
+fdmove 0 /dev/null
+
+# s6-notifywhenup wraps the daemon so it can report readiness to s6-rc.
+# -u tells it to notify UP readiness.
+# The notification is sent on the fd referenced by notification-fd (3).
+exec s6-notifywhenup -u
+@CMAKE_INSTALL_FULL_BINDIR@/plasmalogin

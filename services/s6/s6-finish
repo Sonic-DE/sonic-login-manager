@@ -1,0 +1,25 @@
+#!/bin/sh
+# Copyright 2026 SonicDE Community
+# Distributed under the terms of the GNU General Public License v2
+#
+# s6 service finish script for Sonic Login Manager
+# Install as /etc/s6/sv/plasmalogin/finish
+#
+# s6-supervise spawns this script when the ./run process dies.
+# It is meant to clean up application state that the daemon did not clean up
+# itself before dying. It must be short-lived.
+#
+# Arguments passed by s6-supervise:
+#   $1 = exit code of ./run (or 256 if killed by signal)
+#   $2 = signal number (if $1 == 256), else 0
+#   $3 = optional readiness notification fd
+#   $4 = optional pid
+
+# Clean up auth sockets that may be left behind by the daemon or helpers
+rm -f /tmp/plasmalogin-auth*
+rm -f /tmp/xauth_*
+
+# In standard s6, the finish script's exit code does NOT control respawn.
+# Respawn is controlled by s6-supervise state (e.g. s6-svc -d to stay down).
+# Always exit 0 so s6-supervise does not log spurious warnings.
+exit 0
