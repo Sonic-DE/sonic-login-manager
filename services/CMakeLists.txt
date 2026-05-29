@@ -1,171 +1,272 @@
 # Options to allow packagers to choose which init scripts to install
 # regardless of what is detected on the build machine
-option(INSTALL_SYSTEMD "Install systemd unit files" OFF)
-option(INSTALL_OPENRC "Install OpenRC init script" OFF)
-option(INSTALL_BSD_RC "Install BSD rc.d init script" OFF)
-option(INSTALL_SYSVINIT_RC "Install generic sysvinit/rc.d init script" OFF)
-option(INSTALL_RUNIT "Install runit service files" OFF)
-option(INSTALL_DINIT "Install dinit service files" OFF)
-option(INSTALL_S6 "Install s6 service files" OFF)
+include(GNUInstallDirs)
+option(SPLIT_BUILD "Generate separate installation components for distros that support multiple init systems and split them in to separate packages" OFF)
 
-# systemd service - install if detected or if explicitly requested via -DINSTALL_SYSTEMD=ON
-if(SYSTEMD_FOUND OR INSTALL_SYSTEMD)
-    configure_file(plasmalogin.service.in plasmalogin.service)
+# systemd service - install if detected
+configure_file(systemd/plasmalogin.service.in systemd/plasmalogin.service)
+configure_file(systemd/plasmalogin.conf.in systemd/plasmalogin.conf)
+if(SPLIT_BUILD)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.service"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/plasmalogin.service"
+        DESTINATION "${KDE_INSTALL_SYSTEMDUNITDIR}/system"
+        COMPONENT systemd
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/plasmalogin.conf"
+        DESTINATION "lib/sysusers.d"
+        COMPONENT systemd
+    )
+elseif(SYSTEMD_FOUND)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/plasmalogin.service"
         DESTINATION "${KDE_INSTALL_SYSTEMDUNITDIR}/system"
     )
 
-    configure_file(plasmalogin-sysuser.conf.in plasmalogin-sysuser.conf)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-sysuser.conf"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/plasmalogin.conf"
         DESTINATION "lib/sysusers.d"
-        RENAME plasmalogin.conf
     )
 endif()
 
-# OpenRC script - install if detected or if explicitly requested via -DINSTALL_OPENRC=ON
-if(OPENRC_FOUND OR INSTALL_OPENRC)
-    configure_file(plasmalogin.openrc plasmalogin.openrc @ONLY)
+# OpenRC script - install if detected
+configure_file(openrc/plasmalogin.in openrc/plasmalogin @ONLY)
+if(SPLIT_BUILD)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.openrc"
-        DESTINATION "/etc/init.d"
-        RENAME plasmalogin
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/openrc/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
+        COMPONENT openrc
+    )
+elseif(OPENRC_FOUND)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/openrc/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
     )
 endif()
 
-# runit service - install if detected or if explicitly requested via -DINSTALL_RUNIT=ON
-if(RUNIT_FOUND OR INSTALL_RUNIT)
-    configure_file(plasmalogin.runit plasmalogin.runit @ONLY)
+# runit service - install if detected
+configure_file(runit/run.in runit/run @ONLY)
+if(SPLIT_BUILD)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.runit"
-        DESTINATION "/etc/runit/sv/plasmalogin"
-        RENAME run
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/plasmalogin"
+        COMPONENT runit
+    )
+elseif(RUNIT_FOUND)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/plasmalogin"
     )
 endif()
 
-# dinit service - install if detected or if explicitly requested via -DINSTALL_DINIT=ON
-if(DINIT_FOUND OR INSTALL_DINIT)
-    configure_file(plasmalogin.dinit plasmalogin.dinit @ONLY)
+# dinit service - install if detected
+configure_file(dinit/plasmalogin.in dinit/plasmalogin @ONLY)
+if(SPLIT_BUILD)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.dinit"
-        DESTINATION "/etc/dinit.d"
-        RENAME plasmalogin
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/dinit/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
+        COMPONENT dinit
+    )
+elseif(DINIT_FOUND)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/dinit/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
     )
 endif()
 
-# s6 service - install if detected or if explicitly requested via -DINSTALL_S6=ON
-if(S6_FOUND OR INSTALL_S6)
-    # s6 service directory contents are in the s6/ subdirectory
-    # They install into /etc/s6/sv/plasmalogin/ (type, notification-fd, run, finish, dependencies.d/*)
-
-    configure_file(s6/s6-run s6-run @ONLY)
+# s6 service - install if detected
+# Artix S6 convention: service split into plasmalogin-srv and plasmalogin-log
+# plasmalogin-srv contains the main daemon run script
+# plasmalogin-log is a no-op logger since plasmalogin logs to its own file
+configure_file(s6/run.in s6/run @ONLY)
+configure_file(s6/log/run.in s6/log/run @ONLY)
+if(SPLIT_BUILD)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6-run"
-        DESTINATION "/etc/s6/sv/plasmalogin"
-        RENAME run
-    )
-
-    configure_file(s6/s6-finish s6-finish @ONLY)
-    install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6-finish"
-        DESTINATION "/etc/s6/sv/plasmalogin"
-        RENAME finish
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+        COMPONENT s6
     )
 
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-type"
-        DESTINATION "/etc/s6/sv/plasmalogin"
-        RENAME type
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/type"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+        COMPONENT s6
     )
 
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-notification-fd"
-        DESTINATION "/etc/s6/sv/plasmalogin"
-        RENAME notification-fd
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/producer-for"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+        COMPONENT s6
     )
 
-    # dependency files (empty marker files in dependencies.d/)
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-logind"
-        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
-        RENAME logind
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/logind"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+        COMPONENT s6
     )
+
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-mount-tmpfs"
-        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
-        RENAME mount-tmpfs
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/mount-tmpfs"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+        COMPONENT s6
     )
+
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-tmpfiles-setup"
-        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
-        RENAME tmpfiles-setup
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/tmpfiles-setup"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+        COMPONENT s6
     )
+
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/s6-dep-udevadm"
-        DESTINATION "/etc/s6/sv/plasmalogin/dependencies.d"
-        RENAME udevadm
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/udevadm"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+        COMPONENT s6
+    )
+
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6/log/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+        RENAME "run"
+        COMPONENT s6
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/type"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+        COMPONENT s6
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/log/consumer-for"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+        COMPONENT s6
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/log/pipeline-name"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+        COMPONENT s6
+    )
+elseif(S6_FOUND)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/type"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/producer-for"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/logind"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/mount-tmpfs"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/tmpfiles-setup"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/udevadm"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-srv/dependencies.d"
+    )
+
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/s6/log/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/type"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/log/consumer-for"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/log/pipeline-name"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/plasmalogin-log"
     )
 endif()
 
-# sysvinit script - install if detected or if explicitly requested via -DINSTALL_SYSVINIT_RC=ON
-if(SYSVINIT_FOUND OR INSTALL_SYSVINIT_RC)
-    configure_file(plasmalogin.sh.in plasmalogin.sh)
+# sysvinit script - install if detected
+configure_file(sysvinit/plasmalogin.in sysvinit/plasmalogin)
+configure_file(sysvinit/plasmalogin.conf.in sysvinit/plasmalogin.conf)
+if(SPLIT_BUILD)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh"
-        DESTINATION "etc/init.d"
-        RENAME plasmalogin
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
+        COMPONENT sysvinit
     )
 
-    configure_file(plasmalogin-tmpfiles.conf.in plasmalogin-tmpfiles.conf)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-tmpfiles.conf"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/plasmalogin.conf"
         DESTINATION "lib/tmpfiles.d"
-        RENAME plasmalogin.conf
+        COMPONENT sysvinit
+    )
+elseif(SYSVINIT_FOUND)
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/plasmalogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/plasmalogin.conf"
+        DESTINATION "lib/tmpfiles.d"
     )
 endif()
 
-# BSD rc.d script - install if detected or if explicitly requested via -DINSTALL_BSD_RC=ON
-if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD" OR INSTALL_BSD_RC)
-    configure_file(plasmalogin.sh.bsd.in plasmalogin.sh.bsd @ONLY)
+# BSD rc.d script - install if detected
+configure_file(bsd/plasmalogin.in bsd/plasmalogin @ONLY)
+configure_file(bsd/Xwrapper.config.in bsd/Xwrapper.config)
+if(SPLIT_BUILD)
     install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh.bsd"
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/bsd/plasmalogin"
         DESTINATION "etc/rc.d"
-        RENAME plasmalogin
+        COMPONENT bsd
     )
 
     # Install Xwrapper.config for FreeBSD to allow plasmalogin user to start X server
-    configure_file(Xwrapper.config.in Xwrapper.config)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/Xwrapper.config"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/bsd/Xwrapper.config"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/X11"
+        COMPONENT bsd
+    )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/bsd/plasmalogin"
+        DESTINATION "etc/rc.d"
+    )
+
+    # Install Xwrapper.config for FreeBSD to allow plasmalogin user to start X server
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/bsd/Xwrapper.config"
         DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/X11"
     )
 endif()
 
-# Generic fallback - install only if no other init system is detected and not explicitly disabled
-set(IS_BSD_SYSTEM CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
-if(NOT SYSTEMD_FOUND AND NOT IS_BSD_SYSTEM AND NOT OPENRC_FOUND AND NOT RUNIT_FOUND AND NOT DINIT_FOUND AND NOT S6_FOUND AND NOT SYSVINIT_FOUND AND NOT INSTALL_SYSTEMD AND NOT INSTALL_OPENRC AND NOT INSTALL_RUNIT AND NOT INSTALL_DINIT AND NOT INSTALL_S6 AND NOT INSTALL_SYSVINIT_RC AND NOT INSTALL_BSD_RC)
-    configure_file(plasmalogin.sh.in plasmalogin.sh)
-    install(
-        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin.sh"
-        DESTINATION "etc/rc.d"
-        RENAME plasmalogin
-    )
-
-    configure_file(plasmalogin-tmpfiles.conf.in plasmalogin-tmpfiles.conf)
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-tmpfiles.conf"
-        DESTINATION "lib/tmpfiles.d"
-        RENAME plasmalogin.conf
-    )
-endif()
 
 # systemd-tmpfiles can be used standalone without other systemd parts
+configure_file(systemd/plasmalogin.conf.in systemd/plasmalogin.conf)
 if(DEFINED SYSTEMD_TMPFILES_DIR)
-    configure_file(plasmalogin-tmpfiles.conf.in plasmalogin-tmpfiles.conf)
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/plasmalogin-tmpfiles.conf"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/plasmalogin.conf"
         DESTINATION "lib/tmpfiles.d"
-        RENAME plasmalogin.conf
     )
 endif()

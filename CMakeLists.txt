@@ -161,6 +161,14 @@ ki18n_install(po)
 # Display feature summary
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 
+# CPack split-package generation for init-system-specific subpackages
+# When SPLIT_BUILD is ON, each init system is tagged with a COMPONENT.
+# Run: cmake -B build -DSPLIT_BUILD=ON && cmake --build build && cpack -G TGZ
+# This produces individual .tar.gz packages per init system (e.g. plasmalogin-s6, plasmalogin-systemd, etc.)
+include(CPack)
+set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+
 file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 list(FILTER ALL_CLANG_FORMAT_SOURCE_FILES EXCLUDE REGEX ".*\\.ccls-cache/.*")
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})

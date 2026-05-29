@@ -1,5 +1,5 @@
 #!/bin/sh
-# non-systemd script for plasmalogin
+# sysvinit script for plasmalogin
 # Provides: plasmalogin
 # Required-Start: $local_fs $network
 # Required-Stop: $local_fs $network
