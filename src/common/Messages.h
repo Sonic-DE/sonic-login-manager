@@ -14,12 +14,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_MESSAGES_H
-#define PLASMALOGIN_MESSAGES_H
+#ifndef SONICLOGIN_MESSAGES_H
+#define SONICLOGIN_MESSAGES_H
 
 #include <QFlags>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 /**
@@ -52,7 +52,7 @@ enum class DaemonMessages {
     LoginSucceeded,
     LoginFailed,
     InformationMessage,
-    SessionCapabilities,  // Power management capabilities (sent when greeter connects)
+    SessionCapabilities, // Power management capabilities (sent when greeter connects)
 };
 
 enum class SessionType {
@@ -61,6 +61,6 @@ enum class SessionType {
 };
 }
 
-Q_DECLARE_OPERATORS_FOR_FLAGS(PLASMALOGIN::Capabilities)
+Q_DECLARE_OPERATORS_FOR_FLAGS(SONICLOGIN::Capabilities)
 
-#endif // PLASMALOGIN_MESSAGES_H
+#endif // SONICLOGIN_MESSAGES_H

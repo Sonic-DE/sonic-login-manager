@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PLASMALOGIN_AUTH_H
-#define PLASMALOGIN_AUTH_H
+#ifndef SONICLOGIN_AUTH_H
+#define SONICLOGIN_AUTH_H
 
 #include "AuthPrompt.h"
 #include "AuthRequest.h"
@@ -15,7 +15,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QProcessEnvironment>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 /**
  * \brief
@@ -220,4 +220,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_AUTH_H
+#endif // SONICLOGIN_AUTH_H

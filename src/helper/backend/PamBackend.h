@@ -17,7 +17,7 @@
 
 #include <security/pam_appl.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class HelperApp;
 class PamHandle;
@@ -63,12 +63,24 @@ public slots:
     bool closeSession();
 
     QString userName();
-    
+
     // Diagnostic methods for signal handling
-    int pamResult() const { return m_pam ? m_pam->result() : -1; }
-    QString pamErrorString() const { return m_pam ? m_pam->errorString() : QStringLiteral("<null>"); }
-    bool isPamOpen() const { return m_pam ? m_pam->isOpen() : false; }
-    PamHandle* pamHandle() const { return m_pam; }
+    int pamResult() const
+    {
+        return m_pam ? m_pam->result() : -1;
+    }
+    QString pamErrorString() const
+    {
+        return m_pam ? m_pam->errorString() : QStringLiteral("<null>");
+    }
+    bool isPamOpen() const
+    {
+        return m_pam ? m_pam->isOpen() : false;
+    }
+    PamHandle *pamHandle() const
+    {
+        return m_pam;
+    }
 
 private:
     HelperApp *m_app{nullptr};

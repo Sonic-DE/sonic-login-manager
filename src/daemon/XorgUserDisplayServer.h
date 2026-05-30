@@ -14,14 +14,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_XORGUSERDISPLAYSERVER_H
-#define PLASMALOGIN_XORGUSERDISPLAYSERVER_H
+#ifndef SONICLOGIN_XORGUSERDISPLAYSERVER_H
+#define SONICLOGIN_XORGUSERDISPLAYSERVER_H
 
 #include "Display.h"
 
 class QProcess;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 class XorgUserDisplayServer
@@ -29,6 +29,6 @@ class XorgUserDisplayServer
 public:
     static QString command(Display *display);
 };
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
-#endif // PLASMALOGIN_XORGUSERDISPLAYSERVER_H
+#endif // SONICLOGIN_XORGUSERDISPLAYSERVER_H

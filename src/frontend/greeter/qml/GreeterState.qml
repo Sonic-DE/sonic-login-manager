@@ -8,7 +8,7 @@ pragma Singleton
 
 import QtQuick
 
-import org.kde.plasma.login as PlasmaLogin
+import org.kde.sonic.login as SonicLogin
 
 Item {
     id: greeterState
@@ -25,7 +25,7 @@ Item {
     }
 
     Binding {
-        target: PlasmaLogin.BlurScreenBridge
+        target: SonicLogin.BlurScreenBridge
         property: "activeWindow"
         value: internal.activeWindow
     }
@@ -34,15 +34,15 @@ Item {
 
     // Shared state
 
-    readonly property int beyondUserLimit: PlasmaLogin.UserModel.rowCount() === 0 || PlasmaLogin.UserModel.rowCount() > 7
+    readonly property int beyondUserLimit: SonicLogin.UserModel.rowCount() === 0 || SonicLogin.UserModel.rowCount() > 7
 
     property int loginState: GreeterState.LoginState.UserList
     onLoginStateChanged: clearPasswords();
 
     property int sessionIndex: {
         // indexOfData will return -1 if passed an empty string, which these are by default
-        let preselectedSessionIndex = PlasmaLogin.SessionModel.indexOfData(PlasmaLogin.Settings.preselectedSession, PlasmaLogin.SessionModel.FileNameRole);
-        let lastLoggedInSessionIndex = PlasmaLogin.SessionModel.indexOfData(PlasmaLogin.StateConfig.lastLoggedInSession, PlasmaLogin.SessionModel.FileNameRole);
+        let preselectedSessionIndex = SonicLogin.SessionModel.indexOfData(SonicLogin.Settings.preselectedSession, SonicLogin.SessionModel.FileNameRole);
+        let lastLoggedInSessionIndex = SonicLogin.SessionModel.indexOfData(SonicLogin.StateConfig.lastLoggedInSession, SonicLogin.SessionModel.FileNameRole);
 
         if (preselectedSessionIndex != -1) {
             return preselectedSessionIndex;
@@ -55,8 +55,8 @@ Item {
 
     property int userListIndex: {
         // indexOfData will return -1 if passed an empty string, which these are by default
-        let preselectedUserIndex = PlasmaLogin.UserModel.indexOfData(PlasmaLogin.Settings.preselectedUser, PlasmaLogin.UserModel.NameRole);
-        let lastLoggedInUserIndex = PlasmaLogin.UserModel.indexOfData(PlasmaLogin.StateConfig.lastLoggedInUser, PlasmaLogin.UserModel.NameRole);
+        let preselectedUserIndex = SonicLogin.UserModel.indexOfData(SonicLogin.Settings.preselectedUser, SonicLogin.UserModel.NameRole);
+        let lastLoggedInUserIndex = SonicLogin.UserModel.indexOfData(SonicLogin.StateConfig.lastLoggedInUser, SonicLogin.UserModel.NameRole);
 
         if (preselectedUserIndex != -1) {
             return preselectedUserIndex;
@@ -76,10 +76,10 @@ Item {
     // Shared functionality
 
     readonly property bool inhibitGreeterTimeout: {
-        if (greeterState.loginState === PlasmaLogin.GreeterState.LoginState.UserList && greeterState.userListPassword.length > 0) {
+        if (greeterState.loginState === SonicLogin.GreeterState.LoginState.UserList && greeterState.userListPassword.length > 0) {
             // We're on the user list and a password is entered
             return true;
-        } else if (greeterState.loginState === PlasmaLogin.GreeterState.UserPrompt && greeterState.userPromptPassword.length > 0) {
+        } else if (greeterState.loginState === SonicLogin.GreeterState.UserPrompt && greeterState.userPromptPassword.length > 0) {
             // We're on the user prompt and a password is entered
             return true;
         }
@@ -144,16 +144,16 @@ Item {
         greeterState.lastLoggedInUser = username;
         greeterState.lastLoggedInSession = sessionFileName;
 
-        PlasmaLogin.Authenticator.login(username, password, sessionType, sessionFileName);
+        SonicLogin.Authenticator.login(username, password, sessionType, sessionFileName);
     }
 
     Connections {
-        target: PlasmaLogin.Authenticator
+        target: SonicLogin.Authenticator
 
         function onLoginSucceeded() {
-            PlasmaLogin.StateConfig.lastLoggedInUser = greeterState.lastLoggedInUser;
-            PlasmaLogin.StateConfig.lastLoggedInSession = greeterState.lastLoggedInSession;
-            PlasmaLogin.StateConfig.save();
+            SonicLogin.StateConfig.lastLoggedInUser = greeterState.lastLoggedInUser;
+            SonicLogin.StateConfig.lastLoggedInSession = greeterState.lastLoggedInSession;
+            SonicLogin.StateConfig.save();
         }
     }
 }

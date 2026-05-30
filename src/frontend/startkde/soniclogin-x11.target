@@ -1,0 +1,7 @@
+[Unit]
+Requires=soniclogin-kwin_x11.service
+BindsTo=soniclogin-kwin_x11.service
+Requires=soniclogin.service
+BindsTo=soniclogin.service
+
+Wants=plasma-wallpaper.service

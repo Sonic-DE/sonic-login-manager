@@ -1,0 +1,15 @@
+# Copyright 2026 SonicDE Community
+# Distributed under the terms of the GNU General Public License v2
+#
+# dinit service file for Sonic Login Manager
+# Install as /etc/dinit.d/soniclogin
+
+type = process
+command = @CMAKE_INSTALL_FULL_BINDIR@/soniclogin
+restart = true
+working-dir = /
+run-as = root
+
+# Wait for these core services if they exist on the system
+waits-for: dbus
+waits-for: elogind

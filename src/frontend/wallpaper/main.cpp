@@ -7,15 +7,15 @@
 #include <QQuickWindow>
 #include <QSurfaceFormat>
 
-#include "wallpaperapp.h"
 #include "MessageHandler.h"
+#include "wallpaperapp.h"
 
 int main(int argc, char **argv)
 {
-    // Install message handler to log to plasmalogin.log
-    qInstallMessageHandler(PLASMALOGIN::WallpaperMessageHandler);
+    // Install message handler to log to soniclogin.log
+    qInstallMessageHandler(SONICLOGIN::WallpaperMessageHandler);
 
-    QCoreApplication::setApplicationName(QStringLiteral("plasma-login-wallpaper"));
+    QCoreApplication::setApplicationName(QStringLiteral("soniclogin-wallpaper"));
 
     auto format = QSurfaceFormat::defaultFormat();
     format.setOption(QSurfaceFormat::ResetNotification);

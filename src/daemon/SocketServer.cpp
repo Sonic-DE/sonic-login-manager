@@ -26,7 +26,7 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 SocketServer::SocketServer(QObject *parent)
     : QObject(parent)
@@ -48,7 +48,7 @@ bool SocketServer::start(const QString &displayName)
         return false;
     }
 
-    QString socketName = QStringLiteral("plasmalogin-%1-%2").arg(displayName).arg(generateName(6));
+    QString socketName = QStringLiteral("soniclogin-%1-%2").arg(displayName).arg(generateName(6));
 
     // log message
     qDebug() << "Socket server starting...";
@@ -110,9 +110,7 @@ void SocketServer::newConnection()
         qWarning() << "SocketServer: socket object destroyed, ptr=" << obj;
     });
     connect(socket, &QLocalSocket::disconnected, this, [socket] {
-        qWarning() << "SocketServer: client disconnected, serverName=" << socket->serverName()
-                   << "socket ptr=" << (void *)socket
-                   << "state=" << socket->state()
+        qWarning() << "SocketServer: client disconnected, serverName=" << socket->serverName() << "socket ptr=" << (void *)socket << "state=" << socket->state()
                    << "error=" << socket->errorString();
     });
     connect(socket, &QLocalSocket::disconnected, socket, &QLocalSocket::deleteLater);
@@ -156,31 +154,31 @@ void SocketServer::readyRead()
             // emit signal
             emit connected();
         } break;
-         case GreeterMessages::Login: {
-             // read username, pasword etc.
-             QString user, password, filename;
-             Session session;
-             input >> user >> password >> session;
-             if (!socket || user.isEmpty() || !session.isValid()) {
-                 qWarning() << "SocketServer::Login: validation failed, not emitting signal";
-                 return;
-             }
-             // emit signal
-             emit login(socket, user, password, session);
-         } break;
-         case GreeterMessages::PowerOff: {
-             powerOff();
-         } break;
-         case GreeterMessages::Reboot: {
-             reboot();
-         } break;
-         case GreeterMessages::Suspend: {
-             suspend();
-         } break;
-         case GreeterMessages::Hibernate: {
-             hibernate();
-         } break;
-         default: {
+        case GreeterMessages::Login: {
+            // read username, pasword etc.
+            QString user, password, filename;
+            Session session;
+            input >> user >> password >> session;
+            if (!socket || user.isEmpty() || !session.isValid()) {
+                qWarning() << "SocketServer::Login: validation failed, not emitting signal";
+                return;
+            }
+            // emit signal
+            emit login(socket, user, password, session);
+        } break;
+        case GreeterMessages::PowerOff: {
+            powerOff();
+        } break;
+        case GreeterMessages::Reboot: {
+            reboot();
+        } break;
+        case GreeterMessages::Suspend: {
+            suspend();
+        } break;
+        case GreeterMessages::Hibernate: {
+            hibernate();
+        } break;
+        default: {
             // log message
             qWarning() << "SocketServer::readyRead: GreeterMessages: Unknown message" << message;
         }

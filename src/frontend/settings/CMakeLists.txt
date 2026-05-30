@@ -1,15 +1,15 @@
-set(PLASMALOGIN_CONFIG_FILE         "/etc/plasmalogin.conf"                                    CACHE PATH  "Path of the plasma-login config file")
-set(PLASMALOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/defaults.conf"    CACHE PATH  "Path of the system plasma-login config file")
+set(SONICLOGIN_CONFIG_FILE         "/etc/soniclogin.conf"                                    CACHE PATH  "Path of the soniclogin config file")
+set(SONICLOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/lib/soniclogin/defaults.conf"    CACHE PATH  "Path of the system soniclogin config file")
 
 configure_file(config.h.in config.h IMMEDIATE @ONLY)
 
 # Covered by greeter/Messages.sh as we only have one string in here
-add_definitions(-DTRANSLATION_DOMAIN="plasma_login")
+add_definitions(-DTRANSLATION_DOMAIN="soniclogin")
 
 add_library(settings STATIC
     config.h
-    plasmaloginsettings.cpp
-    plasmaloginsettingsdefaults.cpp
+    sonicloginsettings.cpp
+    sonicloginsettingsdefaults.cpp
     wallpaperintegration.cpp
     wallpapersettings.cpp
     models/sessionmodel.cpp models/sessionmodel.h
@@ -17,7 +17,7 @@ add_library(settings STATIC
 )
 set_property(TARGET settings PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-kconfig_add_kcfg_files(settings GENERATE_MOC plasmaloginsettingsbase.kcfgc)
+kconfig_add_kcfg_files(settings GENERATE_MOC sonicloginsettingsbase.kcfgc)
 target_link_libraries(settings
     Qt6::Quick
     KF6::ConfigQml

@@ -1,0 +1,214 @@
+# Copyright (C) 2025 This file is copyright:
+# This file is distributed under the same license as the sonic-login-manager package.
+# SPDX-FileCopyrightText: 2025, 2026 Valter Mura <valtermura@gmail.com>
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: sonic-login-manager\n"
+"Report-Msgid-Bugs-To: https://bugs.kde.org\n"
+"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"PO-Revision-Date: 2025-10-25 20:38+0200\n"
+"Last-Translator: Valter Mura <valtermura@gmail.com>\n"
+"Language-Team: Italian <kde-i18n-it@kde.org>\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Lokalize 25.12.3\n"
+
+#: kcm.cpp:78
+msgid ""
+"Unable to save settings because a temporary directory could not be created."
+msgstr ""
+"Impossibile salvare le impostazioni perché non è stato possibile creare la "
+"cartella temporanea."
+
+#: kcm.cpp:139
+msgid "Unable to save settings because the config could not be opened."
+msgstr ""
+"Impossibile salvare le impostazioni perché non è stato possibile aprire il "
+"file di configurazione."
+
+#: kcm.cpp:214
+msgid ""
+"Unable to synchronise Plasma settings because the 'soniclogin' user does "
+"not exist. Please check your Sonic Login install."
+msgstr ""
+"Impossibile sincronizzare le impostazioni di Plasma perché l'utente "
+"«soniclogin» non esiste. Verifica l'installazione di Accesso a Plasma."
+
+#: kcm.cpp:265
+msgid ""
+"Unable to reset Plasma settings because the 'soniclogin' user does not "
+"exist. Please check your Sonic Login install."
+msgstr ""
+"Impossibile ripristinare le impostazioni di Plasma perché l'utente "
+"«soniclogin» non esiste. Verifica l'installazione di Accesso a Plasma."
+
+#: ui/Appearance.qml:23
+#, kde-format
+msgctxt "@title"
+msgid "Appearance"
+msgstr "Aspetto"
+
+#: ui/Appearance.qml:35
+#, kde-format
+msgid "Clock"
+msgstr "Orologio"
+
+#: ui/Appearance.qml:36
+#, kde-format
+msgid "Show clock"
+msgstr "Mostra l'orologio"
+
+#: ui/Appearance.qml:52
+#, kde-format
+msgid "Wallpaper type:"
+msgstr "Tipo di sfondo:"
+
+#: ui/main.qml:28
+#, kde-format
+msgctxt "@action:button"
+msgid "Apply Plasma Settings…"
+msgstr "Applica le impostazioni Plasma…"
+
+#: ui/main.qml:33
+#, kde-format
+msgctxt "@action:button"
+msgid "Configure Appearance…"
+msgstr "Configura l'aspetto…"
+
+#: ui/main.qml:64
+#, kde-format
+msgctxt "@title:window"
+msgid "Apply Plasma Settings"
+msgstr "Applica le impostazioni Plasma"
+
+#: ui/main.qml:65
+#, kde-format
+msgid ""
+"This will make the Plasma login screen reflect your customizations to the "
+"following Plasma settings:"
+msgstr ""
+"In questo modo la schermata di accesso a Plasma rifletterà le tue "
+"personalizzazioni alle seguenti impostazioni di Plasma:"
+
+#: ui/main.qml:66
+#, kde-kuit-format
+msgctxt "@info"
+msgid ""
+"<para><list><item>Color scheme</item><item>Cursor theme and size</"
+"item><item>Font and font rendering</item><item>NumLock preference</"
+"item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
+"configuration</item></list></para>"
+msgstr ""
+"<para><list><item>Schema di colori</item><item>Tema e dimensione cursore</"
+"item><item>Carattere e resa carattere</item><item>Preferenza BlocNum</"
+"item><item>Tema di Plasma</item><item>Riscalatura DPI</"
+"item><item>Configurazione schermata</item></list></para>"
+
+#: ui/main.qml:67
+#, kde-format
+msgid ""
+"Please note that theme files must be installed globally to be reflected on "
+"the Plasma login screen."
+msgstr ""
+"Nota che, affinché siano riproposti nella schermata di accesso a Plasma, i "
+"file del tema devono essere installati a livello globale."
+
+#: ui/main.qml:71
+#, kde-format
+msgctxt "@action:button"
+msgid "Apply"
+msgstr "Applica"
+
+#: ui/main.qml:76
+#, kde-format
+msgctxt "@action:button"
+msgid "Reset to Default Settings"
+msgstr "Ripristina alle impostazioni predefinite"
+
+#: ui/main.qml:89
+#, kde-format
+msgctxt "@title:group"
+msgid "Auto-login"
+msgstr "Accesso automatico"
+
+#: ui/main.qml:94
+#, kde-format
+msgctxt "@option:check"
+msgid "Automatically log in:"
+msgstr "Accedi automaticamente:"
+
+#: ui/main.qml:99
+#, kde-format
+msgctxt ""
+"@label:listbox, the following combobox selects the user to log in "
+"automatically"
+msgid "as user:"
+msgstr "come utente:"
+
+#: ui/main.qml:154
+#, kde-format
+msgctxt ""
+"@label:listbox, the following combobox selects the session that is started "
+"automatically"
+msgid "with session:"
+msgstr "con sessione:"
+
+#: ui/main.qml:187
+#, kde-kuit-format
+msgctxt "@info"
+msgid ""
+"Auto-login does not support unlocking your KDE Wallet automatically, so it "
+"will ask you to unlock it every time you log in.    <nl/><nl/>    To avoid "
+"this, you can change the wallet to have a blank password. Note that this is "
+"insecure and should only be done in a trusted environment."
+msgstr ""
+"L'accesso automatico non supporta lo sblocco automatico del tuo Portafoglio "
+"KDE, pertanto ti verrà chiesto di sbloccarlo ogni volta che accedi.    <nl/"
+"><nl/>    Per evitare questo comportamento, puoi modificare il portafoglio "
+"in modo da avere una password vuota. Nota che questa operazione non è sicura "
+"e deve essere eseguita soltanto all'interno di un ambiente affidabile."
+
+#: ui/main.qml:192
+#, kde-format
+msgid "Open KDE Wallet Settings"
+msgstr "Apri le impostazioni di KDE Wallet"
+
+#: ui/main.qml:199
+#, kde-format
+msgctxt "@option:check"
+msgid "Log in again immediately after logging off"
+msgstr "Accedi di nuovo immediatamente dopo essere uscito"
+
+#: ui/main.qml:210
+#, kde-format
+msgctxt "@title:group"
+msgid "Defaults"
+msgstr "Predefinite"
+
+#: ui/main.qml:215
+#, kde-format
+msgctxt "@label"
+msgid "Default user:"
+msgstr "Utente predefinito:"
+
+#: ui/main.qml:221
+#, kde-format
+msgctxt "@option:radio"
+msgid "Last logged-in user"
+msgstr "Ultimo utente di accesso"
+
+#: ui/main.qml:293
+#, kde-format
+msgctxt "@label"
+msgid "Default session:"
+msgstr "Sessione predefinita:"
+
+#: ui/main.qml:299
+#, kde-format
+msgctxt "@option:radio"
+msgid "Last logged-in session"
+msgstr "Ultima sessione di accesso"

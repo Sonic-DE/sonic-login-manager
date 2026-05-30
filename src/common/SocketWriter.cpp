@@ -17,7 +17,7 @@
 
 #include "SocketWriter.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 SocketWriter::SocketWriter(QLocalSocket *socket)
     : socket(socket)

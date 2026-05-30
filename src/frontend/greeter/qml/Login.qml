@@ -15,7 +15,7 @@ import org.kde.plasma.components 3.0 as PlasmaComponents3
 import org.kde.plasma.extras 2.0 as PlasmaExtras
 import org.kde.kirigami 2.20 as Kirigami
 
-import org.kde.plasma.login as PlasmaLogin
+import org.kde.sonic.login as SonicLogin
 
 SessionManagementScreen {
     id: root
@@ -85,7 +85,7 @@ SessionManagementScreen {
         text: ""
         visible: showUsernamePrompt
         focus: showUsernamePrompt
-        placeholderText: i18nd("plasma_login", "Username")
+        placeholderText: i18nd("soniclogin", "Username")
 
         onAccepted: {
             if (root.loginScreenUiVisible) {
@@ -102,7 +102,7 @@ SessionManagementScreen {
             font.pointSize: fontSize + 1
             Layout.fillWidth: true
 
-            placeholderText: i18nd("plasma_login", "Password")
+            placeholderText: i18nd("soniclogin", "Password")
             focus: !showUsernamePrompt
 
             onAccepted: {
@@ -131,7 +131,7 @@ SessionManagementScreen {
             }
 
             Connections {
-                target: PlasmaLogin.Authenticator
+                target: SonicLogin.Authenticator
 
                 function onLoginFailed() {
                     passwordBox.selectAll()
@@ -142,7 +142,7 @@ SessionManagementScreen {
 
         PlasmaComponents3.Button {
             id: loginButton
-            Accessible.name: i18nd("plasma_login", "Log In")
+            Accessible.name: i18nd("soniclogin", "Log In")
             Layout.preferredHeight: passwordBox.implicitHeight
             Layout.preferredWidth: text.length === 0 ? loginButton.Layout.preferredHeight : -1
 
@@ -170,14 +170,14 @@ SessionManagementScreen {
         // Login initial state
         Component.onCompleted: {
             if (sync.isUserList) {
-                root.userList.currentIndex = PlasmaLogin.GreeterState.userListIndex;
-                passwordBox.text = PlasmaLogin.GreeterState.userListPassword;
+                root.userList.currentIndex = SonicLogin.GreeterState.userListIndex;
+                passwordBox.text = SonicLogin.GreeterState.userListPassword;
             } else {
-                userNameInput.text = PlasmaLogin.GreeterState.userPromptUsername;
-                passwordBox.text = PlasmaLogin.GreeterState.userPromptPassword;
+                userNameInput.text = SonicLogin.GreeterState.userPromptUsername;
+                passwordBox.text = SonicLogin.GreeterState.userPromptPassword;
             }
 
-            passwordBox.showPassword = PlasmaLogin.GreeterState.showPassword;
+            passwordBox.showPassword = SonicLogin.GreeterState.showPassword;
         }
 
         // Login -> GreeterState
@@ -189,8 +189,8 @@ SessionManagementScreen {
                     return;
                 }
 
-                if (PlasmaLogin.GreeterState.userListIndex != root.userList.currentIndex) {
-                    PlasmaLogin.GreeterState.userListIndex = root.userList.currentIndex;
+                if (SonicLogin.GreeterState.userListIndex != root.userList.currentIndex) {
+                    SonicLogin.GreeterState.userListIndex = root.userList.currentIndex;
                 }
             }
         }
@@ -200,8 +200,8 @@ SessionManagementScreen {
 
             function onTextChanged() {
                 if (!sync.isUserList) {
-                    if (PlasmaLogin.GreeterState.userPromptUsername != userNameInput.text) {
-                        PlasmaLogin.GreeterState.userPromptUsername = userNameInput.text;
+                    if (SonicLogin.GreeterState.userPromptUsername != userNameInput.text) {
+                        SonicLogin.GreeterState.userPromptUsername = userNameInput.text;
                     }
                 }
             }
@@ -212,34 +212,34 @@ SessionManagementScreen {
 
             function onTextChanged() {
                 if (sync.isUserList) {
-                    if (PlasmaLogin.GreeterState.userListPassword != passwordBox.text) {
-                        PlasmaLogin.GreeterState.userListPassword = passwordBox.text;
+                    if (SonicLogin.GreeterState.userListPassword != passwordBox.text) {
+                        SonicLogin.GreeterState.userListPassword = passwordBox.text;
                     }
                 } else {
-                    if (PlasmaLogin.GreeterState.userPromptPassword != passwordBox.text) {
-                        PlasmaLogin.GreeterState.userPromptPassword = passwordBox.text;
+                    if (SonicLogin.GreeterState.userPromptPassword != passwordBox.text) {
+                        SonicLogin.GreeterState.userPromptPassword = passwordBox.text;
                     }
                 }
             }
 
             function onShowPasswordChanged() {
-                if (PlasmaLogin.GreeterState.showPassword != passwordBox.showPassword) {
-                    PlasmaLogin.GreeterState.showPassword = passwordBox.showPassword;
+                if (SonicLogin.GreeterState.showPassword != passwordBox.showPassword) {
+                    SonicLogin.GreeterState.showPassword = passwordBox.showPassword;
                 }
             }
         }
 
         // GreeterState -> Login
         Connections {
-            target: PlasmaLogin.GreeterState
+            target: SonicLogin.GreeterState
 
             function onUserListIndexChanged() {
                 if (!sync.isUserList) {
                     return;
                 }
 
-                if (root.userList.currentIndex != PlasmaLogin.GreeterState.userListIndex) {
-                    root.userList.currentIndex = PlasmaLogin.GreeterState.userListIndex;
+                if (root.userList.currentIndex != SonicLogin.GreeterState.userListIndex) {
+                    root.userList.currentIndex = SonicLogin.GreeterState.userListIndex;
                 }
             }
 
@@ -248,8 +248,8 @@ SessionManagementScreen {
                     return;
                 }
 
-                if (passwordBox.text != PlasmaLogin.GreeterState.userListPassword) {
-                    passwordBox.text = PlasmaLogin.GreeterState.userListPassword;
+                if (passwordBox.text != SonicLogin.GreeterState.userListPassword) {
+                    passwordBox.text = SonicLogin.GreeterState.userListPassword;
                 }
             }
 
@@ -258,8 +258,8 @@ SessionManagementScreen {
                     return;
                 }
 
-                if (userNameInput.text != PlasmaLogin.GreeterState.userPromptUsername) {
-                    userNameInput.text = PlasmaLogin.GreeterState.userPromptUsername;
+                if (userNameInput.text != SonicLogin.GreeterState.userPromptUsername) {
+                    userNameInput.text = SonicLogin.GreeterState.userPromptUsername;
                 }
             }
 
@@ -268,14 +268,14 @@ SessionManagementScreen {
                     return;
                 }
 
-                if (passwordBox.text != PlasmaLogin.GreeterState.userPromptPassword) {
-                    passwordBox.text = PlasmaLogin.GreeterState.userPromptPassword;
+                if (passwordBox.text != SonicLogin.GreeterState.userPromptPassword) {
+                    passwordBox.text = SonicLogin.GreeterState.userPromptPassword;
                 }
             }
 
             function onShowPasswordChanged() {
-                if (passwordBox.showPassword != PlasmaLogin.GreeterState.showPassword) {
-                    passwordBox.showPassword = PlasmaLogin.GreeterState.showPassword;
+                if (passwordBox.showPassword != SonicLogin.GreeterState.showPassword) {
+                    passwordBox.showPassword = SonicLogin.GreeterState.showPassword;
                 }
             }
         }

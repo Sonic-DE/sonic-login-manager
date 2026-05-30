@@ -1,0 +1,208 @@
+# Copyright (C) 2025 This file is copyright:
+# This file is distributed under the same license as the sonic-login-manager package.
+# SPDX-FileCopyrightText: 2025, 2026 Zayed Al-Saidi <zayed.alsaidi@gmail.com>
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: sonic-login-manager\n"
+"Report-Msgid-Bugs-To: https://bugs.kde.org\n"
+"POT-Creation-Date: 2026-02-28 02:46+0000\n"
+"PO-Revision-Date: 2025-10-23 08:59+0400\n"
+"Last-Translator: Zayed Al-Saidi <zayed.alsaidi@gmail.com>\n"
+"Language-Team: ar\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
+"&& n%100<=10 ? 3 : n%100>=11 ? 4 : 5;\n"
+"X-Generator: Lokalize 23.08.5\n"
+
+#: kcm.cpp:78
+msgid ""
+"Unable to save settings because a temporary directory could not be created."
+msgstr "تعذر حفظ الإعدادات بسبب عدم إمكانية إنشاء دليل مؤقت."
+
+#: kcm.cpp:139
+msgid "Unable to save settings because the config could not be opened."
+msgstr "تعذر حفظ الإعدادات بسبب تعذر فتح ملف الضبط."
+
+#: kcm.cpp:214
+msgid ""
+"Unable to synchronise Plasma settings because the 'soniclogin' user does "
+"not exist. Please check your Sonic Login install."
+msgstr ""
+"تعذر مزامنة إعدادات بلازما لأن المستخدم ”soniclogin“ غير موجود. يرجى التحقق "
+"من تثبيت Sonic Login."
+
+#: kcm.cpp:265
+msgid ""
+"Unable to reset Plasma settings because the 'soniclogin' user does not "
+"exist. Please check your Sonic Login install."
+msgstr ""
+"تعذر تصفير إعدادات بلازما لأن المستخدم ”soniclogin“ غير موجود. يرجى التحقق "
+"من تثبيت Sonic Login."
+
+#: ui/Appearance.qml:23
+#, kde-format
+msgctxt "@title"
+msgid "Appearance"
+msgstr "المظهر"
+
+#: ui/Appearance.qml:35
+#, kde-format
+msgid "Clock"
+msgstr "الساعة"
+
+#: ui/Appearance.qml:36
+#, kde-format
+msgid "Show clock"
+msgstr "أظهر الساعة"
+
+#: ui/Appearance.qml:52
+#, kde-format
+msgid "Wallpaper type:"
+msgstr "نوع الخلفيّة:"
+
+#: ui/main.qml:28
+#, kde-format
+msgctxt "@action:button"
+msgid "Apply Plasma Settings…"
+msgstr "طبّق إعدادات بلازما…"
+
+#: ui/main.qml:33
+#, kde-format
+msgctxt "@action:button"
+msgid "Configure Appearance…"
+msgstr "اضبط المظهر…"
+
+#: ui/main.qml:64
+#, kde-format
+msgctxt "@title:window"
+msgid "Apply Plasma Settings"
+msgstr "طبّق إعدادات بلازما"
+
+#: ui/main.qml:65
+#, kde-format
+msgid ""
+"This will make the Plasma login screen reflect your customizations to the "
+"following Plasma settings:"
+msgstr ""
+"سيؤدي هذا إلى جعل شاشة ولوج بلازما تعكس تخصيصاتك لإعدادات البلازما التالية:"
+
+#: ui/main.qml:66
+#, kde-kuit-format
+msgctxt "@info"
+msgid ""
+"<para><list><item>Color scheme</item><item>Cursor theme and size</"
+"item><item>Font and font rendering</item><item>NumLock preference</"
+"item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen "
+"configuration</item></list></para>"
+msgstr ""
+"<para><list><item>تشكيلة الألوان</item><item>سمة المؤشر وحجمه</"
+"item><item>الخط و إظهاره</item><item>تفضيلات قفل الأرقام</item><item>سمة "
+"بلازما</item><item>تحجيم الخطوط لكل بوصة</item><item>ضبط الشاشة</item></"
+"list></para>"
+
+#: ui/main.qml:67
+#, kde-format
+msgid ""
+"Please note that theme files must be installed globally to be reflected on "
+"the Plasma login screen."
+msgstr ""
+"يرجى ملاحظة أنه يجب تثبيت ملفات السمات بشكل عام حتى يظهر ذلك على شاشة ولوج "
+"بلازما."
+
+#: ui/main.qml:71
+#, kde-format
+msgctxt "@action:button"
+msgid "Apply"
+msgstr "طبّق"
+
+#: ui/main.qml:76
+#, kde-format
+msgctxt "@action:button"
+msgid "Reset to Default Settings"
+msgstr "صفّر إلى الإعدادات المبدئية"
+
+#: ui/main.qml:89
+#, kde-format
+msgctxt "@title:group"
+msgid "Auto-login"
+msgstr "ولوج آليّ"
+
+#: ui/main.qml:94
+#, kde-format
+msgctxt "@option:check"
+msgid "Automatically log in:"
+msgstr "لولوج آليّ في:"
+
+#: ui/main.qml:99
+#, kde-format
+msgctxt ""
+"@label:listbox, the following combobox selects the user to log in "
+"automatically"
+msgid "as user:"
+msgstr "كمستخدم:"
+
+#: ui/main.qml:154
+#, kde-format
+msgctxt ""
+"@label:listbox, the following combobox selects the session that is started "
+"automatically"
+msgid "with session:"
+msgstr "بجلسة:"
+
+#: ui/main.qml:187
+#, kde-kuit-format
+msgctxt "@info"
+msgid ""
+"Auto-login does not support unlocking your KDE Wallet automatically, so it "
+"will ask you to unlock it every time you log in.    <nl/><nl/>    To avoid "
+"this, you can change the wallet to have a blank password. Note that this is "
+"insecure and should only be done in a trusted environment."
+msgstr ""
+"لا يدعم الولوج الآليّ فتح محفظة كِيدِي آليّا، لذلك سيطلب منك إلغاء قفلها في كل "
+"مرة تقوم فيها بالولوج.     <nl/><nl/> لتتفادى هذا يمكنك تغيير المحفظة لتكون "
+"دون كلمة سر. لاحظ أن هذا غير آمن ويجب أن يكون في بيئة آمنة."
+
+#: ui/main.qml:192
+#, kde-format
+msgid "Open KDE Wallet Settings"
+msgstr "افتح إعدادات محفظة كِيدِي"
+
+#: ui/main.qml:199
+#, kde-format
+msgctxt "@option:check"
+msgid "Log in again immediately after logging off"
+msgstr "لج مباشرة بعد الخروج"
+
+#: ui/main.qml:210
+#, kde-format
+msgctxt "@title:group"
+msgid "Defaults"
+msgstr "المبدئيات"
+
+#: ui/main.qml:215
+#, kde-format
+msgctxt "@label"
+msgid "Default user:"
+msgstr "المستخدم المبدئيّ:"
+
+#: ui/main.qml:221
+#, kde-format
+msgctxt "@option:radio"
+msgid "Last logged-in user"
+msgstr "أخر مستخدم ولج النظام"
+
+#: ui/main.qml:293
+#, kde-format
+msgctxt "@label"
+msgid "Default session:"
+msgstr "الجلسة المبدئية:"
+
+#: ui/main.qml:299
+#, kde-format
+msgctxt "@option:radio"
+msgid "Last logged-in session"
+msgstr "أخر جلسة ولج فيها إلى النظام"

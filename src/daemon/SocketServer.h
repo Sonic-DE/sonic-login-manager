@@ -15,19 +15,19 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_SOCKETSERVER_H
-#define PLASMALOGIN_SOCKETSERVER_H
+#ifndef SONICLOGIN_SOCKETSERVER_H
+#define SONICLOGIN_SOCKETSERVER_H
 
 #include <QObject>
 #include <QString>
 
-#include "Session.h"
 #include "PowerManager.h"
+#include "Session.h"
 
 class QLocalServer;
 class QLocalSocket;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class SocketServer : public QObject
 {
@@ -36,7 +36,7 @@ class SocketServer : public QObject
 public:
     explicit SocketServer(QObject *parent = 0);
 
-    bool start(const QString &plasmaloginName);
+    bool start(const QString &sonicloginName);
     void stop();
 
     QString socketAddress() const;
@@ -64,4 +64,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_SOCKETSERVER_H
+#endif // SONICLOGIN_SOCKETSERVER_H

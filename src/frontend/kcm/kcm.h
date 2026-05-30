@@ -13,19 +13,19 @@
 #include <KConfigPropertyMap>
 #include <KQuickManagedConfigModule>
 
-#include "plasmaloginsettings.h"
+#include "sonicloginsettings.h"
 #include "wallpaperintegration.h"
 
 class UserModel;
 class SessionModel;
 
-class PlasmaLoginKcm : public KQuickManagedConfigModule
+class SonicLoginKcm : public KQuickManagedConfigModule
 {
     Q_OBJECT
 public:
-    explicit PlasmaLoginKcm(QObject *parent, const KPluginMetaData &data);
+    explicit SonicLoginKcm(QObject *parent, const KPluginMetaData &data);
 
-    Q_PROPERTY(PlasmaLoginSettings *settings READ settings CONSTANT)
+    Q_PROPERTY(SonicLoginSettings *settings READ settings CONSTANT)
     Q_PROPERTY(KConfigPropertyMap *wallpaperConfiguration READ wallpaperConfiguration NOTIFY currentWallpaperChanged)
     Q_PROPERTY(QUrl wallpaperConfigFile READ wallpaperConfigFile NOTIFY currentWallpaperChanged)
     Q_PROPERTY(WallpaperIntegration *wallpaperIntegration READ wallpaperIntegration NOTIFY currentWallpaperChanged)
@@ -34,10 +34,10 @@ public:
     Q_PROPERTY(UserModel *userModel READ userModel CONSTANT)
     Q_PROPERTY(SessionModel *sessionModel READ sessionModel CONSTANT)
 
-    // TODO: Why not use directly? Could expose in PlasmaLoginSettings as Q_INVOKABLE
+    // TODO: Why not use directly? Could expose in SonicLoginSettings as Q_INVOKABLE
     Q_INVOKABLE QList<WallpaperInfo> availableWallpaperPlugins()
     {
-        return PlasmaLoginSettings::getInstance().availableWallpaperPlugins();
+        return SonicLoginSettings::getInstance().availableWallpaperPlugins();
     }
 
     Q_INVOKABLE void synchronizeSettings();
@@ -45,7 +45,7 @@ public:
     Q_INVOKABLE bool KDEWalletAvailable();
     Q_INVOKABLE void openKDEWallet();
 
-    PlasmaLoginSettings *settings() const;
+    SonicLoginSettings *settings() const;
     QUrl wallpaperConfigFile() const;
     WallpaperIntegration *wallpaperIntegration() const;
     QString currentWallpaper() const;

@@ -14,14 +14,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_DAEMONAPP_H
-#define PLASMALOGIN_DAEMONAPP_H
+#ifndef SONICLOGIN_DAEMONAPP_H
+#define SONICLOGIN_DAEMONAPP_H
 
 #include <QCoreApplication>
 
 #define daemonApp DaemonApp::instance()
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Configuration;
 class DisplayManager;
@@ -65,4 +65,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_DAEMONAPP_H
+#endif // SONICLOGIN_DAEMONAPP_H

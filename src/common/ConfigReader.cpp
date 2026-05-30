@@ -55,7 +55,7 @@ QTextStream &operator<<(QTextStream &str, const bool &val)
     return str;
 }
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 // has to be specialised because QTextStream reads only words into a QString
 template<>
@@ -150,9 +150,9 @@ QString ConfigBase::toConfigFull() const
 void ConfigBase::load()
 {
     // order of priority from least influence to most influence, is
-    //  * m_sysConfigDir (system settings /usr/lib/plasmalogin/plasmalogin.conf.d/) in alphabetical order
-    //  * m_configDir (user settings in /etc/plasmalogin.conf.d/) in alphabetical order
-    //  * m_path (classic fallback /etc/plasmalogin.conf)
+    //  * m_sysConfigDir (system settings /usr/lib/soniclogin/soniclogin.conf.d/) in alphabetical order
+    //  * m_configDir (user settings in /etc/soniclogin.conf.d/) in alphabetical order
+    //  * m_path (classic fallback /etc/soniclogin.conf)
 
     QStringList files;
     QDateTime latestModificationTime = QFileInfo(m_path).lastModified();

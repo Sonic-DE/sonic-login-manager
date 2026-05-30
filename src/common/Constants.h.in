@@ -14,8 +14,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_CONSTANTS_H
-#define PLASMALOGIN_CONSTANTS_H
+#ifndef SONICLOGIN_CONSTANTS_H
+#define SONICLOGIN_CONSTANTS_H
 
 #define BIN_INSTALL_DIR "@CMAKE_INSTALL_FULL_BINDIR@"
 #define LIBEXEC_INSTALL_DIR "@CMAKE_INSTALL_FULL_LIBEXECDIR@"
@@ -36,4 +36,4 @@
 #define HALT_COMMAND "@HALT_COMMAND@"
 #define REBOOT_COMMAND "@REBOOT_COMMAND@"
 
-#endif // PLASMALOGIN_CONSTANTS_H
+#endif // SONICLOGIN_CONSTANTS_H

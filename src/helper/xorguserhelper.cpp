@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 XOrgUserHelper::XOrgUserHelper(QObject *parent)
@@ -290,6 +290,6 @@ void XOrgUserHelper::displayFinished()
     }
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
 #include "moc_xorguserhelper.cpp"

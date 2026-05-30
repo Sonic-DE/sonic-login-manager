@@ -10,7 +10,7 @@
 #include "Auth.h"
 #include "AuthMessages.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class AuthPrompt::Private : public Prompt
 {

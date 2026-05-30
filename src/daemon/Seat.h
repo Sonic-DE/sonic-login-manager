@@ -14,14 +14,14 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_SEAT_H
-#define PLASMALOGIN_SEAT_H
+#ifndef SONICLOGIN_SEAT_H
+#define SONICLOGIN_SEAT_H
 
 #include "Display.h"
 #include <QObject>
 #include <QVector>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Display;
 
@@ -37,13 +37,13 @@ public:
     bool canTTY();
 
 public slots:
-    void removeDisplay(PLASMALOGIN::Display *display);
+    void removeDisplay(SONICLOGIN::Display *display);
 
 private slots:
     void displayStopped();
 
 private:
-    void startDisplay(PLASMALOGIN::Display *display, int tryNr = 1);
+    void startDisplay(SONICLOGIN::Display *display, int tryNr = 1);
 
     QString m_name;
 
@@ -51,4 +51,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_SEAT_H
+#endif // SONICLOGIN_SEAT_H

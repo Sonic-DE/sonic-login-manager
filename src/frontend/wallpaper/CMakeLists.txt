@@ -4,24 +4,24 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
-add_executable(plasma-login-wallpaper)
+add_executable(soniclogin-wallpaper)
 
 
-ecm_add_qml_module(plasma-login-wallpaper URI "org.kde.plasma.login.wallpaper" GENERATE_PLUGIN_SOURCE)
+ecm_add_qml_module(soniclogin-wallpaper URI "org.kde.sonic.login.wallpaper" GENERATE_PLUGIN_SOURCE)
 
-target_sources(plasma-login-wallpaper PRIVATE
+target_sources(soniclogin-wallpaper PRIVATE
     main.cpp
     wallpaperapp.cpp
     wallpaperwindow.cpp
 )
 
-ecm_target_qml_sources(plasma-login-wallpaper PRIVATE
+ecm_target_qml_sources(soniclogin-wallpaper PRIVATE
     SOURCES
     main.qml
     WallpaperFader.qml
 )
 
-target_link_libraries(plasma-login-wallpaper PRIVATE
+target_link_libraries(soniclogin-wallpaper PRIVATE
     settings
     Qt::Core
     Qt::Gui
@@ -33,20 +33,20 @@ target_link_libraries(plasma-login-wallpaper PRIVATE
 )
 
 
-qt_add_shaders(plasma-login-wallpaper "wallpaper_shaders"
+qt_add_shaders(soniclogin-wallpaper "wallpaper_shaders"
     PRECOMPILE
     BATCHABLE
     OPTIMIZED
-    PREFIX "/qt/qml/org/kde/plasma/login/wallpaper/shaders"
+    PREFIX "/qt/qml/org/sonic/login/wallpaper/shaders"
     FILES
         WallpaperFader.frag
     OUTPUTS
         WallpaperFader.frag.qsb
 )
 
-ecm_finalize_qml_module(plasma-login-wallpaper)
+ecm_finalize_qml_module(soniclogin-wallpaper)
 
-install(TARGETS plasma-login-wallpaper DESTINATION ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(TARGETS soniclogin-wallpaper DESTINATION ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 if(SYSTEMD_FOUND)
-    ecm_install_configured_files(INPUT plasma-wallpaper.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+    ecm_install_configured_files(INPUT soniclogin-wallpaper.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 endif()

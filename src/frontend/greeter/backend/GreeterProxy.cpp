@@ -21,7 +21,7 @@
 #include <QDebug>
 #include <QLocalSocket>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class GreeterProxyPrivate
 {
@@ -44,10 +44,8 @@ GreeterProxy::GreeterProxy(QObject *parent)
     });
     connect(d->socket, &QLocalSocket::readyRead, this, &GreeterProxy::readyRead);
     connect(d->socket, &QLocalSocket::errorOccurred, this, [this]() {
-        qWarning() << "GreeterProxy::errorOccurred: Socket error:" << d->socket->errorString()
-                   << "state=" << d->socket->state()
-                   << "serverName=" << d->socket->serverName()
-                   << "fullServerName=" << d->socket->fullServerName()
+        qWarning() << "GreeterProxy::errorOccurred: Socket error:" << d->socket->errorString() << "state=" << d->socket->state()
+                   << "serverName=" << d->socket->serverName() << "fullServerName=" << d->socket->fullServerName()
                    << "bytesAvailable=" << d->socket->bytesAvailable();
     });
     const QString socket = qEnvironmentVariable("SONICLOGIN_SOCKET");
@@ -67,7 +65,7 @@ void GreeterProxy::setSessionModel(SessionModel *model)
     d->sessionModel = model;
 }
 
-void GreeterProxy::login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const
+void GreeterProxy::login(const QString &user, const QString &password, const SONICLOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
     SocketWriter(d->socket) << quint32(GreeterMessages::Login) << user << password << static_cast<uint32_t>(sessionType) << sessionFileName;
     qDebug() << "GreeterProxy::login: Message written, waiting for flush...";

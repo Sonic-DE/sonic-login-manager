@@ -14,13 +14,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_SIGNALHANDLER_H
-#define PLASMALOGIN_SIGNALHANDLER_H
+#ifndef SONICLOGIN_SIGNALHANDLER_H
+#define SONICLOGIN_SIGNALHANDLER_H
 
-#include <QObject>
-#include <QString>
 #include <QFile>
 #include <QIODevice>
+#include <QObject>
+#include <QString>
 #include <unistd.h>
 
 #ifdef Q_OS_FREEBSD
@@ -30,7 +30,7 @@
 
 class QSocketNotifier;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 // Utility function to get process name by PID
 inline QString getProcessNameByPid(pid_t pid)
@@ -88,4 +88,4 @@ private:
     QSocketNotifier *sncustom{nullptr};
 };
 }
-#endif // PLASMALOGIN_SIGNALHANDLER_H
+#endif // SONICLOGIN_SIGNALHANDLER_H

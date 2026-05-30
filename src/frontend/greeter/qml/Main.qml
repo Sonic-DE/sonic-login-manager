@@ -15,7 +15,7 @@ import org.kde.breeze.components as BreezeComponents
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
 
-import org.kde.plasma.login as PlasmaLogin
+import org.kde.sonic.login as SonicLogin
 
 Item {
     id: root
@@ -49,17 +49,17 @@ Item {
         function onKeyPressed(): void {
             // callLater, as otherwise 'enter' key press would arrive after waking
             // and the uiVisible check would pass and a login attempt would be made
-            Qt.callLater(() => PlasmaLogin.GreeterState.activateWindow(loginScreenRoot.Window.window));
+            Qt.callLater(() => SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window));
         }
 
         function onEscapeKeyPressed(): void {
-            PlasmaLogin.GreeterState.timeoutWindow(loginScreenRoot.Window.window);
+            SonicLogin.GreeterState.timeoutWindow(loginScreenRoot.Window.window);
             /*
 -            if (inputPanel.keyboardActive) {
 -                inputPanel.showHide();
 -            }
 -            */
-            PlasmaLogin.GreeterState.clearPasswords();
+            SonicLogin.GreeterState.clearPasswords();
         }
     }
 
@@ -69,12 +69,12 @@ Item {
 
         hoverEnabled: true
 
-        property bool uiVisible: PlasmaLogin.GreeterState.activeWindow === Window.window
+        property bool uiVisible: SonicLogin.GreeterState.activeWindow === Window.window
 
         cursorShape: uiVisible ? Qt.ArrowCursor : Qt.BlankCursor
 
-        onPressed: PlasmaLogin.GreeterState.activateWindow(Window.window);
-        onPositionChanged: PlasmaLogin.GreeterState.activateWindow(Window.window);
+        onPressed: SonicLogin.GreeterState.activateWindow(Window.window);
+        onPositionChanged: SonicLogin.GreeterState.activateWindow(Window.window);
 
         DropShadow {
             id: clockShadow
@@ -123,32 +123,32 @@ Item {
             }
 
             Connections {
-                target: PlasmaLogin.GreeterState
+                target: SonicLogin.GreeterState
 
                 function onLoginStateChanged() {
-                    switch (PlasmaLogin.GreeterState.loginState) {
-                        case PlasmaLogin.GreeterState.LoginState.UserList:
+                    switch (SonicLogin.GreeterState.loginState) {
+                        case SonicLogin.GreeterState.LoginState.UserList:
                             if (mainStack.depth !== 2) { return; /* already showing user list */ }
                             mainStack.pop();
                             return;
-                        case PlasmaLogin.GreeterState.LoginState.UserPrompt:
+                        case SonicLogin.GreeterState.LoginState.UserPrompt:
                             if (mainStack.depth !== 1) { return; /* already showing user prompt */ }
                             mainStack.push(userPromptComponent);
                             return;
                         default:
-                            console.warn("Cannot synchronize login state:", PlasmaLogin.GreeterState.loginState);
+                            console.warn("Cannot synchronize login state:", SonicLogin.GreeterState.loginState);
                     }
                 }
             }
 
             initialItem: Login {
                 id: userListComponent
-                userListModel: PlasmaLogin.UserModel
+                userListModel: SonicLogin.UserModel
                 loginScreenUiVisible: loginScreenRoot.uiVisible
                 userListCurrentIndex: {
                     // indexOfData will return -1 if passed an empty string, which these are by default
-                    let preselectedUserIndex = PlasmaLogin.UserModel.indexOfData(PlasmaLogin.Settings.preselectedUser, PlasmaLogin.UserModel.NameRole);
-                    let lastLoggedInUserIndex = PlasmaLogin.UserModel.indexOfData(PlasmaLogin.StateConfig.lastLoggedInUser, PlasmaLogin.UserModel.NameRole);
+                    let preselectedUserIndex = SonicLogin.UserModel.indexOfData(SonicLogin.Settings.preselectedUser, SonicLogin.UserModel.NameRole);
+                    let lastLoggedInUserIndex = SonicLogin.UserModel.indexOfData(SonicLogin.StateConfig.lastLoggedInUser, SonicLogin.UserModel.NameRole);
 
                     if (preselectedUserIndex != -1) {
                         return preselectedUserIndex;
@@ -159,12 +159,12 @@ Item {
                     }
                 }
 
-                showUserList: !PlasmaLogin.GreeterState.beyondUserLimit
+                showUserList: !SonicLogin.GreeterState.beyondUserLimit
 
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("plasma_login", "Caps Lock is on"));
+                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -176,38 +176,38 @@ Item {
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("plasma_login", "Suspend to disk", "Hibernate")
-                        visible: PlasmaLogin.Authenticator.canHibernate
+                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
-                            PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.Authenticator.hibernate();
+                            SonicLogin.GreeterState.clearPasswords();
+                            SonicLogin.Authenticator.hibernate();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("plasma_login", "Suspend to RAM", "Sleep")
-                        visible: PlasmaLogin.Authenticator.canSuspend
+                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
-                            PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.Authenticator.suspend();
+                            SonicLogin.GreeterState.clearPasswords();
+                            SonicLogin.Authenticator.suspend();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("plasma_login", "Restart")
-                        visible: PlasmaLogin.Authenticator.canReboot
-                        onClicked: PlasmaLogin.Authenticator.reboot()
+                        text: i18nd("soniclogin", "Restart")
+                        visible: SonicLogin.Authenticator.canReboot
+                        onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("plasma_login", "Shut Down")
-                        visible: PlasmaLogin.Authenticator.canShutdown
-                        onClicked: PlasmaLogin.Authenticator.shutdown()
+                        text: i18nd("soniclogin", "Shut Down")
+                        visible: SonicLogin.Authenticator.canShutdown
+                        onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-prompt"
-                        text: i18ndc("plasma_login", "For switching to a username and password prompt", "Other…")
-                        onClicked: PlasmaLogin.GreeterState.loginState = PlasmaLogin.GreeterState.LoginState.UserPrompt
+                        text: i18ndc("soniclogin", "For switching to a username and password prompt", "Other…")
+                        onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserPrompt
                         visible: !userListComponent.showUsernamePrompt
                     }]
 
@@ -288,7 +288,7 @@ Item {
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("plasma_login", "Caps Lock is on"));
+                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -304,7 +304,7 @@ Item {
                     }
                     Component.onCompleted: {
                         // as we can't bind inside ListElement
-                        setProperty(0, "realName", i18nd("plasma_login", "Type in Username and Password"));
+                        setProperty(0, "realName", i18nd("soniclogin", "Type in Username and Password"));
                         setProperty(0, "icon", Qt.resolvedUrl(".face.icon").toString());
                     }
                 }
@@ -315,38 +315,38 @@ Item {
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("plasma_login", "Suspend to disk", "Hibernate")
-                        visible: PlasmaLogin.Authenticator.canHibernate
+                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
-                            PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.Authenticator.hibernate();
+                            SonicLogin.GreeterState.clearPasswords();
+                            SonicLogin.Authenticator.hibernate();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("plasma_login", "Suspend to RAM", "Sleep")
-                        visible: PlasmaLogin.Authenticator.canSuspend
+                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
-                            PlasmaLogin.GreeterState.clearPasswords();
-                            PlasmaLogin.Authenticator.suspend();
+                            SonicLogin.GreeterState.clearPasswords();
+                            SonicLogin.Authenticator.suspend();
                         }
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("plasma_login", "Restart")
-                        visible: PlasmaLogin.Authenticator.canReboot
-                        onClicked: PlasmaLogin.Authenticator.reboot()
+                        text: i18nd("soniclogin", "Restart")
+                        visible: SonicLogin.Authenticator.canReboot
+                        onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("plasma_login", "Shut Down")
-                        visible: PlasmaLogin.Authenticator.canShutdown
-                        onClicked: PlasmaLogin.Authenticator.shutdown()
+                        text: i18nd("soniclogin", "Shut Down")
+                        visible: SonicLogin.Authenticator.canShutdown
+                        onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-list"
-                        text: i18nd("plasma_login", "List Users")
-                        onClicked: PlasmaLogin.GreeterState.loginState = PlasmaLogin.GreeterState.LoginState.UserList
+                        text: i18nd("soniclogin", "List Users")
+                        onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserList
                     }
                 ]
             }
@@ -411,14 +411,14 @@ Item {
     function handleLoginRequest(username, password, sessionType, sessionFileName) {
         root.notificationMessage = "";
         // GreeterState handles updating stateconfig with user/session of successful login
-        PlasmaLogin.GreeterState.handleLoginRequest(username, password, sessionType, sessionFileName);
+        SonicLogin.GreeterState.handleLoginRequest(username, password, sessionType, sessionFileName);
     }
 
     Connections {
-        target: PlasmaLogin.Authenticator
+        target: SonicLogin.Authenticator
 
         function onLoginFailed() {
-            notificationMessage = i18nd("plasma_login", "Login Failed");
+            notificationMessage = i18nd("soniclogin", "Login Failed");
 
             footer.enabled = true;
             mainStack.enabled = true;
@@ -428,7 +428,7 @@ Item {
         }
 
         function onSocketDisconnected() {
-            notificationMessage = i18nd("plasma_login", "Connection to login service lost");
+            notificationMessage = i18nd("soniclogin", "Connection to login service lost");
 
             footer.enabled = true;
             mainStack.enabled = true;

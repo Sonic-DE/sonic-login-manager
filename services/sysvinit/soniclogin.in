@@ -1,0 +1,23 @@
+#!/bin/sh
+# sysvinit script for soniclogin
+# Provides: soniclogin
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# XTODO: add proper dependency for getty
+# Keybits: NO
+
+. /etc/rc.subr
+
+name="soniclogin"
+rcvar=soniclogin_enable
+command="@CMAKE_INSTALL_FULL_BINDIR@/soniclogin"
+pidfile="/run/soniclogin/soniclogin.pid"
+sig_stop=TERM
+sig_reload=USR1
+
+load_rc_config $name
+
+# Set environment variables for the daemon
+export SONICLOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/start-soniclogin-x11
+
+run_rc_command "$1"

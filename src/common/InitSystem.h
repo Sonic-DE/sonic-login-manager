@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2026 The PLASMALOGIN contributors
+ * SPDX-FileCopyrightText: 2026 The SONICLOGIN contributors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */

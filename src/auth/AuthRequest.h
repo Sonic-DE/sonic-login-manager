@@ -13,7 +13,7 @@
 
 #include <QtQml/QQmlListProperty>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Auth;
 class AuthPrompt;

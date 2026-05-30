@@ -1,0 +1,16 @@
+#%PAM-1.0
+
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# FreeBSD PAM configuration for soniclogin autologin
+# DEBUG: Added debug flag to help diagnose signal 3 crashes
+
+auth        required    pam_permit.so
+
+account     include     login
+
+password    required    pam_deny.so
+
+session     include     login
+session     optional    pam_ck_connector.so nofail

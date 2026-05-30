@@ -22,7 +22,7 @@
 
 #include <unistd.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Auth::SocketServer : public QLocalServer
 {
@@ -97,7 +97,7 @@ Auth::SocketServer *Auth::SocketServer::instance()
     static std::unique_ptr<Auth::SocketServer> self;
     if (!self) {
         self.reset(new SocketServer());
-        self->listen(QStringLiteral("plasmalogin-auth-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
+        self->listen(QStringLiteral("soniclogin-auth-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
     }
     return self.get();
 }
@@ -218,7 +218,7 @@ void Auth::Private::dataPending()
 void Auth::Private::childExited(int exitCode, QProcess::ExitStatus exitStatus)
 {
     if (exitStatus != QProcess::NormalExit) {
-        qWarning("Auth: plasmalogin-helper (%s) crashed (exit code %d), exitStatus=%d",
+        qWarning("Auth: soniclogin-helper (%s) crashed (exit code %d), exitStatus=%d",
                  qPrintable(child->arguments().join(QLatin1Char(' '))),
                  HelperExitStatus(exitStatus),
                  exitStatus);
@@ -226,9 +226,9 @@ void Auth::Private::childExited(int exitCode, QProcess::ExitStatus exitStatus)
     }
 
     if (exitCode == HELPER_SUCCESS) {
-        qDebug() << "Auth: plasmalogin-helper exited successfully";
+        qDebug() << "Auth: soniclogin-helper exited successfully";
     } else {
-        qWarning("Auth: plasmalogin-helper exited with %d", exitCode);
+        qWarning("Auth: soniclogin-helper exited with %d", exitCode);
     }
 
     Q_EMIT qobject_cast<Auth *>(parent())->finished((Auth::HelperExitStatus)exitCode);
@@ -395,7 +395,7 @@ void Auth::start()
     if (d->greeter) {
         args << QStringLiteral("--greeter");
     }
-    d->child->start(QStringLiteral("%1/plasmalogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
+    d->child->start(QStringLiteral("%1/soniclogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
 
     d->child->waitForStarted(3000);
 }
@@ -403,12 +403,8 @@ void Auth::start()
 void Auth::stop()
 {
     qWarning() << "Auth::stop() CALLED - TRACE:"
-               << "child_state=" << (d->child ? d->child->state() : QProcess::NotRunning)
-               << "child_pid=" << (d->child ? d->child->processId() : 0)
-               << "user=" << d->user
-               << "greeter=" << d->greeter
-               << "autologin=" << d->autologin
-               << "sessionPath=" << d->sessionPath;
+               << "child_state=" << (d->child ? d->child->state() : QProcess::NotRunning) << "child_pid=" << (d->child ? d->child->processId() : 0)
+               << "user=" << d->user << "greeter=" << d->greeter << "autologin=" << d->autologin << "sessionPath=" << d->sessionPath;
     if (d->child->state() == QProcess::NotRunning) {
         qWarning() << "Auth::stop() child already not running, returning";
         return;

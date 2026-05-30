@@ -20,7 +20,7 @@ set(LOGIN_GREETER_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
 )
 
-add_definitions(-DTRANSLATION_DOMAIN="plasma_login")
+add_definitions(-DTRANSLATION_DOMAIN="soniclogin")
 
 ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
                                 IDENTIFIER LOGOUT_GREETER
@@ -30,17 +30,17 @@ ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
                                 EXPORT PLASMAWORKSPACE
                             )
 
-add_executable(plasma-login-greeter ${LOGIN_GREETER_SRCS})
+add_executable(soniclogin-greeter ${LOGIN_GREETER_SRCS})
 
 # Enable automatic MOC processing for Qt signals/slots
-set_target_properties(plasma-login-greeter PROPERTIES AUTOMOC ON)
+set_target_properties(soniclogin-greeter PROPERTIES AUTOMOC ON)
 
 
 set_source_files_properties(qml/GreeterState.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
-ecm_add_qml_module(plasma-login-greeter URI "org.kde.plasma.login" GENERATE_PLUGIN_SOURCE)
-ecm_target_qml_sources(plasma-login-greeter
+ecm_add_qml_module(soniclogin-greeter URI "org.kde.sonic.login" GENERATE_PLUGIN_SOURCE)
+ecm_target_qml_sources(soniclogin-greeter
     SOURCES
     qml/Main.qml
     qml/Login.qml
@@ -52,9 +52,9 @@ ecm_target_qml_sources(plasma-login-greeter
     qml/faces/.face.icon
 )
 
-kconfig_add_kcfg_files(plasma-login-greeter GENERATE_MOC stateconfig.kcfgc)
+kconfig_add_kcfg_files(soniclogin-greeter GENERATE_MOC stateconfig.kcfgc)
 
-target_link_libraries(plasma-login-greeter PRIVATE
+target_link_libraries(soniclogin-greeter PRIVATE
     settings
     Qt::Quick
     Qt::DBus
@@ -69,12 +69,12 @@ target_link_libraries(plasma-login-greeter PRIVATE
 )
 
 
-ecm_finalize_qml_module(plasma-login-greeter)
+ecm_finalize_qml_module(soniclogin-greeter)
 
-install(TARGETS plasma-login-greeter DESTINATION ${KDE_INSTALL_LIBEXECDIR})
+install(TARGETS soniclogin-greeter DESTINATION ${KDE_INSTALL_LIBEXECDIR})
 
 if(SYSTEMD_FOUND)
-    ecm_install_configured_files(INPUT plasma-login.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+    ecm_install_configured_files(INPUT soniclogin.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 endif()
 
 ki18n_install(po)

@@ -11,7 +11,7 @@
 #include <QIODevice>
 #include <QtCore/QDebug>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 SafeDataStream::SafeDataStream(QIODevice *device)
     : QDataStream(&m_data, QIODevice::ReadWrite)

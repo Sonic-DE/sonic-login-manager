@@ -16,7 +16,7 @@
 #include <cerrno>
 #include <cstring>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 bool PamHandle::putEnv(const QProcessEnvironment &env)
 {

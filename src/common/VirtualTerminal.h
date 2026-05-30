@@ -14,12 +14,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_VIRTUALTERMINAL_H
-#define PLASMALOGIN_VIRTUALTERMINAL_H
+#ifndef SONICLOGIN_VIRTUALTERMINAL_H
+#define SONICLOGIN_VIRTUALTERMINAL_H
 
 #include <QString>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 namespace VirtualTerminal
 {
@@ -32,4 +32,4 @@ void jumpToVt(int vt, bool vt_auto);
 }
 }
 
-#endif // PLASMALOGIN_VIRTUALTERMINAL_H
+#endif // SONICLOGIN_VIRTUALTERMINAL_H

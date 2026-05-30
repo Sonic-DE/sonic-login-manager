@@ -1,2 +1,2 @@
 #!/bin/execlineb -P
-exec @CMAKE_INSTALL_FULL_BINDIR@/plasmalogin
+exec @CMAKE_INSTALL_FULL_BINDIR@/soniclogin

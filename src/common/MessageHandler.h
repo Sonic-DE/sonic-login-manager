@@ -15,8 +15,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_MESSAGEHANDLER_H
-#define PLASMALOGIN_MESSAGEHANDLER_H
+#ifndef SONICLOGIN_MESSAGEHANDLER_H
+#define SONICLOGIN_MESSAGEHANDLER_H
 
 #include "Constants.h"
 
@@ -32,7 +32,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 inline void ensureLogFileExists(const QString &s_logFilePath)
 {
@@ -84,7 +84,7 @@ static void standardLogger(QtMsgType type, const QString &msg)
 
     // Only write to syslog when journalctl is available
     if (hasJournalctl) {
-        openlog("plasmalogin", LOG_PID | LOG_CONS, LOG_AUTH);
+        openlog("soniclogin", LOG_PID | LOG_CONS, LOG_AUTH);
         syslog(syslogPriority, "%s", qPrintable(msg));
         return;
     }
@@ -132,33 +132,33 @@ static void messageHandler(QtMsgType type, const QString &prefix, const QString 
 
 void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("PLASMALOGIN DAEMON"), msg);
+    messageHandler(type, QStringLiteral("SONICLOGIN DAEMON"), msg);
 }
 
 void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("PLASMALOGIN HELPER"), msg);
+    messageHandler(type, QStringLiteral("SONICLOGIN HELPER"), msg);
 }
 
 void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("PLASMALOGIN GREETER"), msg);
+    messageHandler(type, QStringLiteral("SONICLOGIN GREETER"), msg);
 }
 
 void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("PLASMALOGIN STARTPLASMA"), msg);
+    messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
 }
 
 void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    messageHandler(type, QStringLiteral("PLASMALOGIN WALLPAPER"), msg);
+    messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPER"), msg);
 }
 
 void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
-    PLASMALOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
+    SONICLOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
 }
 }
 
-#endif // PLASMALOGIN_MESSAGEHANDLER_H
+#endif // SONICLOGIN_MESSAGEHANDLER_H

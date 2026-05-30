@@ -25,12 +25,12 @@
 
 int main(int argc, char **argv)
 {
-    qInstallMessageHandler(PLASMALOGIN::X11UserHelperMessageHandler);
+    qInstallMessageHandler(SONICLOGIN::X11UserHelperMessageHandler);
     QCoreApplication app(argc, argv);
-    PLASMALOGIN::SignalHandler s;
-    QObject::connect(&s, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {
+    SONICLOGIN::SignalHandler s;
+    QObject::connect(&s, &SONICLOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {
         pid_t ppid = getppid();
-        QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+        QString parentName = SONICLOGIN::getProcessNameByPid(ppid);
         qWarning() << "HelperStartX11User: Received SIGTERM - diagnostic information:"
                    << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                    << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
@@ -38,10 +38,10 @@ int main(int argc, char **argv)
         QCoreApplication::instance()->exit(-1);
     });
     s.addCustomSignal(SIGQUIT);
-    QObject::connect(&s, &PLASMALOGIN::SignalHandler::customSignalReceived, &app, [&argc, &argv](int signal) {
+    QObject::connect(&s, &SONICLOGIN::SignalHandler::customSignalReceived, &app, [&argc, &argv](int signal) {
         if (signal == SIGQUIT) {
             pid_t ppid = getppid();
-            QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+            QString parentName = SONICLOGIN::getProcessNameByPid(ppid);
             qWarning() << "HelperStartX11User: Received SIGQUIT (signal 3) - diagnostic information:"
                        << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                        << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         return 33;
     }
 
-    using namespace PLASMALOGIN;
+    using namespace SONICLOGIN;
 
     XOrgUserHelper helper;
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &helper, [&helper] {

@@ -1,13 +1,13 @@
 /*
- * PLASMALOGIN configuration
+ * SONICLOGIN configuration
  * SPDX-FileCopyrightText: 2014 Martin Bříza <mbriza@redhat.com>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  */
 
-#ifndef PLASMALOGIN_CONFIGURATION_H
-#define PLASMALOGIN_CONFIGURATION_H
+#ifndef SONICLOGIN_CONFIGURATION_H
+#define SONICLOGIN_CONFIGURATION_H
 
 #include <QtCore/QDir>
 #include <QtCore/QString>
@@ -19,7 +19,7 @@
 
 #include "ConfigReader.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 // clang-format off
     //     Name        File         Sections and/or Entries (but anything else too, it's a class) - Entries in a Config are assumed to be in the General section
@@ -34,11 +34,11 @@ namespace PLASMALOGIN
             Entry(ServerPath,          QString,     _S("/usr/bin/X"),                           _S("Path to X server binary"));
 #endif
             Entry(ServerArguments,     QString,     _S("-nolisten tcp"),                        _S("Arguments passed to the X server invocation"));
-            Entry(SessionLogFile,      QString,     _S(".local/share/plasmalogin/xorg-session.log"),   _S("Path to the user session log file"));
+            Entry(SessionLogFile,      QString,     _S(".local/share/soniclogin/xorg-session.log"),   _S("Path to the user session log file"));
         );
 
         Section(Wayland,
-            Entry(SessionLogFile,      QString,     _S(".local/share/plasmalogin/wayland-session.log"),_S("Path to the user session log file"));
+            Entry(SessionLogFile,      QString,     _S(".local/share/soniclogin/wayland-session.log"),_S("Path to the user session log file"));
         );
 
         Section(Users,
@@ -49,13 +49,13 @@ namespace PLASMALOGIN
         Section(Autologin,
             Entry(User,                QString,     QString(),                                  _S("Username for autologin session"));
             Entry(Session,             QString,     QString(),                                  _S("Name of session file for autologin session (if empty try last logged in)"));
-            Entry(Relogin,             bool,        false,                                      _S("Whether plasmalogin should automatically log back into sessions when they exit"));
+            Entry(Relogin,             bool,        false,                                      _S("Whether soniclogin should automatically log back into sessions when they exit"));
         );
     );
 
 // clang-format on
 
-    extern MainConfig mainConfig;
+extern MainConfig mainConfig;
 }
 
-#endif // PLASMALOGIN_CONFIGURATION_H
+#endif // SONICLOGIN_CONFIGURATION_H

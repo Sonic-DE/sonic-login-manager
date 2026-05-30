@@ -4,19 +4,19 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-#ifndef PLASMALOGIN_SELFPROVISIONER_H
-#define PLASMALOGIN_SELFPROVISIONER_H
+#ifndef SONICLOGIN_SELFPROVISIONER_H
+#define SONICLOGIN_SELFPROVISIONER_H
 
 #include <QString>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 /**
- * @brief Handles first-run self-provisioning for the plasmalogin daemon.
+ * @brief Handles first-run self-provisioning for the soniclogin daemon.
  *
  * Performs system setup that would otherwise require an init script:
- * - Creates the plasmalogin system user and group
+ * - Creates the soniclogin system user and group
  * - Creates state, runtime, and log directories
  * - Cleans up stale auth sockets
  *
@@ -39,7 +39,7 @@ private:
     bool runCommand(const QString &program, const QStringList &args);
     bool runCommandIgnorableFailure(const QString &program, const QStringList &args);
 
-    bool createPlasmaloginUser();
+    bool createGreeterUser();
     bool createStateDirectory();
     bool createRuntimeDirectory();
     bool setupLogging();
@@ -52,6 +52,6 @@ private:
     bool m_hasJournalctl;
 };
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
-#endif // PLASMALOGIN_SELFPROVISIONER_H
+#endif // SONICLOGIN_SELFPROVISIONER_H

@@ -14,7 +14,7 @@
 
 #include "Auth.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Prompt
 {

@@ -29,9 +29,9 @@ set(DAEMON_SOURCES
     XorgUserDisplayServer.cpp
 )
 
-qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.xml"          "DisplayManager.h" PLASMALOGIN::DisplayManager)
-qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.Seat.xml"     "DisplayManager.h" PLASMALOGIN::DisplayManagerSeat)
-qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.Session.xml"  "DisplayManager.h" PLASMALOGIN::DisplayManagerSession)
+qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.xml"          "DisplayManager.h" SONICLOGIN::DisplayManager)
+qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.Seat.xml"     "DisplayManager.h" SONICLOGIN::DisplayManagerSeat)
+qt_add_dbus_adaptor(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.DisplayManager.Session.xml"  "DisplayManager.h" SONICLOGIN::DisplayManagerSession)
 
 set_source_files_properties("${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.login1.Manager.xml" PROPERTIES
    INCLUDE "LogindDBusTypes.h"
@@ -48,8 +48,8 @@ qt_add_dbus_interface(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.fr
 qt_add_dbus_interface(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.login1.Seat.xml"  "Login1Seat")
 qt_add_dbus_interface(DAEMON_SOURCES "${CMAKE_SOURCE_DIR}/data/interfaces/org.freedesktop.login1.Session.xml"  "Login1Session")
 
-add_executable(plasmalogin ${DAEMON_SOURCES})
-target_link_libraries(plasmalogin
+add_executable(soniclogin ${DAEMON_SOURCES})
+target_link_libraries(soniclogin
                       Qt6::DBus
                       Qt6::Network
                       Qt6::Qml
@@ -58,4 +58,4 @@ target_link_libraries(plasmalogin
                       KF6::ConfigGui)
 
 
-install(TARGETS plasmalogin DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(TARGETS soniclogin DESTINATION "${CMAKE_INSTALL_BINDIR}")

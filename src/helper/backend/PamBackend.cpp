@@ -36,7 +36,7 @@
 #include <sys/types.h>
 #endif
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 static Request loginRequest{{{AuthPrompt::LOGIN_USER, QStringLiteral("login:"), false}, {AuthPrompt::LOGIN_PASSWORD, QStringLiteral("Password: "), true}}};
 
@@ -228,12 +228,12 @@ bool PamBackend::start(const QString &user)
 {
     bool result;
 
-    QString service = QStringLiteral("plasmalogin");
+    QString service = QStringLiteral("soniclogin");
 
-    if (user == QStringLiteral("plasmalogin") && m_greeter) {
-        service = QStringLiteral("plasmalogin-greeter");
+    if (user == QStringLiteral("soniclogin") && m_greeter) {
+        service = QStringLiteral("soniclogin-greeter");
     } else if (m_autologin) {
-        service = QStringLiteral("plasmalogin-autologin");
+        service = QStringLiteral("soniclogin-autologin");
     }
 
     result = m_pam->start(service, user);

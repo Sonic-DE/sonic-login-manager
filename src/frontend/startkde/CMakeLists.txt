@@ -1,6 +1,6 @@
 if(SYSTEMD_FOUND)
-    install(FILES plasma-login-x11.target DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
-    ecm_install_configured_files(INPUT plasma-login-kwin_x11.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+    install(FILES soniclogin-x11.target DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+    ecm_install_configured_files(INPUT soniclogin-kwin_x11.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 endif()
 
 include_directories(
@@ -8,12 +8,11 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
-ecm_qt_declare_logging_category(startplasma_SRCS HEADER debug.h IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup)
+ecm_qt_declare_logging_category(start-soniclogin_SRCS HEADER debug.h IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup)
 
-add_executable(startplasma-login-x11 startplasmalogin-x11.cpp startplasma.cpp ${startplasma_SRCS})
+add_executable(start-soniclogin-x11 start-soniclogin-x11.cpp start-soniclogin.cpp ${start-soniclogin_SRCS})
 
-
-target_link_libraries(startplasma-login-x11 PRIVATE
+target_link_libraries(start-soniclogin-x11 PRIVATE
     Qt::Core
     Qt::DBus
     KF6::ConfigCore
@@ -24,9 +23,9 @@ target_link_libraries(startplasma-login-x11 PRIVATE
 )
 
 
-kconfig_target_kcfg_file(startplasma-login-x11
+kconfig_target_kcfg_file(start-soniclogin-x11
     FILE lookandfeelsettings.kcfg
     CLASS_NAME LookAndFeelSettings
 )
 
-install(TARGETS startplasma-login-x11 ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(TARGETS start-soniclogin-x11 ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})

@@ -68,6 +68,6 @@ Item {
                     0,         0,         0,         1
                 ));
 
-        fragmentShader: "qrc:/qt/qml/org/kde/plasma/login/wallpaper/shaders/WallpaperFader.frag.qsb"
+        fragmentShader: "qrc:/qt/qml/org/sonic/login/wallpaper/shaders/WallpaperFader.frag.qsb"
     }
 }

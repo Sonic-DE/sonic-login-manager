@@ -1,7 +1,0 @@
-[Unit]
-Requires=plasma-login-kwin_x11.service
-BindsTo=plasma-login-kwin_x11.service
-Requires=plasma-login.service
-BindsTo=plasma-login.service
-
-Wants=plasma-wallpaper.service

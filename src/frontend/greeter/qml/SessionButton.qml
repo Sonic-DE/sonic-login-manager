@@ -10,18 +10,18 @@ import QtQuick 2.15
 import org.kde.plasma.components 3.0 as PlasmaComponents
 import org.kde.kirigami 2.20 as Kirigami
 
-import org.kde.plasma.login as PlasmaLogin
+import org.kde.sonic.login as SonicLogin
 
 PlasmaComponents.ToolButton {
     id: root
 
-    property int currentIndex: PlasmaLogin.GreeterState.sessionIndex
+    property int currentIndex: SonicLogin.GreeterState.sessionIndex
 
-    readonly property int currentSessionType: instantiator.model.data(instantiator.model.index(currentIndex, 0), PlasmaLogin.SessionModel.TypeRole)
-    readonly property string currentSessionFileName: instantiator.model.data(instantiator.model.index(currentIndex, 0), PlasmaLogin.SessionModel.FileNameRole)
+    readonly property int currentSessionType: instantiator.model.data(instantiator.model.index(currentIndex, 0), SonicLogin.SessionModel.TypeRole)
+    readonly property string currentSessionFileName: instantiator.model.data(instantiator.model.index(currentIndex, 0), SonicLogin.SessionModel.FileNameRole)
 
     // Count is used as instantiator may not have made items yet
-    text: i18nd("plasma_login", "Desktop Session: %1", instantiator.count > currentIndex ? instantiator.objectAt(currentIndex).text : "")
+    text: i18nd("soniclogin", "Desktop Session: %1", instantiator.count > currentIndex ? instantiator.objectAt(currentIndex).text : "")
     visible: menu.count > 1
 
     checkable: true
@@ -43,7 +43,7 @@ PlasmaComponents.ToolButton {
         id: menu
         Instantiator {
             id: instantiator
-            model: PlasmaLogin.SessionModel
+            model: SonicLogin.SessionModel
             onObjectAdded: (index, object) => menu.insertItem(index, object)
             onObjectRemoved: (index, object) => menu.removeItem(object)
             delegate: PlasmaComponents.MenuItem {
@@ -61,16 +61,16 @@ PlasmaComponents.ToolButton {
     }
 
     Connections {
-        target: PlasmaLogin.GreeterState
+        target: SonicLogin.GreeterState
 
         function onSessionIndexChanged() {
-            if (root.currentIndex != PlasmaLogin.GreeterState.sessionIndex) {
-                root.currentIndex = PlasmaLogin.GreeterState.sessionIndex;
+            if (root.currentIndex != SonicLogin.GreeterState.sessionIndex) {
+                root.currentIndex = SonicLogin.GreeterState.sessionIndex;
             }
         }
     }
 
     onCurrentIndexChanged: {
-        PlasmaLogin.GreeterState.sessionIndex = root.currentIndex;
+        SonicLogin.GreeterState.sessionIndex = root.currentIndex;
     }
 }

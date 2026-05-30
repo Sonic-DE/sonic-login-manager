@@ -40,7 +40,7 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 DaemonApp *DaemonApp::self = nullptr;
 
@@ -50,7 +50,7 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     // point instance to this
     self = this;
 
-    qInstallMessageHandler(PLASMALOGIN::DaemonMessageHandler);
+    qInstallMessageHandler(SONICLOGIN::DaemonMessageHandler);
 
     // log message
     qDebug() << "Initializing...";
@@ -59,7 +59,7 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     m_testing = (arguments().indexOf(QStringLiteral("--test-mode")) != -1);
 
     // If ConsoleKit isn't started by the OS init system (FreeBSD, for instance),
-    // we start it ourselves during the plasmalogin startup
+    // we start it ourselves during the soniclogin startup
     if (!Logind::isAvailable()) {
         bool consoleKitServiceActivatable = false;
         QDBusReply<QStringList> activatableNamesReply = QDBusConnection::systemBus().interface()->activatableServiceNames();
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     }
 
     if (arguments.contains(QStringLiteral("--help")) || arguments.contains(QStringLiteral("-h"))) {
-        std::cout << "Usage: plasmalogin [options]\n"
+        std::cout << "Usage: soniclogin [options]\n"
                   << "Options: \n"
                   << "  --test-mode         Start daemon in test mode" << std::endl;
 
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
     // Self-provision: create user, directories, setup logging, clean up stale sockets
     // This MUST be done before DaemonApp construction since it needs root privileges
     {
-        PLASMALOGIN::SelfProvisioner provisioner;
+        SONICLOGIN::SelfProvisioner provisioner;
         if (!provisioner.provision()) {
             std::cerr << "FATAL: Self-provisioning failed. Cannot continue." << std::endl;
             return EXIT_FAILURE;
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
     }
 
     // create application
-    PLASMALOGIN::DaemonApp app(argc, argv);
+    SONICLOGIN::DaemonApp app(argc, argv);
 
     // run application
     return app.exec();

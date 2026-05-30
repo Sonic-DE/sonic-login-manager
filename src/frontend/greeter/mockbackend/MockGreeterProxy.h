@@ -22,14 +22,29 @@ public:
     MockGreeterProxy();
 
     // Capability getters
-    bool canReboot() const { return true; }
-    bool canShutdown() const { return true; }
-    bool canSuspend() const { return true; }
-    bool canHibernate() const { return true; }
-    bool canLogout() const { return true; }
+    bool canReboot() const
+    {
+        return true;
+    }
+    bool canShutdown() const
+    {
+        return true;
+    }
+    bool canSuspend() const
+    {
+        return true;
+    }
+    bool canHibernate() const
+    {
+        return true;
+    }
+    bool canLogout() const
+    {
+        return true;
+    }
 
 public Q_SLOTS:
-    void login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const;
+    void login(const QString &user, const QString &password, const SONICLOGIN::SessionType sessionType, const QString &sessionFileName) const;
     void shutdown();
     void reboot();
     void suspend();

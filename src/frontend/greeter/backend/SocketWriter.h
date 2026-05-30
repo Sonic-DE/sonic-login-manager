@@ -15,15 +15,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_SOCKETWRITER_H
-#define PLASMALOGIN_SOCKETWRITER_H
+#ifndef SONICLOGIN_SOCKETWRITER_H
+#define SONICLOGIN_SOCKETWRITER_H
 
 #include <QDataStream>
 #include <QLocalSocket>
 
 // #include "Session.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class SocketWriter
 {
@@ -42,4 +42,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_SOCKETWRITER_H
+#endif // SONICLOGIN_SOCKETWRITER_H

@@ -7,13 +7,13 @@
  *
  */
 
-#ifndef PLASMALOGIN_AUTH_SESSION_H
-#define PLASMALOGIN_AUTH_SESSION_H
+#ifndef SONICLOGIN_AUTH_SESSION_H
+#define SONICLOGIN_AUTH_SESSION_H
 
 #include <QtCore/QObject>
 #include <QtCore/QProcess>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class HelperApp;
 class XOrgUserHelper;
@@ -57,4 +57,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_AUTH_SESSION_H
+#endif // SONICLOGIN_AUTH_SESSION_H

@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+File=sonicloginsettingsbase.kcfg
+ClassName=SonicLoginSettingsBase
+Inherits=SonicLoginSettingsDefaults
+IncludeFiles=sonicloginsettingsdefaults.h
+DefaultValueGetters=true
+GenerateProperties=true
+Singleton=true
+Mutators=true

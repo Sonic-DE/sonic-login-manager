@@ -26,23 +26,23 @@
 
 #include "models/sessionmodel.h"
 #include "models/usermodel.h"
-#include "plasmalogindata.h"
+#include "soniclogindata.h"
 #include "wallpapersettings.h"
 
 #include "kcm.h"
 
-K_PLUGIN_FACTORY_WITH_JSON(PlasmaLoginKcmFactory, "kcm_plasmalogin.json", registerPlugin<PlasmaLoginKcm>(); registerPlugin<PlasmaLoginData>();)
+K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json", registerPlugin<SonicLoginKcm>(); registerPlugin<SonicLoginData>();)
 
-PlasmaLoginKcm::PlasmaLoginKcm(QObject *parent, const KPluginMetaData &data)
+SonicLoginKcm::SonicLoginKcm(QObject *parent, const KPluginMetaData &data)
     : KQuickManagedConfigModule(parent, data)
     , m_wallpaperSettings(new WallpaperSettings(this))
 {
-    setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmplasmalogin.save"));
-    registerSettings(&PlasmaLoginSettings::getInstance());
+    setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
+    registerSettings(&SonicLoginSettings::getInstance());
 
-    constexpr const char *url = "org.kde.private.kcms.plasmalogin";
+    constexpr const char *url = "org.kde.private.kcms.soniclogin";
     qRegisterMetaType<QList<WallpaperInfo>>("QList<WallpaperInfo>");
-    qmlRegisterAnonymousType<PlasmaLoginSettings>(url, 1);
+    qmlRegisterAnonymousType<SonicLoginSettings>(url, 1);
     qmlRegisterAnonymousType<WallpaperInfo>(url, 1);
     qmlRegisterAnonymousType<WallpaperIntegration>(url, 1);
     qmlRegisterAnonymousType<KConfigPropertyMap>(url, 1);
@@ -54,11 +54,11 @@ PlasmaLoginKcm::PlasmaLoginKcm(QObject *parent, const KPluginMetaData &data)
     constexpr const char *uri = "org.kde.plasma.plasmoid";
     qmlRegisterUncreatableType<QObject>(uri, 2, 0, "PlasmoidPlaceholder", QStringLiteral("Do not create objects of type Plasmoid"));
 
-    connect(&PlasmaLoginSettings::getInstance(), &PlasmaLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings, &WallpaperSettings::loadWallpaperConfig);
-    connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged, this, &PlasmaLoginKcm::currentWallpaperChanged);
+    connect(&SonicLoginSettings::getInstance(), &SonicLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings, &WallpaperSettings::loadWallpaperConfig);
+    connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged, this, &SonicLoginKcm::currentWallpaperChanged);
 }
 
-void PlasmaLoginKcm::load()
+void SonicLoginKcm::load()
 {
     KQuickManagedConfigModule::load();
     m_wallpaperSettings->load();
@@ -67,7 +67,7 @@ void PlasmaLoginKcm::load()
     Q_EMIT loadCalled();
 }
 
-void PlasmaLoginKcm::save()
+void SonicLoginKcm::save()
 {
     // We are not allowed to write GUI items to the arg map passed to KAuth, such as QColor
     // which is used in most wallpapers. So instead, we'll have to save a temporary copy of
@@ -79,18 +79,18 @@ void PlasmaLoginKcm::save()
         return;
     }
 
-    const QString tempFileName = tempDir.path() + QLatin1String("/plasmalogin.conf");
+    const QString tempFileName = tempDir.path() + QLatin1String("/soniclogin.conf");
     KConfig tempConfig(tempFileName, KConfig::SimpleConfig);
 
     // Write our config
-    for (const auto &item : PlasmaLoginSettings::getInstance().items()) {
+    for (const auto &item : SonicLoginSettings::getInstance().items()) {
         if (!item->isDefault()) {
             tempConfig.group(item->group()).writeEntry(item->key(), item->property());
         }
     }
 
     // Write wallpaper config
-    const QString wallpaperPluginId = PlasmaLoginSettings::getInstance().wallpaperPluginId();
+    const QString wallpaperPluginId = SonicLoginSettings::getInstance().wallpaperPluginId();
     for (const auto item : m_wallpaperSettings->wallpaperSkeleton()->items()) {
         if (item->isDefault()) {
             continue;
@@ -117,7 +117,7 @@ void PlasmaLoginKcm::save()
 
             QUrl adjustedUri = QUrl();
             adjustedUri.setScheme(QStringLiteral("file"));
-            adjustedUri.setPath(KUser("plasmalogin").homeDir() + "/wallpapers/" + imageUri.fileName());
+            adjustedUri.setPath(KUser("soniclogin").homeDir() + "/wallpapers/" + imageUri.fileName());
             adjustedUri.setFragment(imageUri.fragment());
             imageWallpaperGroup.group("General").writeEntry("Image", adjustedUri);
         }
@@ -147,7 +147,7 @@ void PlasmaLoginKcm::save()
     args[QStringLiteral("config")] = config;
 
     KAuth::Action saveAction(authActionName());
-    saveAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmplasmalogin"));
+    saveAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
     saveAction.setArguments(args);
 
     auto job = saveAction.execute();
@@ -163,7 +163,7 @@ void PlasmaLoginKcm::save()
     job->start();
 }
 
-QVariantMap PlasmaLoginKcm::syncWallpaper(const QUrl &imageUri)
+QVariantMap SonicLoginKcm::syncWallpaper(const QUrl &imageUri)
 {
     const QString baseName = imageUri.fileName();
     const QString imagePath = imageUri.toLocalFile();
@@ -207,11 +207,11 @@ QVariantMap PlasmaLoginKcm::syncWallpaper(const QUrl &imageUri)
     return wallpaperArgs;
 }
 
-void PlasmaLoginKcm::synchronizeSettings()
+void SonicLoginKcm::synchronizeSettings()
 {
-    if (KUser("plasmalogin").homeDir().isEmpty()) {
+    if (KUser("soniclogin").homeDir().isEmpty()) {
         Q_EMIT errorOccurred(QString::fromUtf8(
-            kli18n("Unable to synchronise Plasma settings because the 'plasmalogin' user does not exist. Please check your Plasma Login install.")
+            kli18n("Unable to synchronise Plasma settings because the 'soniclogin' user does not exist. Please check your Sonic Login install.")
                 .untranslatedText()));
         return;
     }
@@ -244,8 +244,8 @@ void PlasmaLoginKcm::synchronizeSettings()
         addConfigFile(fontconfigPath + QStringLiteral("/fonts.conf"), QStringLiteral("fontconfig/fonts.conf"));
     }
 
-    KAuth::Action syncAction(QStringLiteral("org.kde.kcontrol.kcmplasmalogin.sync"));
-    syncAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmplasmalogin"));
+    KAuth::Action syncAction(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.sync"));
+    syncAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
     syncAction.setArguments(args);
 
     auto job = syncAction.execute();
@@ -258,17 +258,16 @@ void PlasmaLoginKcm::synchronizeSettings()
     job->start();
 }
 
-void PlasmaLoginKcm::resetSynchronizedSettings()
+void SonicLoginKcm::resetSynchronizedSettings()
 {
-    if (KUser("plasmalogin").homeDir().isEmpty()) {
-        Q_EMIT errorOccurred(
-            QString::fromUtf8(kli18n("Unable to reset Plasma settings because the 'plasmalogin' user does not exist. Please check your Plasma Login install.")
-                                  .untranslatedText()));
+    if (KUser("soniclogin").homeDir().isEmpty()) {
+        Q_EMIT errorOccurred(QString::fromUtf8(
+            kli18n("Unable to reset Plasma settings because the 'soniclogin' user does not exist. Please check your Sonic Login install.").untranslatedText()));
         return;
     }
 
-    KAuth::Action resetAction(QStringLiteral("org.kde.kcontrol.kcmplasmalogin.reset"));
-    resetAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmplasmalogin"));
+    KAuth::Action resetAction(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.reset"));
+    resetAction.setHelperId(QStringLiteral("org.kde.kcontrol.kcmsoniclogin"));
 
     auto job = resetAction.execute();
     connect(job, &KJob::result, this, [this, job] {
@@ -280,7 +279,7 @@ void PlasmaLoginKcm::resetSynchronizedSettings()
     job->start();
 }
 
-void PlasmaLoginKcm::defaults()
+void SonicLoginKcm::defaults()
 {
     KQuickManagedConfigModule::defaults();
     m_wallpaperSettings->defaults();
@@ -289,78 +288,78 @@ void PlasmaLoginKcm::defaults()
     Q_EMIT defaultsCalled();
 }
 
-void PlasmaLoginKcm::updateState()
+void SonicLoginKcm::updateState()
 {
     m_forceUpdateState = false;
     settingsChanged();
     Q_EMIT isDefaultsWallpaperChanged();
 }
 
-void PlasmaLoginKcm::forceUpdateState()
+void SonicLoginKcm::forceUpdateState()
 {
     m_forceUpdateState = true;
     settingsChanged();
     Q_EMIT isDefaultsWallpaperChanged();
 }
 
-bool PlasmaLoginKcm::isSaveNeeded() const
+bool SonicLoginKcm::isSaveNeeded() const
 {
     return m_forceUpdateState || m_wallpaperSettings->isSaveNeeded();
 }
 
-bool PlasmaLoginKcm::isDefaults() const
+bool SonicLoginKcm::isDefaults() const
 {
     return m_wallpaperSettings->isDefaults();
 }
 
-KConfigPropertyMap *PlasmaLoginKcm::wallpaperConfiguration() const
+KConfigPropertyMap *SonicLoginKcm::wallpaperConfiguration() const
 {
     return m_wallpaperSettings->wallpaperConfiguration();
 }
 
-PlasmaLoginSettings *PlasmaLoginKcm::settings() const
+SonicLoginSettings *SonicLoginKcm::settings() const
 {
-    return &PlasmaLoginSettings::getInstance();
+    return &SonicLoginSettings::getInstance();
 }
 
-QString PlasmaLoginKcm::currentWallpaper() const
+QString SonicLoginKcm::currentWallpaper() const
 {
-    return PlasmaLoginSettings::getInstance().wallpaperPluginId();
+    return SonicLoginSettings::getInstance().wallpaperPluginId();
 }
 
-bool PlasmaLoginKcm::isDefaultsWallpaper() const
+bool SonicLoginKcm::isDefaultsWallpaper() const
 {
     return m_wallpaperSettings->isDefaults();
 }
 
-QUrl PlasmaLoginKcm::wallpaperConfigFile() const
+QUrl SonicLoginKcm::wallpaperConfigFile() const
 {
     return m_wallpaperSettings->wallpaperConfigFile();
 }
 
-WallpaperIntegration *PlasmaLoginKcm::wallpaperIntegration() const
+WallpaperIntegration *SonicLoginKcm::wallpaperIntegration() const
 {
     return m_wallpaperSettings->wallpaperIntegration();
 }
 
-UserModel *PlasmaLoginKcm::userModel() const
+UserModel *SonicLoginKcm::userModel() const
 {
     static UserModel userModel;
     return &userModel;
 }
 
-SessionModel *PlasmaLoginKcm::sessionModel() const
+SessionModel *SonicLoginKcm::sessionModel() const
 {
     static SessionModel sessionModel;
     return &sessionModel;
 }
 
-bool PlasmaLoginKcm::KDEWalletAvailable()
+bool SonicLoginKcm::KDEWalletAvailable()
 {
     return !QStandardPaths::findExecutable(QLatin1String("kwalletmanager5")).isEmpty();
 }
 
-void PlasmaLoginKcm::openKDEWallet()
+void SonicLoginKcm::openKDEWallet()
 {
     KService::Ptr kwalletmanagerService = KService::serviceByDesktopName(QStringLiteral("org.kde.kwalletmanager5"));
     auto *job = new KIO::ApplicationLauncherJob(kwalletmanagerService);

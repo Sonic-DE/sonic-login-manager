@@ -34,7 +34,7 @@
 #endif
 #include <utmpx.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 HelperApp::HelperApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
@@ -44,19 +44,14 @@ HelperApp::HelperApp(int &argc, char **argv)
 {
     qInstallMessageHandler(HelperMessageHandler);
     SignalHandler *s = new SignalHandler(this);
-    
+
     QObject::connect(s, &SignalHandler::sigtermReceived, this, [this] {
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "HelperApp: Received SIGTERM - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName
-                   << "m_user=" << m_user
-                   << "m_id=" << m_id
-                   << "m_backend=" << (void *)m_backend
-                   << "m_session=" << (void *)m_session
-                   << "socket_state=" << (m_socket ? m_socket->state() : -1)
-                   << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>"))
-                   << "session_path=" << m_session->path()
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "m_user=" << m_user << "m_id=" << m_id << "m_backend=" << (void *)m_backend
+                   << "m_session=" << (void *)m_session << "socket_state=" << (m_socket ? m_socket->state() : -1)
+                   << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>")) << "session_path=" << m_session->path()
                    << "session_processEnvironment=" << m_session->processEnvironment().toStringList()
                    << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
                    << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
@@ -70,14 +65,9 @@ HelperApp::HelperApp(int &argc, char **argv)
             pid_t ppid = getppid();
             QString parentName = getProcessNameByPid(ppid);
             qWarning() << "HelperApp: Received SIGQUIT (signal 3) - diagnostic information:"
-                       << "parentProcess(PPID)=" << ppid << "=" << parentName
-                       << "m_user=" << m_user
-                       << "m_id=" << m_id
-                       << "m_backend=" << (void *)m_backend
-                       << "m_session=" << (void *)m_session
-                       << "socket_state=" << (m_socket ? m_socket->state() : -1)
-                       << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>"))
-                       << "session_path=" << m_session->path()
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName << "m_user=" << m_user << "m_id=" << m_id << "m_backend=" << (void *)m_backend
+                       << "m_session=" << (void *)m_session << "socket_state=" << (m_socket ? m_socket->state() : -1)
+                       << "socket_error=" << (m_socket ? m_socket->errorString() : QStringLiteral("<null>")) << "session_path=" << m_session->path()
                        << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
                        << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
                        << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
@@ -212,12 +202,8 @@ void HelperApp::sessionFinished(int status)
 {
     if (status != Auth::HELPER_SUCCESS) {
         qWarning() << "HelperApp::sessionFinished() CALLED - TRACE:"
-                   << "status=" << status
-                   << "m_user=" << m_user
-                   << "m_id=" << m_id
-                   << "session_pid=" << m_session->processId()
-                   << "session_state=" << m_session->state()
-                   << "session_program=" << m_session->program()
+                   << "status=" << status << "m_user=" << m_user << "m_id=" << m_id << "session_pid=" << m_session->processId()
+                   << "session_state=" << m_session->state() << "session_program=" << m_session->program()
                    << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
     }
     exit(status);
@@ -427,7 +413,7 @@ void HelperApp::utmpLogout(const QString &vt, const QString &displayName, qint64
 
 int main(int argc, char **argv)
 {
-    PLASMALOGIN::HelperApp app(argc, argv);
+    SONICLOGIN::HelperApp app(argc, argv);
     return app.exec();
 }
 

@@ -1,16 +1,16 @@
-kcmutils_add_qml_kcm(kcm_plasmalogin)
-add_definitions(-DTRANSLATION_DOMAIN="kcm_plasmalogin")
+kcmutils_add_qml_kcm(kcm_soniclogin)
+add_definitions(-DTRANSLATION_DOMAIN="kcm_soniclogin")
 
-target_sources(kcm_plasmalogin PRIVATE
+target_sources(kcm_soniclogin PRIVATE
     kcm.cpp kcm.h
-    plasmalogindata.cpp plasmalogindata.h
+    soniclogindata.cpp soniclogindata.h
 )
 
-target_include_directories(kcm_plasmalogin PRIVATE
+target_include_directories(kcm_soniclogin PRIVATE
     "${CMAKE_SOURCE_DIR}/src/common"
 )
 
-target_link_libraries(kcm_plasmalogin PRIVATE
+target_link_libraries(kcm_soniclogin PRIVATE
     settings
     KF6::I18n
     KF6::AuthCore

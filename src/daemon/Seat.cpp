@@ -33,7 +33,7 @@
 #include <optional>
 #include <unistd.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 Seat::Seat(const QString &name, QObject *parent)
     : QObject(parent)

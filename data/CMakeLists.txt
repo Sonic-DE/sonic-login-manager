@@ -69,7 +69,7 @@ if(INSTALL_PAM_CONFIGURATION)
     endif()
 
     # Install pam files
-    install(FILES pam/${PAM_OS_CONFIGURATION}/plasmalogin-autologin DESTINATION ${PAM_CONFIG_DIR})
-    install(FILES pam/${PAM_OS_CONFIGURATION}/plasmalogin-greeter DESTINATION ${PAM_CONFIG_DIR})
-    install(FILES pam/${PAM_OS_CONFIGURATION}/plasmalogin DESTINATION ${PAM_CONFIG_DIR})
+    install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin-autologin DESTINATION ${PAM_CONFIG_DIR})
+    install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin-greeter DESTINATION ${PAM_CONFIG_DIR})
+    install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin DESTINATION ${PAM_CONFIG_DIR})
 endif()

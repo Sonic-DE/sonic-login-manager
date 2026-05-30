@@ -1,9 +1,0 @@
-[Unit]
-Description=Plasma Login
-PartOf=plasma-login-x11.target
-After=plasma-login-kwin_x11.service
-
-[Service]
-ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/plasma-login-greeter
-Slice=session.slice
-

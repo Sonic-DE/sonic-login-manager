@@ -28,7 +28,7 @@
 #include <QFileInfo>
 #include <QProcess>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 /**
@@ -391,4 +391,4 @@ void PowerManager::hybridSleep() const
     }
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN

@@ -8,7 +8,7 @@
 #include <KConfigLoader>
 #include <KPackage/PackageLoader>
 
-#include "plasmaloginsettings.h"
+#include "sonicloginsettings.h"
 
 #include "wallpapersettings.h"
 
@@ -89,7 +89,7 @@ bool WallpaperSettings::isSaveNeeded() const
 void WallpaperSettings::loadWallpaperConfig()
 {
     if (m_wallpaperIntegration) {
-        if (m_wallpaperIntegration->pluginName() == PlasmaLoginSettings::getInstance().wallpaperPluginId()) {
+        if (m_wallpaperIntegration->pluginName() == SonicLoginSettings::getInstance().wallpaperPluginId()) {
             // nothing changed
             return;
         }
@@ -97,8 +97,8 @@ void WallpaperSettings::loadWallpaperConfig()
     }
 
     m_wallpaperIntegration = new WallpaperIntegration();
-    m_wallpaperIntegration->setConfig(PlasmaLoginSettings::getInstance().sharedConfig());
-    m_wallpaperIntegration->setPluginName(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+    m_wallpaperIntegration->setConfig(SonicLoginSettings::getInstance().sharedConfig());
+    m_wallpaperIntegration->setPluginName(SonicLoginSettings::getInstance().wallpaperPluginId());
     m_wallpaperIntegration->init();
     m_wallpaperSettings = m_wallpaperIntegration->configScheme();
     m_wallpaperConfigFile = m_wallpaperIntegration->package().fileUrl(QByteArrayLiteral("ui"), QStringLiteral("config.qml"));

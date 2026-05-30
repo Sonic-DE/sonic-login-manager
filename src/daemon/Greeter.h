@@ -14,8 +14,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_GREETER_H
-#define PLASMALOGIN_GREETER_H
+#ifndef SONICLOGIN_GREETER_H
+#define SONICLOGIN_GREETER_H
 
 #include <QObject>
 
@@ -23,7 +23,7 @@
 
 class QProcess;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Display;
 class ThemeMetadata;
@@ -79,4 +79,4 @@ private:
 };
 }
 
-#endif // PLASMALOGIN_GREETER_H
+#endif // SONICLOGIN_GREETER_H

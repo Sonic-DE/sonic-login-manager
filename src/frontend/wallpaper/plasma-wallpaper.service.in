@@ -1,9 +1,0 @@
-[Unit]
-Description=Plasma Wallpaper on Login screen
-PartOf=plasma-login-x11.target
-After=plasma-login-kwin_x11.service plasma-login.service
-
-[Service]
-ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/plasma-login-wallpaper
-Slice=background.slice
-

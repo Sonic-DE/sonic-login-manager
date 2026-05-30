@@ -14,13 +14,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_SESSION_H
-#define PLASMALOGIN_SESSION_H
+#ifndef SONICLOGIN_SESSION_H
+#define SONICLOGIN_SESSION_H
 
 #include <KSharedConfig>
 #include <QString>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 class Session
@@ -63,4 +63,4 @@ inline QDataStream &operator>>(QDataStream &stream, Session &session)
 
 };
 
-#endif // PLASMALOGIN_SESSION_H
+#endif // SONICLOGIN_SESSION_H

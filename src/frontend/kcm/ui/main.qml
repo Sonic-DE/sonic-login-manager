@@ -15,7 +15,7 @@ import org.kde.kcmutils as KCM
 import org.kde.kirigami as Kirigami
 import org.kde.kitemmodels as ItemModels
 
-import org.kde.private.kcms.plasmalogin
+import org.kde.private.kcms.soniclogin
 
 KCM.SimpleKCM {
     id: root

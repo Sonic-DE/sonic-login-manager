@@ -28,7 +28,7 @@ const QString DISPLAYMANAGER_PATH = QStringLiteral("/org/freedesktop/DisplayMana
 const QString DISPLAYMANAGER_SEAT_PATH = QStringLiteral("/org/freedesktop/DisplayManager/Seat");
 const QString DISPLAYMANAGER_SESSION_PATH = QStringLiteral("/org/freedesktop/DisplayManager/Session");
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 DisplayManager::DisplayManager(QObject *parent)
     : QObject(parent)

@@ -6,14 +6,14 @@
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
-#include <QGuiApplication>
-#include <QObject>
-#include <QQmlContext>
-#include <QScreen>
-#include <QProcess>
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QGuiApplication>
+#include <QObject>
+#include <QProcess>
+#include <QQmlContext>
+#include <QScreen>
 
 #include <KLocalizedString>
 #include <PlasmaQuick/QuickViewSharedEngine>
@@ -28,7 +28,7 @@
 #include "greetereventfilter.h"
 #include "models/sessionmodel.h"
 #include "models/usermodel.h"
-#include "plasmaloginsettings.h"
+#include "sonicloginsettings.h"
 #include "stateconfig.h"
 
 #include <signal.h>
@@ -74,7 +74,7 @@ private:
         window->installEventFilter(greeterEventFilter);
         window->rootContext()->setContextProperty(QStringLiteral("greeterEventFilter"), greeterEventFilter);
 
-        window->setSource(QUrl("qrc:/qt/qml/org/kde/plasma/login/Main.qml"));
+        window->setSource(QUrl("qrc:/qt/qml/org/kde/sonic/login/Main.qml"));
         window->show();
 
         // Raise greeter above wallpaper and ensure keyboard focus
@@ -99,11 +99,11 @@ bool LoginGreeter::testModeEnabled()
 
 int main(int argc, char *argv[])
 {
-    // Install message handler to log to plasmalogin.log
-    qInstallMessageHandler(PLASMALOGIN::GreeterMessageHandler);
+    // Install message handler to log to soniclogin.log
+    qInstallMessageHandler(SONICLOGIN::GreeterMessageHandler);
     qDebug() << "Greeter main: Starting...";
-    
-    KLocalizedString::setApplicationDomain(QByteArrayLiteral("plasma-login"));
+
+    KLocalizedString::setApplicationDomain(QByteArrayLiteral("sonic-login"));
 
     QCommandLineParser parser;
     parser.addOption(QCommandLineOption(QStringLiteral("test"), QStringLiteral("Run in test mode")));
@@ -111,49 +111,45 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    PLASMALOGIN::SignalHandler signalHandler;
-    QObject::connect(&signalHandler, &PLASMALOGIN::SignalHandler::sigtermReceived, &app, [] {
+    SONICLOGIN::SignalHandler signalHandler;
+    QObject::connect(&signalHandler, &SONICLOGIN::SignalHandler::sigtermReceived, &app, [] {
         pid_t ppid = getppid();
-        QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+        QString parentName = SONICLOGIN::getProcessNameByPid(ppid);
         qWarning() << "Greeter: Received SIGTERM - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName
-                   << "screens=" << QGuiApplication::screens().size()
-                   << "testMode=" << LoginGreeter::testModeEnabled()
-                   << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "screens=" << QGuiApplication::screens().size()
+                   << "testMode=" << LoginGreeter::testModeEnabled() << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
         QGuiApplication::instance()->exit(0);
     });
     signalHandler.addCustomSignal(SIGQUIT);
-    QObject::connect(&signalHandler, &PLASMALOGIN::SignalHandler::customSignalReceived, &app, [](int signal) {
+    QObject::connect(&signalHandler, &SONICLOGIN::SignalHandler::customSignalReceived, &app, [](int signal) {
         if (signal == SIGQUIT) {
             pid_t ppid = getppid();
-            QString parentName = PLASMALOGIN::getProcessNameByPid(ppid);
+            QString parentName = SONICLOGIN::getProcessNameByPid(ppid);
             qWarning() << "Greeter: Received SIGQUIT (signal 3) - diagnostic information:"
-                       << "parentProcess(PPID)=" << ppid << "=" << parentName
-                       << "screens=" << QGuiApplication::screens().size()
-                       << "testMode=" << LoginGreeter::testModeEnabled()
-                       << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
+                       << "parentProcess(PPID)=" << ppid << "=" << parentName << "screens=" << QGuiApplication::screens().size()
+                       << "testMode=" << LoginGreeter::testModeEnabled() << "sonicloginSocket=" << qEnvironmentVariable("SONICLOGIN_SOCKET");
             QGuiApplication::instance()->exit(0);
         }
     });
-    
+
     parser.process(app);
     LoginGreeter::setTestModeEnabled(parser.isSet(QStringLiteral("test")));
 
     QQuickWindow::setDefaultAlphaBuffer(true);
-    PLASMALOGIN::GreeterProxy *authenticator = nullptr;
+    SONICLOGIN::GreeterProxy *authenticator = nullptr;
     if (LoginGreeter::testModeEnabled()) {
         qDebug() << "Greeter main: Test mode enabled, using MockGreeterProxy";
-        qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", new MockGreeterProxy);
+        qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "Authenticator", new MockGreeterProxy);
     } else {
-        authenticator = new PLASMALOGIN::GreeterProxy();
-        qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Authenticator", authenticator);
+        authenticator = new SONICLOGIN::GreeterProxy();
+        qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "Authenticator", authenticator);
     }
-    qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "SessionModel", new SessionModel);
-    qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "UserModel", new UserModel);
-    
-    qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "Settings", &PlasmaLoginSettings::getInstance());
-    qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "StateConfig", StateConfig::self());
-    qmlRegisterSingletonInstance("org.kde.plasma.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
+    qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "SessionModel", new SessionModel);
+    qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "UserModel", new UserModel);
+
+    qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "Settings", &SonicLoginSettings::getInstance());
+    qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "StateConfig", StateConfig::self());
+    qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
 
     LoginGreeter greeter;
     return app.exec();

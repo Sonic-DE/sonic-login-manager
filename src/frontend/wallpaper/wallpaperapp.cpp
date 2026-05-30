@@ -21,7 +21,7 @@
 #include <KPackage/PackageLoader>
 #include <KWindowSystem>
 
-#include "plasmaloginsettings.h"
+#include "sonicloginsettings.h"
 
 #include "wallpaperwindow.h"
 
@@ -31,7 +31,7 @@ WallpaperApp::WallpaperApp(int &argc, char **argv)
     : QGuiApplication(argc, argv)
 {
     m_wallpaperPackage = KPackage::PackageLoader::self()->loadPackage(QStringLiteral("Plasma/Wallpaper"));
-    m_wallpaperPackage.setPath(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+    m_wallpaperPackage.setPath(SonicLoginSettings::getInstance().wallpaperPluginId());
 
     for (const auto screenList{screens()}; QScreen *screen : screenList) {
         adoptScreen(screen);
@@ -79,23 +79,23 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     QString xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
-    KConfigGroup cfg = PlasmaLoginSettings::getInstance()
+    KConfigGroup cfg = SonicLoginSettings::getInstance()
                            .sharedConfig()
                            ->group(QStringLiteral("Greeter"))
                            .group(QStringLiteral("Wallpaper"))
-                           .group(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+                           .group(SonicLoginSettings::getInstance().wallpaperPluginId());
 
     // Fall back to POTD if the current wallpaper plugin has no images configured
-    if (PlasmaLoginSettings::getInstance().wallpaperPluginId() == QStringLiteral("org.kde.image") && cfg.readEntry(QStringLiteral("Image")).isEmpty()) {
+    if (SonicLoginSettings::getInstance().wallpaperPluginId() == QStringLiteral("org.kde.image") && cfg.readEntry(QStringLiteral("Image")).isEmpty()) {
         m_wallpaperPackage.setPath(QStringLiteral("org.kde.potd"));
         if (!m_wallpaperPackage.isValid()) {
             qWarning() << "Error loading POTD wallpaper, falling back to black background";
-            m_wallpaperPackage.setPath(PlasmaLoginSettings::getInstance().wallpaperPluginId());
+            m_wallpaperPackage.setPath(SonicLoginSettings::getInstance().wallpaperPluginId());
         } else {
             xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
             // Use config for the POTD plugin
-            cfg = PlasmaLoginSettings::getInstance()
+            cfg = SonicLoginSettings::getInstance()
                       .sharedConfig()
                       ->group(QStringLiteral("Greeter"))
                       .group(QStringLiteral("Wallpaper"))
@@ -124,7 +124,7 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
         return;
     }
 
-    window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/plasma/login/wallpaper/main.qml")));
+    window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/sonic/login/wallpaper/main.qml")));
 
     const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)}, {QStringLiteral("pluginName"), m_wallpaperPackage.path()}};
     QObject *wallpaperObject = component->createWithInitialProperties(properties, window->rootContext());

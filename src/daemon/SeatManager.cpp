@@ -28,7 +28,7 @@
 #include <Login1Manager.h>
 #include <Login1Session.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 class LogindSeat : public QObject
@@ -187,9 +187,9 @@ void SeatManager::switchToGreeter(const QString &name)
 
         const auto info = reply.value();
         for (const SessionInfo &s : reply.value()) {
-            if (s.userName == QLatin1String("plasmalogin")) {
+            if (s.userName == QLatin1String("soniclogin")) {
                 OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), s.sessionPath.path(), QDBusConnection::systemBus());
-                if (session.service() == QLatin1String("plasmalogin-greeter") && session.seat().name == name) {
+                if (session.service() == QLatin1String("soniclogin-greeter") && session.seat().name == name) {
                     session.Activate();
                     return;
                 }
@@ -201,13 +201,13 @@ void SeatManager::switchToGreeter(const QString &name)
     m_seats.value(name)->createDisplay();
 }
 
-void PLASMALOGIN::SeatManager::logindSecureAttentionKey(const QString &name, const QDBusObjectPath &objectPath)
+void SONICLOGIN::SeatManager::logindSecureAttentionKey(const QString &name, const QDBusObjectPath &objectPath)
 {
     Q_UNUSED(objectPath);
     daemonApp->seatManager()->switchToGreeter(name);
 }
 
-void PLASMALOGIN::SeatManager::logindSeatAdded(const QString &name, const QDBusObjectPath &objectPath)
+void SONICLOGIN::SeatManager::logindSeatAdded(const QString &name, const QDBusObjectPath &objectPath)
 {
     auto logindSeat = new LogindSeat(name, objectPath);
     connect(logindSeat, &LogindSeat::canGraphicalChanged, this, [this, logindSeat]() {
@@ -221,7 +221,7 @@ void PLASMALOGIN::SeatManager::logindSeatAdded(const QString &name, const QDBusO
     m_systemSeats.insert(name, logindSeat);
 }
 
-void PLASMALOGIN::SeatManager::logindSeatRemoved(const QString &name, const QDBusObjectPath &objectPath)
+void SONICLOGIN::SeatManager::logindSeatRemoved(const QString &name, const QDBusObjectPath &objectPath)
 {
     Q_UNUSED(objectPath);
     auto logindSeat = m_systemSeats.take(name);

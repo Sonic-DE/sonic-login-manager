@@ -12,7 +12,7 @@ Sonic Login Manager provides a display manager for SonicDE, forked from [Plasma 
  - Easy Chinese/Japanese/Korean/Vietnamese (CJK) input
  - Screen readers for blind people (which then means volume control)
  - Remote (VNC/RDP) support from startup
- - Deeper Plasma integration including:
+ - Deeper SonicDE integration including:
     - Display and keyboard brightness control
     - Full power management
     - Pairing trusted Bluetooth devices

@@ -48,7 +48,7 @@
 
 static int s_ttyFailures = 0;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 #ifdef __FreeBSD__
 QString getTtyDevicePath(int vt)
@@ -257,7 +257,7 @@ void Display::startSocketServerAndGreeter()
     m_socketServer->start(QString());
 
     // change the owner and group of the socket to avoid permission denied errors
-    struct passwd *pw = getpwnam("plasmalogin");
+    struct passwd *pw = getpwnam("soniclogin");
     if (pw) {
         if (chown(qPrintable(m_socketServer->socketAddress()), pw->pw_uid, pw->pw_gid) == -1) {
             qWarning() << "Failed to change owner of the socket";
@@ -306,9 +306,7 @@ void Display::stop()
     }
 
     qWarning() << "Display::stop() CALLED - TRACE:"
-               << "auth_user=" << m_auth->user()
-               << "auth_isGreeter=" << m_auth->isGreeter()
-               << "greeter_running=" << m_greeter->isRunning();
+               << "auth_user=" << m_auth->user() << "auth_isGreeter=" << m_auth->isGreeter() << "greeter_running=" << m_greeter->isRunning();
 
     // stop the greeter
     qWarning() << "Display::stop() stopping greeter";
@@ -333,10 +331,10 @@ void Display::login(QLocalSocket *socket, const QString &user, const QString &pa
 {
     m_socket = socket;
 
-    // the PLASMALOGIN user has special privileges that skip password checking so that we can load the greeter
-    // block ever trying to log in as the PLASMALOGIN user
-    if (user == QLatin1String("plasmalogin")) {
-        qWarning() << "Display::login: Rejecting login for 'plasmalogin' user";
+    // the SONICLOGIN user has special privileges that skip password checking so that we can load the greeter
+    // block ever trying to log in as the SONICLOGIN user
+    if (user == QLatin1String("soniclogin")) {
+        qWarning() << "Display::login: Rejecting login for 'soniclogin' user";
         emit loginFailed(m_socket);
         return;
     }
@@ -390,7 +388,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
         for (const SessionInfo &s : reply.value()) {
             if (s.userName == user) {
                 OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), s.sessionPath.path(), QDBusConnection::systemBus());
-                if (session.service() == QLatin1String("plasmalogin") && session.state() == QLatin1String("online")) {
+                if (session.service() == QLatin1String("soniclogin") && session.state() == QLatin1String("online")) {
                     m_reuseSessionId = s.sessionId;
                     break;
                 }
@@ -405,9 +403,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     m_sessionTerminalId = m_terminalId;
 
     qDebug() << "Display::startAuth: VT allocation check:"
-             << "m_greeter->isRunning()" << m_greeter->isRunning()
-             << "m_greeterWasStarted" << m_greeterWasStarted
-             << "seat()->canTTY()" << seat()->canTTY()
+             << "m_greeter->isRunning()" << m_greeter->isRunning() << "m_greeterWasStarted" << m_greeterWasStarted << "seat()->canTTY()" << seat()->canTTY()
              << "m_terminalId" << m_terminalId;
 
     if (m_greeter->isRunning() || m_greeterWasStarted) {
@@ -518,13 +514,13 @@ void Display::slotAuthError(const QString &message, Auth::Error error)
 
 void Display::slotHelperFinished(Auth::HelperExitStatus status)
 {
-    const bool isGreeterBootstrapHelper = m_auth->isGreeter() && m_auth->user() == QLatin1String("plasmalogin");
+    const bool isGreeterBootstrapHelper = m_auth->isGreeter() && m_auth->user() == QLatin1String("soniclogin");
     if (isGreeterBootstrapHelper && status == Auth::HELPER_SUCCESS) {
         qWarning() << "Display::slotHelperFinished: greeter bootstrap helper exited successfully; keeping display/socket server alive";
         return;
     }
 
-    // Don't restart greeter and display server unless plasmalogin-helper exited
+    // Don't restart greeter and display server unless soniclogin-helper exited
     // with an internal error or the user session finished successfully,
     // we want to avoid greeter from restarting when an authentication
     // error happens (in this case we want to show the message from the

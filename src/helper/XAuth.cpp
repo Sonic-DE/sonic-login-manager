@@ -35,7 +35,7 @@
 #include "Constants.h"
 #include "XAuth.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 XAuth::XAuth()
@@ -182,4 +182,4 @@ bool XAuth::writeCookieToFile(const QString &display, const QString &fileName, Q
     return true;
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN

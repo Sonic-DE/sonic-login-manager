@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 SelfProvisioner::SelfProvisioner()
@@ -44,8 +44,8 @@ bool SelfProvisioner::provision()
     qDebug() << "SelfProvisioner: journalctl detected:" << m_hasJournalctl;
 
     // Run provisioning steps in order
-    if (!createPlasmaloginUser()) {
-        qCritical() << "SelfProvisioner: Failed to create plasmalogin user";
+    if (!createGreeterUser()) {
+        qCritical() << "SelfProvisioner: Failed to create soniclogin user";
         return false;
     }
 
@@ -109,9 +109,9 @@ bool SelfProvisioner::runCommandIgnorableFailure(const QString &program, const Q
     return true;
 }
 
-bool SelfProvisioner::createPlasmaloginUser()
+bool SelfProvisioner::createGreeterUser()
 {
-    qDebug() << "SelfProvisioner: Checking for plasmalogin user...";
+    qDebug() << "SelfProvisioner: Checking for soniclogin user...";
 
     // Detect the init system at runtime
     InitSystem initSystem = detectInitSystem();
@@ -126,44 +126,44 @@ bool SelfProvisioner::createPlasmaloginUser()
     // Check if user exists via getent
     QProcess getent;
     getent.setProgram(QStringLiteral("getent"));
-    getent.setArguments({QStringLiteral("passwd"), QStringLiteral("plasmalogin")});
+    getent.setArguments({QStringLiteral("passwd"), QStringLiteral("soniclogin")});
     getent.setProcessChannelMode(QProcess::MergedChannels);
     getent.start();
     getent.waitForFinished();
 
     if (getent.exitCode() == 0) {
-        qDebug() << "SelfProvisioner: plasmalogin user already exists.";
+        qDebug() << "SelfProvisioner: soniclogin user already exists.";
 
         // Ensure home directory points to state dir
         QString output = QString::fromLocal8Bit(getent.readAll());
         QString currentHome = output.section(QLatin1Char(':'), 5, 5);
         if (currentHome != QStringLiteral(STATE_DIR)) {
-            qDebug() << "SelfProvisioner: Updating plasmalogin home directory to" << QStringLiteral(STATE_DIR);
+            qDebug() << "SelfProvisioner: Updating soniclogin home directory to" << QStringLiteral(STATE_DIR);
 #ifdef Q_OS_FREEBSD
             // BSD uses different syntax
             runCommandIgnorableFailure(QStringLiteral("pw"),
-                                       {QStringLiteral("usermod"), QStringLiteral("plasmalogin"), QStringLiteral("-d"), QStringLiteral(STATE_DIR)});
+                                       {QStringLiteral("usermod"), QStringLiteral("soniclogin"), QStringLiteral("-d"), QStringLiteral(STATE_DIR)});
 #else
             // Linux uses usermod -d
-            runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-d"), QStringLiteral(STATE_DIR), QStringLiteral("plasmalogin")});
+            runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-d"), QStringLiteral(STATE_DIR), QStringLiteral("soniclogin")});
 #endif
         }
     } else {
-        qDebug() << "SelfProvisioner: Creating plasmalogin user...";
+        qDebug() << "SelfProvisioner: Creating soniclogin user...";
 
 #ifdef Q_OS_FREEBSD
         // BSD uses pw useradd
         if (!runCommandIgnorableFailure(QStringLiteral("pw"),
                                         {QStringLiteral("useradd"),
                                          QStringLiteral("-n"),
-                                         QStringLiteral("plasmalogin"),
+                                         QStringLiteral("soniclogin"),
                                          QStringLiteral("-d"),
                                          QStringLiteral(STATE_DIR),
                                          QStringLiteral("-s"),
                                          QStringLiteral("/usr/sbin/nologin"),
                                          QStringLiteral("-c"),
                                          QStringLiteral("Sonic Login Greeter Account")})) {
-            qCritical() << "SelfProvisioner: Failed to create plasmalogin user";
+            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
             return false;
         }
 #else
@@ -176,14 +176,14 @@ bool SelfProvisioner::createPlasmaloginUser()
                                          QStringLiteral(STATE_DIR),
                                          QStringLiteral("-c"),
                                          QStringLiteral("Sonic Login Greeter Account"),
-                                         QStringLiteral("plasmalogin")})) {
-            qCritical() << "SelfProvisioner: Failed to create plasmalogin user";
+                                         QStringLiteral("soniclogin")})) {
+            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
             return false;
         }
 #endif
     }
 
-    // Add plasmalogin user to required groups (video, input, render)
+    // Add soniclogin user to required groups (video, input, render)
 #ifndef Q_OS_FREEBSD
     const QStringList groups = {QStringLiteral("video"), QStringLiteral("input"), QStringLiteral("render")};
 #else
@@ -205,7 +205,7 @@ bool SelfProvisioner::createPlasmaloginUser()
         // Check if user is already in group
         QProcess groupsProc;
         groupsProc.setProgram(QStringLiteral("groups"));
-        groupsProc.setArguments({QStringLiteral("plasmalogin")});
+        groupsProc.setArguments({QStringLiteral("soniclogin")});
         groupsProc.setProcessChannelMode(QProcess::MergedChannels);
         groupsProc.start();
         groupsProc.waitForFinished();
@@ -214,13 +214,13 @@ bool SelfProvisioner::createPlasmaloginUser()
             continue; // Already in group
         }
 
-        qDebug() << "SelfProvisioner: Adding plasmalogin to group" << grp;
+        qDebug() << "SelfProvisioner: Adding soniclogin to group" << grp;
 #ifdef Q_OS_FREEBSD
         // BSD uses pw groupmod
-        runCommandIgnorableFailure(QStringLiteral("pw"), {QStringLiteral("groupmod"), grp, QStringLiteral("-m"), QStringLiteral("plasmalogin")});
+        runCommandIgnorableFailure(QStringLiteral("pw"), {QStringLiteral("groupmod"), grp, QStringLiteral("-m"), QStringLiteral("soniclogin")});
 #else
         // Linux uses usermod -aG
-        runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-aG"), grp, QStringLiteral("plasmalogin")});
+        runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-aG"), grp, QStringLiteral("soniclogin")});
 #endif
     }
 
@@ -245,10 +245,10 @@ bool SelfProvisioner::createStateDirectory()
     // Set directory permissions (750 - owner rwx, group r-x, others none)
     ::chmod(QStringLiteral(STATE_DIR).toLocal8Bit().constData(), 0750);
 
-    // Set ownership to plasmalogin user/group
+    // Set ownership to soniclogin user/group
     QProcess idProc;
     idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("plasmalogin")});
+    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
     idProc.setProcessChannelMode(QProcess::MergedChannels);
     idProc.start();
     idProc.waitForFinished();
@@ -256,7 +256,7 @@ bool SelfProvisioner::createStateDirectory()
     uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
 
     idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("plasmalogin")});
+    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
     idProc.start();
     idProc.waitForFinished();
     bool ok2 = false;
@@ -322,7 +322,7 @@ bool SelfProvisioner::setupLogging()
         QFile::rename(QStringLiteral(LOG_FILE), oldLog);
     }
 
-    // Set directory permissions (777 so plasmalogin helper can write)
+    // Set directory permissions (777 so soniclogin helper can write)
     ::chmod(logDirectory.absolutePath().toUtf8().constData(), 0777);
 
     // Create log file
@@ -335,10 +335,10 @@ bool SelfProvisioner::setupLogging()
         file.close();
     }
 
-    // Set log file ownership (plasmalogin:plasmalogin) and permissions (666 so helper can write)
+    // Set log file ownership (soniclogin:soniclogin) and permissions (666 so helper can write)
     QProcess idProc;
     idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("plasmalogin")});
+    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
     idProc.setProcessChannelMode(QProcess::MergedChannels);
     idProc.start();
     idProc.waitForFinished();
@@ -346,7 +346,7 @@ bool SelfProvisioner::setupLogging()
     uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
 
     idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("plasmalogin")});
+    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
     idProc.start();
     idProc.waitForFinished();
     bool ok2 = false;
@@ -366,7 +366,7 @@ bool SelfProvisioner::cleanupAuthSockets()
     qDebug() << "SelfProvisioner: Cleaning up stale auth sockets...";
 
     // Clean up old auth sockets in /tmp
-    const QStringList patterns = {QStringLiteral("/tmp/plasmalogin-auth*"), QStringLiteral("/tmp/xauth_*")};
+    const QStringList patterns = {QStringLiteral("/tmp/soniclogin-auth*"), QStringLiteral("/tmp/xauth_*")};
 
     for (const QString &pattern : patterns) {
         QDir dir;
@@ -383,4 +383,4 @@ bool SelfProvisioner::cleanupAuthSockets()
     return true;
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN

@@ -21,7 +21,7 @@
 
 #include "XAuth.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 class XOrgUserHelper : public QObject
@@ -53,6 +53,6 @@ private:
     void displayFinished();
 };
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
 #endif // XORGUSERHELPER_H

@@ -1,0 +1,9 @@
+[Unit]
+Description=Plasma Wallpaper on Login screen
+PartOf=soniclogin-x11.target
+After=soniclogin-kwin_x11.service soniclogin.service
+
+[Service]
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/soniclogin-wallpaper
+Slice=background.slice
+

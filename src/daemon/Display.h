@@ -16,8 +16,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_DISPLAY_H
-#define PLASMALOGIN_DISPLAY_H
+#ifndef SONICLOGIN_DISPLAY_H
+#define SONICLOGIN_DISPLAY_H
 
 #include <QDir>
 #include <QObject>
@@ -28,7 +28,7 @@
 
 class QLocalSocket;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Authenticator;
 class DisplayServer;
@@ -103,4 +103,4 @@ private slots:
 };
 }
 
-#endif // PLASMALOGIN_DISPLAY_H
+#endif // SONICLOGIN_DISPLAY_H

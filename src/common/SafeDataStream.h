@@ -12,7 +12,7 @@
 #include <QByteArray>
 #include <QtCore/QDataStream>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class SafeDataStream : public QDataStream
 {

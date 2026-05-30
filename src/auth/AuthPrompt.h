@@ -11,7 +11,7 @@
 
 #include <QtCore/QObject>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class Auth;
 class AuthRequest;

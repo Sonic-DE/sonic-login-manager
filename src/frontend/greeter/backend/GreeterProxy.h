@@ -23,7 +23,7 @@
 
 class QLocalSocket;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class SessionModel;
 
@@ -47,14 +47,29 @@ public:
     void setSessionModel(SessionModel *model);
 
     // Capability getters
-    bool canReboot() const { return m_capabilities & Capability::Reboot; }
-    bool canShutdown() const { return m_capabilities & Capability::PowerOff; }
-    bool canSuspend() const { return m_capabilities & Capability::Suspend; }
-    bool canHibernate() const { return m_capabilities & Capability::Hibernate; }
-    bool canLogout() const { return true; }  // Always true for greeter
+    bool canReboot() const
+    {
+        return m_capabilities & Capability::Reboot;
+    }
+    bool canShutdown() const
+    {
+        return m_capabilities & Capability::PowerOff;
+    }
+    bool canSuspend() const
+    {
+        return m_capabilities & Capability::Suspend;
+    }
+    bool canHibernate() const
+    {
+        return m_capabilities & Capability::Hibernate;
+    }
+    bool canLogout() const
+    {
+        return true;
+    } // Always true for greeter
 
 public slots:
-    void login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const;
+    void login(const QString &user, const QString &password, const SONICLOGIN::SessionType sessionType, const QString &sessionFileName) const;
     void shutdown();
     void reboot();
     void suspend();

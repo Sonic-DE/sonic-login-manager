@@ -16,7 +16,7 @@
 
 class QLocalSocket;
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class PamBackend;
 class UserSession;
@@ -29,7 +29,10 @@ public:
 
     UserSession *session();
     const QString &user() const;
-    QLocalSocket *socket() const { return m_socket; }
+    QLocalSocket *socket() const
+    {
+        return m_socket;
+    }
 
 public slots:
     Request request(const Request &request);

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(PROJECT_VERSION "6.6.5")
 
-project(PLASMALOGIN VERSION ${PROJECT_VERSION})
+project(SONICLOGIN VERSION ${PROJECT_VERSION})
 
 # Options
 option(INSTALL_PAM_CONFIGURATION "Install PAM configuration files" ON)
@@ -117,9 +117,9 @@ else()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
-    set(RUNTIME_DIR_DEFAULT "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/run/plasmalogin")
+    set(RUNTIME_DIR_DEFAULT "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/run/soniclogin")
 else()
-    set(RUNTIME_DIR_DEFAULT "/run/plasmalogin")
+    set(RUNTIME_DIR_DEFAULT "/run/soniclogin")
 endif()
 
 # utmps - for session tracking on non-systemd systems
@@ -134,20 +134,20 @@ else()
 endif()
 
 # Set constants
-set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/plasmalogin"                     CACHE PATH      "System application data install directory")
+set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/soniclogin"                     CACHE PATH      "System application data install directory")
 set(DBUS_CONFIG_DIR             "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d"                 CACHE PATH      "DBus config files directory")
-set(STATE_DIR                   "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/plasmalogin"           CACHE PATH      "State directory")
+set(STATE_DIR                   "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/soniclogin"           CACHE PATH      "State directory")
 set(RUNTIME_DIR                 "${RUNTIME_DIR_DEFAULT}"                                        CACHE PATH      "Runtime data storage directory")
 
 set(SESSION_COMMAND             "${DATA_INSTALL_DIR}/scripts/Xsession"                          CACHE PATH      "Script to execute when starting the X11 desktop session")
 set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"                   CACHE PATH      "Script to execute when starting the Wayland desktop session")
 
-set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"             CACHE PATH      "Path of the plasmalogin config file")
-set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"           CACHE PATH      "Path of the plasmalogin config directory")
-set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d"    CACHE PATH      "Path of the system plasmalogin config directory")
-set(LOG_FILE                    "/var/log/sonic/loginmanager.log"                               CACHE PATH      "Path of the plasmalogin log file")
-set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the plasmalogin config file")
-set(PLASMALOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
+set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf"             CACHE PATH      "Path of the soniclogin config file")
+set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf.d"           CACHE PATH      "Path of the soniclogin config directory")
+set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/soniclogin/soniclogin.conf.d"    CACHE PATH      "Path of the system soniclogin config directory")
+set(LOG_FILE                    "/var/log/sonic/loginmanager.log"                               CACHE PATH      "Path of the soniclogin log file")
+set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the soniclogin config file")
+set(SONICLOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
 
 # Add subdirectories
 add_subdirectory(data)
@@ -164,7 +164,7 @@ feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 # CPack split-package generation for init-system-specific subpackages
 # When SPLIT_BUILD is ON, each init system is tagged with a COMPONENT.
 # Run: cmake -B build -DSPLIT_BUILD=ON && cmake --build build && cpack -G TGZ
-# This produces individual .tar.gz packages per init system (e.g. plasmalogin-s6, plasmalogin-systemd, etc.)
+# This produces individual .tar.gz packages per init system (e.g. soniclogin-s6, soniclogin-systemd, etc.)
 include(CPack)
 set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)

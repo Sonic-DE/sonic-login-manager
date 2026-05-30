@@ -15,15 +15,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_POWER_MANAGER_H
-#define PLASMALOGIN_POWER_MANAGER_H
+#ifndef SONICLOGIN_POWER_MANAGER_H
+#define SONICLOGIN_POWER_MANAGER_H
 
 #include <QObject>
 #include <QVector>
 
 #include "Messages.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 // Forward declaration for private backend implementation
@@ -31,10 +31,10 @@ class PowerManagerBackend;
 
 /**
  * @brief Power manager that queries system services (logind, ConsoleKit2, UPower)
- * 
+ *
  * This class runs in the daemon (as root) and determines what power operations
  * are available on the system. It sends capabilities to the greeter via socket.
- * 
+ *
  * Based on SDDM's PowerManager implementation.
  */
 class PowerManager : public QObject
@@ -57,6 +57,6 @@ private:
     QVector<PowerManagerBackend *> m_backends;
 };
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
-#endif // PLASMALOGIN_POWER_MANAGER_H
+#endif // SONICLOGIN_POWER_MANAGER_H

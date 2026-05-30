@@ -2,6 +2,6 @@
 # SPDX-FileCopyrightText: none
 
 # Xorg wrapper configuration for FreeBSD
-# Allows the plasmalogin user to start X server (required for Plasma Login Manager)
+# Allows the soniclogin user to start X server (required for Sonic Login Manager)
 allowed_users = anybody
 needs_root_rights = yes

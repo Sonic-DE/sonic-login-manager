@@ -29,7 +29,7 @@
 #include <QtCore/QProcess>
 #include <VirtualTerminal.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 Greeter::Greeter(Display *parent)
     : QObject(parent)
@@ -65,8 +65,8 @@ bool Greeter::start()
         return false;
     }
 
-    QString greeterCommand = QStringLiteral(BIN_INSTALL_DIR "/startplasma-login-x11");
-    
+    QString greeterCommand = QStringLiteral(BIN_INSTALL_DIR "/start-soniclogin-x11");
+
     if (greeterCommand.isEmpty()) {
         qCritical("Could not find greeter: %s", qPrintable(greeterCommand));
         return false;
@@ -125,7 +125,7 @@ bool Greeter::start()
         qDebug() << "Greeter attempting to start...";
 
         // start greeter
-        m_auth->setUser(QStringLiteral("plasmalogin"));
+        m_auth->setUser(QStringLiteral("soniclogin"));
         m_auth->setDisplayServerCommand(m_displayServerCmd);
         m_auth->setGreeter(true);
         m_auth->setSession(greeterCommand);

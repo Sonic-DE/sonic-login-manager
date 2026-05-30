@@ -21,7 +21,7 @@
 #include "LogindDBusTypes.h"
 #include "Seat.h"
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 QString XorgUserDisplayServer::command(Display *display)
@@ -44,4 +44,4 @@ QString XorgUserDisplayServer::command(Display *display)
     return args.join(QLatin1Char(' '));
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN

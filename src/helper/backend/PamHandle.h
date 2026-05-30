@@ -13,7 +13,7 @@
 #include <QtCore/QProcessEnvironment>
 #include <security/pam_appl.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 class PamBackend;
 /**
@@ -147,7 +147,7 @@ public:
     /**
      * pam_start - initialization of PAM transaction
      *
-     * \param service PAM service name, e.g. "plasmalogin"
+     * \param service PAM service name, e.g. "soniclogin"
      * \param pam_conversation pointer to the PAM conversation structure to be used
      * \param user username
      *

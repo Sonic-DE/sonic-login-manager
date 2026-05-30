@@ -38,7 +38,7 @@
 #define ACQUIRE_DISPLAY_SIGNAL (SIGRTMAX - 1)
 #endif
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 namespace VirtualTerminal
 {

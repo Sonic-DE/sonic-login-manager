@@ -20,7 +20,7 @@
 #include <KConfigGroup>
 #include <QFile>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 Session Session::create(Type type, const QString &name)
@@ -128,4 +128,4 @@ QString Session::desktopNames() const
     return m_desktopFile->group(QStringLiteral("Desktop Entry")).readEntry(QStringLiteral("DesktopNames"));
 }
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN

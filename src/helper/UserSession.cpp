@@ -34,7 +34,7 @@
 #include <sys/sysctl.h>
 #endif
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 UserSession::UserSession(HelperApp *parent)
@@ -55,11 +55,7 @@ void UserSession::onProcessFinished(int exitCode, QProcess::ExitStatus exitStatu
         // Only log as "crashed" if the exit code suggests an abnormal condition.
         pid_t pid = processId();
         qDebug() << "UserSession: process exited with signal"
-                 << "pid=" << pid
-                 << "exitCode=" << exitCode
-                 << "program=" << program()
-                 << "arguments=" << arguments()
-                 << "state=" << state();
+                 << "pid=" << pid << "exitCode=" << exitCode << "program=" << program() << "arguments=" << arguments() << "state=" << state();
     }
     Q_EMIT finished(exitCode);
 }
@@ -91,7 +87,7 @@ bool UserSession::start()
             setArguments(args);
             qDebug() << "UserSession::start: DEBUG - starting directly with program=" << args.first();
         } else {
-            QString helperPath = QStringLiteral(LIBEXEC_INSTALL_DIR "/plasmalogin-helper-start-x11user");
+            QString helperPath = QStringLiteral(LIBEXEC_INSTALL_DIR "/soniclogin-helper-start-x11user");
             setProgram(helperPath);
             setArguments({m_displayServerCmd, command});
             qDebug() << "UserSession::start: DEBUG - starting helper=" << helperPath << "with args=" << m_displayServerCmd << command;
@@ -135,9 +131,7 @@ bool UserSession::start()
 void UserSession::stop()
 {
     qWarning() << "UserSession::stop() CALLED - TRACE:"
-               << "program=" << program()
-               << "pid=" << processId()
-               << "state=" << state()
+               << "program=" << program() << "pid=" << processId() << "state=" << state()
                << "sessionClass=" << processEnvironment().value(QStringLiteral("XDG_SESSION_CLASS"))
                << "sessionType=" << processEnvironment().value(QStringLiteral("XDG_SESSION_TYPE"))
                << "user=" << processEnvironment().value(QStringLiteral("USER"));

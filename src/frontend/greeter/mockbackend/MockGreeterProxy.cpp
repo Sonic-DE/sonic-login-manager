@@ -15,16 +15,16 @@ MockGreeterProxy::MockGreeterProxy()
     qDebug().noquote() << QStringLiteral("Mock backend in use, use password %1 for successful login on any user").arg(s_mockPassword);
 }
 
-void MockGreeterProxy::login(const QString &user, const QString &password, const PLASMALOGIN::SessionType sessionType, const QString &sessionFileName) const
+void MockGreeterProxy::login(const QString &user, const QString &password, const SONICLOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
     bool const success = (!user.isEmpty() && password == s_mockPassword);
 
     QString sessionTypeName;
     switch (sessionType) {
-    case PLASMALOGIN::SessionType::X11:
+    case SONICLOGIN::SessionType::X11:
         sessionTypeName = QStringLiteral("X11");
         break;
-    case PLASMALOGIN::SessionType::Wayland:
+    case SONICLOGIN::SessionType::Wayland:
         sessionTypeName = QStringLiteral("Wayland");
         break;
     }

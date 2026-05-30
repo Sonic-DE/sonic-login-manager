@@ -1,0 +1,37 @@
+#!/sbin/openrc-run
+# Copyright 2024 KDE Community
+# Distributed under the terms of the GNU General Public License v2
+
+description="Sonic Login Manager"
+
+# Dependencies
+depend() {
+    need localmount
+    after bootmisc consolefont modules netmount
+    after udev dbus elogind
+    use xdm
+}
+
+# Start the service
+start() {
+    ebegin "Starting Sonic Login Manager"
+    start-stop-daemon --start --quiet --background \
+        --exec @CMAKE_INSTALL_FULL_BINDIR@/soniclogin \
+        --pidfile /run/soniclogin.pid \
+        --make-pidfile
+    eend $?
+}
+
+# Stop the service
+stop() {
+    ebegin "Stopping Sonic Login Manager"
+    start-stop-daemon --stop --quiet --pidfile /run/soniclogin.pid
+    eend $?
+}
+
+# Reload configuration
+reload() {
+    ebegin "Reloading Sonic Login Manager"
+    start-stop-daemon --signal HUP --quiet --pidfile /run/soniclogin.pid
+    eend $?
+}

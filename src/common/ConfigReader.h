@@ -26,37 +26,37 @@
 
 // config wrapper
 #define Config(name, file, dir, sysDir, ...)                                                                                                                   \
-    class name : public PLASMALOGIN::ConfigBase, public PLASMALOGIN::ConfigSection                                                                             \
+    class name : public SONICLOGIN::ConfigBase, public SONICLOGIN::ConfigSection                                                                               \
     {                                                                                                                                                          \
     public:                                                                                                                                                    \
         name()                                                                                                                                                 \
-            : PLASMALOGIN::ConfigBase(file, dir, sysDir)                                                                                                       \
-            , PLASMALOGIN::ConfigSection(this, QStringLiteral(IMPLICIT_SECTION))                                                                               \
+            : SONICLOGIN::ConfigBase(file, dir, sysDir)                                                                                                        \
+            , SONICLOGIN::ConfigSection(this, QStringLiteral(IMPLICIT_SECTION))                                                                                \
         {                                                                                                                                                      \
             load();                                                                                                                                            \
         }                                                                                                                                                      \
         void save()                                                                                                                                            \
         {                                                                                                                                                      \
-            PLASMALOGIN::ConfigBase::save(nullptr, nullptr);                                                                                                   \
+            SONICLOGIN::ConfigBase::save(nullptr, nullptr);                                                                                                    \
         }                                                                                                                                                      \
-        void save(PLASMALOGIN::ConfigEntryBase *) const = delete;                                                                                              \
+        void save(SONICLOGIN::ConfigEntryBase *) const = delete;                                                                                               \
         QString toConfigFull() const                                                                                                                           \
         {                                                                                                                                                      \
-            return PLASMALOGIN::ConfigBase::toConfigFull();                                                                                                    \
+            return SONICLOGIN::ConfigBase::toConfigFull();                                                                                                     \
         }                                                                                                                                                      \
         __VA_ARGS__                                                                                                                                            \
     }
 // entry wrapper
 #define Entry(name, type, default, description, ...)                                                                                                           \
-    PLASMALOGIN::ConfigEntry<type> name                                                                                                                        \
+    SONICLOGIN::ConfigEntry<type> name                                                                                                                         \
     {                                                                                                                                                          \
         this, QStringLiteral(#name), default, description, __VA_ARGS__                                                                                         \
     }
 // section wrapper
 #define Section(name, ...)                                                                                                                                     \
-    class name : public PLASMALOGIN::ConfigSection{                                                                                                            \
-        public : name(PLASMALOGIN::ConfigBase * _parent, const QString &_name) : PLASMALOGIN::ConfigSection(_parent, _name){} __VA_ARGS__                      \
-    } name                                                                                                                                                     \
+    class name                                                                                                                                                 \
+        : public SONICLOGIN::                                                                                                                                  \
+          ConfigSection{public : name(SONICLOGIN::ConfigBase * _parent, const QString &_name) : SONICLOGIN::ConfigSection(_parent, _name){} __VA_ARGS__} name  \
     {                                                                                                                                                          \
         this, QStringLiteral(#name)                                                                                                                            \
     };
@@ -66,7 +66,7 @@ QTextStream &operator<<(QTextStream &str, const QStringList &list);
 QTextStream &operator>>(QTextStream &str, bool &val);
 QTextStream &operator<<(QTextStream &str, const bool &val);
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 template<class>
 class ConfigEntry;

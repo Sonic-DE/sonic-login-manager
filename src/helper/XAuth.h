@@ -15,13 +15,13 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  ***************************************************************************/
 
-#ifndef PLASMALOGIN_XAUTH_H
-#define PLASMALOGIN_XAUTH_H
+#ifndef SONICLOGIN_XAUTH_H
+#define SONICLOGIN_XAUTH_H
 
 #include <QString>
 #include <QTemporaryFile>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 
 class XAuth
@@ -47,6 +47,6 @@ private:
     QByteArray m_cookie;
 };
 
-} // namespace PLASMALOGIN
+} // namespace SONICLOGIN
 
-#endif // PLASMALOGIN_XAUTH_H
+#endif // SONICLOGIN_XAUTH_H

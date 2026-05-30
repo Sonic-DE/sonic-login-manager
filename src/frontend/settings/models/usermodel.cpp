@@ -8,7 +8,7 @@
 
 #include <pwd.h>
 
-#include "plasmaloginsettings.h"
+#include "sonicloginsettings.h"
 
 #include "usermodel.h"
 
@@ -99,11 +99,11 @@ void UserModel::populate()
 
         // Filter out users that cannot log in
         const bool cannotLogin = user.shell().endsWith("/nologin") || user.shell().endsWith("/false");
-        
+
         // Consider UID ranges (homed range from systemd: HOME_UID_MIN, HOME_UID_MAX)
-        const bool inLogindDefRange = (uid >= PlasmaLoginSettings::getInstance().minimumUid() && uid <= PlasmaLoginSettings::getInstance().maximumUid());
+        const bool inLogindDefRange = (uid >= SonicLoginSettings::getInstance().minimumUid() && uid <= SonicLoginSettings::getInstance().maximumUid());
         const bool inHomedRange = (uid >= 60001 && uid <= 60513);
-        
+
         if (cannotLogin || (!inLogindDefRange && !inHomedRange)) {
             continue;
         }
@@ -117,7 +117,7 @@ void UserModel::populate()
 
         QString icon = user.faceIconPath();
         if (icon.isEmpty()) {
-            icon = QStringLiteral("qrc:/qt/qml/org/kde/plasma/login/.face.icon");
+            icon = QStringLiteral("qrc:/qt/qml/org/kde/sonic/login/.face.icon");
         } else {
             icon.prepend(QStringLiteral("file://"));
         }

@@ -1,0 +1,28 @@
+/*
+ *  SPDX-FileCopyrightText: 2020 Cyril Rossi <cyril.rossi@enioka.com>
+ *  SPDX-FileCopyrightText: 2025 Oliver Beard <olib141@outlook.com>
+ *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
+#pragma once
+
+#include <QObject>
+
+#include "kcmoduledata.h"
+#include "wallpapersettings.h"
+
+class SonicLoginData : public KCModuleData
+{
+    Q_OBJECT
+
+public:
+    explicit SonicLoginData(QObject *parent);
+
+    bool isDefaults() const override;
+
+private:
+    WallpaperSettings *m_wallpaperSettings = nullptr;
+
+    bool checkBsdRcConfEnabled(const QString &path);
+};

@@ -26,7 +26,7 @@
 
 #include <sys/socket.h>
 
-namespace PLASMALOGIN
+namespace SONICLOGIN
 {
 std::once_flag signalsInitialized;
 
