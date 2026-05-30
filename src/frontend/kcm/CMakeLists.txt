@@ -6,15 +6,19 @@ target_sources(kcm_plasmalogin PRIVATE
     plasmalogindata.cpp plasmalogindata.h
 )
 
+target_include_directories(kcm_plasmalogin PRIVATE
+    "${CMAKE_SOURCE_DIR}/src/common"
+)
+
 target_link_libraries(kcm_plasmalogin PRIVATE
     settings
     KF6::I18n
     KF6::AuthCore
-    #KF6::KCMUtils
     KF6::KCMUtilsCore
     KF6::KCMUtilsQuick
     KF6::KIOGui
     KF6::Service
+    Qt6::Core
 )
 
 add_subdirectory(auth)

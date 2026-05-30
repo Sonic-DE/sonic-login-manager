@@ -23,4 +23,6 @@ public:
 
 private:
     WallpaperSettings *m_wallpaperSettings = nullptr;
+
+    bool checkBsdRcConfEnabled(const QString &path);
 };
