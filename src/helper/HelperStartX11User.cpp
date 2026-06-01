@@ -11,6 +11,7 @@
  * argument) and as soon as it's set up to launch a client (second argument)
  */
 
+#include "Auth.h"
 #include "MessageHandler.h"
 #include "SignalHandler.h"
 #include "xorguserhelper.h"
@@ -107,6 +108,9 @@ int main(int argc, char **argv)
         process->start();
     });
 
-    helper.start(app.arguments()[1]);
+    if (!helper.start(app.arguments()[1])) {
+        qCritical() << "HelperStartX11User: X server failed to start, exiting with HELPER_DISPLAYSERVER_ERROR";
+        return Auth::HELPER_DISPLAYSERVER_ERROR;
+    }
     return app.exec();
 }
