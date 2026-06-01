@@ -20,9 +20,9 @@ SonicLoginSettingsDefaults::SonicLoginSettingsDefaults(KSharedConfigPtr config, 
     : KConfigSkeleton(config, parent)
 {
     auto defaultConfig = KSharedConfig::openConfig(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_FILE), KConfig::CascadeConfig);
-    s_defaultUser = defaultConfig->group(QStringLiteral("AutoLogin")).readEntry("User", "");
-    s_defaultSession = defaultConfig->group(QStringLiteral("AutoLogin")).readEntry("Session", "");
-    s_defaultRelogin = defaultConfig->group(QStringLiteral("AutoLogin")).readEntry("Relogin", false);
+    s_defaultUser = defaultConfig->group(QStringLiteral("Autologin")).readEntry("User", "");
+    s_defaultSession = defaultConfig->group(QStringLiteral("Autologin")).readEntry("Session", "");
+    s_defaultRelogin = defaultConfig->group(QStringLiteral("Autologin")).readEntry("Relogin", false);
     s_defaultPreselectedUser = defaultConfig->group(QStringLiteral("Greeter")).readEntry("PreselectedUser", "");
     s_defaultPreselectedSession = defaultConfig->group(QStringLiteral("Greeter")).readEntry("PreselectedSession", "");
     s_defaultShowClock = defaultConfig->group(QStringLiteral("Greeter")).readEntry("ShowClock", true);
