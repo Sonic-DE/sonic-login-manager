@@ -14,6 +14,10 @@ depend() {
 
 # Start the service
 start() {
+    ebegin "Waiting for udev device settlement"
+    udevadm settle --timeout=10
+    eend $?
+
     ebegin "Starting Sonic Login Manager"
     start-stop-daemon --start --quiet --background \
         --exec @CMAKE_INSTALL_FULL_BINDIR@/soniclogin \
