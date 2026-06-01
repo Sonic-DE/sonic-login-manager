@@ -319,7 +319,8 @@ void Display::stop()
     qWarning() << "Display::stop() stopping socket server";
     m_socketServer->stop();
 
-    // reset flag
+    // reset flag before emitting stopped() so that a concurrent start()
+    // triggered by the stopped() signal does not race with cleanup.
     m_started = false;
 
     // emit signal
