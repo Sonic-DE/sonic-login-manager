@@ -127,11 +127,7 @@ find_package(utmps)
 add_feature_info("utmps" UTMPS_FOUND "utmps support for non-systemd session tracking")
 
 # Extra default install directories
-if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
-    set(PAM_CONFIG_DIR "/etc/pam.d" CACHE PATH "Install directory for PAM configuration")
-else()
-    set(PAM_CONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pam.d" CACHE PATH "Install directory for PAM configuration")
-endif()
+set(PAM_CONFIG_DIR "${CMAKE_INSTALL_SYSCONFDIR}/pam.d" CACHE PATH "Install directory for PAM configuration")
 
 # Set constants
 set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/soniclogin"                     CACHE PATH      "System application data install directory")
@@ -147,7 +143,7 @@ set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.con
 set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/soniclogin/soniclogin.conf.d"    CACHE PATH      "Path of the system soniclogin config directory")
 set(LOG_FILE                    "/var/log/sonic/loginmanager.log"                               CACHE PATH      "Path of the soniclogin log file")
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the soniclogin config file")
-set(SONICLOGIN_INITIAL_VT      "1"                                                             CACHE STRING    "Initial tty to use")
+set(SONICLOGIN_INITIAL_VT       "1"                                                             CACHE STRING    "Initial tty to use")
 
 # Add subdirectories
 add_subdirectory(data)
