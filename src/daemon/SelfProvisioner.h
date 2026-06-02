@@ -49,7 +49,6 @@ private:
     QString m_runtimeDir;
     QString m_logDir;
     QString m_logFile;
-    bool m_hasJournalctl;
 };
 
 } // namespace SONICLOGIN

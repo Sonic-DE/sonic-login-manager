@@ -24,9 +24,14 @@
 #include <signal.h>
 #include <unistd.h>
 
+void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    SONICLOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
+}
+
 int main(int argc, char **argv)
 {
-    qInstallMessageHandler(SONICLOGIN::X11UserHelperMessageHandler);
+    qInstallMessageHandler(X11UserHelperMessageHandler);
     QCoreApplication app(argc, argv);
     SONICLOGIN::SignalHandler s;
     QObject::connect(&s, &SONICLOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {

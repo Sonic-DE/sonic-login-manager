@@ -36,6 +36,12 @@
 
 namespace SONICLOGIN
 {
+
+void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    messageHandler(type, QStringLiteral("SONICLOGIN HELPER"), msg);
+}
+
 HelperApp::HelperApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
     , m_backend(new PamBackend(this))

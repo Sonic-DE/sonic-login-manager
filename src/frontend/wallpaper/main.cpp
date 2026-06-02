@@ -10,10 +10,15 @@
 #include "MessageHandler.h"
 #include "wallpaperapp.h"
 
+void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPER"), msg);
+}
+
 int main(int argc, char **argv)
 {
     // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(SONICLOGIN::WallpaperMessageHandler);
+    qInstallMessageHandler(WallpaperMessageHandler);
 
     QCoreApplication::setApplicationName(QStringLiteral("soniclogin-wallpaper"));
 

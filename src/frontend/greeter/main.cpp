@@ -97,10 +97,15 @@ bool LoginGreeter::testModeEnabled()
     return s_testMode;
 }
 
+void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN GREETER"), msg);
+}
+
 int main(int argc, char *argv[])
 {
     // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(SONICLOGIN::GreeterMessageHandler);
+    qInstallMessageHandler(GreeterMessageHandler);
     qDebug() << "Greeter main: Starting...";
 
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("sonic-login"));

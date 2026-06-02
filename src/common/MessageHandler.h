@@ -46,118 +46,93 @@ inline void ensureLogFileExists(const QString &s_logFilePath)
     }
 }
 
-static void standardLogger(QtMsgType type, const QString &msg)
+// Helper to determine if stdout/stderr are actively being piped, socket-connected, or captured to a file
+inline bool isStreamLogged()
 {
-    static bool journalctlChecked = false;
-    static bool hasJournalctl = false;
+    struct stat stdoutStat;
+    struct stat stderrStat;
 
-    // Detect journalctl availability once at first call
-    if (!journalctlChecked) {
-        journalctlChecked = true;
-        // Check if journalctl exists on the system
-        if (QFile::exists(QStringLiteral("/run/systemd/journal/socket"))) {
-            hasJournalctl = true;
-        }
+    // Fetch descriptor states for stdout (1) and stderr (2)
+    if (fstat(1, &stdoutStat) < 0 || fstat(2, &stderrStat) < 0) {
+        return false; // Error reading descriptors, fallback to local log file
     }
 
-    // Convert Qt message type to syslog priority
-    int syslogPriority = LOG_INFO;
+    // If it's an interactive terminal (TTY), it's not being captured by a supervisor daemon
+    if (isatty(1) || isatty(2)) {
+        return false;
+    }
+
+    // Verify if they are directed to a Pipe (S_ISFIFO) or a Socket (S_ISSOCK).
+    // Runit, s6, and systemd use pipes/sockets to funnel data directly into their logging utilities.
+    bool stdoutIsPipeOrSocket = S_ISFIFO(stdoutStat.st_mode) || S_ISSOCK(stdoutStat.st_mode);
+    bool stderrIsPipeOrSocket = S_ISFIFO(stderrStat.st_mode) || S_ISSOCK(stderrStat.st_mode);
+
+    // Verify if they are redirected to a regular file (S_ISREG).
+    // OpenRC (via supervise-daemon) and Dinit point stdout directly to specified file paths.
+    bool stdoutIsRegularFile = S_ISREG(stdoutStat.st_mode);
+    bool stderrIsRegularFile = S_ISREG(stderrStat.st_mode);
+
+    // If either stream is actively being piped, socketed, or written to a logfile by the supervisor, return true
+    return (stdoutIsPipeOrSocket || stdoutIsRegularFile || stderrIsPipeOrSocket || stderrIsRegularFile);
+}
+
+[[maybe_unused]] static void messageHandler(QtMsgType type, const QString &category, const QString &msg)
+{
+    static bool loggingCapabilityChecked = false;
+    static bool isStdoutLoggingValid = false;
+
+    if (!loggingCapabilityChecked) {
+        loggingCapabilityChecked = true;
+        // Physically inspect file descriptors to see if any supervisor is collecting data
+        isStdoutLoggingValid = isStreamLogged();
+    }
+
+    const QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
+    QString systemdPrefix;
+    QString logPriority;
     switch (type) {
-    case QtDebugMsg:
-        syslogPriority = LOG_DEBUG;
-        break;
     case QtInfoMsg:
-        syslogPriority = LOG_INFO;
+        systemdPrefix = "<6> ";
+        logPriority = QStringLiteral("(II) ");
         break;
     case QtWarningMsg:
-        syslogPriority = LOG_WARNING;
+        systemdPrefix = "<4> ";
+        logPriority = QStringLiteral("(WW) ");
         break;
     case QtCriticalMsg:
-        syslogPriority = LOG_CRIT;
+        systemdPrefix = "<2> ";
+        logPriority = QStringLiteral("(EE) ");
         break;
     case QtFatalMsg:
-        syslogPriority = LOG_ALERT;
+        systemdPrefix = "<1> ";
+        logPriority = QStringLiteral("(EE) ");
         break;
     default:
+        systemdPrefix = "<7> ";
+        logPriority = QStringLiteral("(DD) ");
         break;
     }
 
-    // Only write to syslog when journalctl is available
-    if (hasJournalctl) {
-        openlog("soniclogin", LOG_PID | LOG_CONS, LOG_AUTH);
-        syslog(syslogPriority, "%s", qPrintable(msg));
-        return;
-    }
+    // If stdout/stderr are unhandled, try to use manual file
+    if (!isStdoutLoggingValid) {
+        ensureLogFileExists(QStringLiteral(LOG_FILE));
+        static QFile logFile(QStringLiteral(LOG_FILE));
+        if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&logFile);
 
-    ensureLogFileExists(QStringLiteral(LOG_FILE));
-    static QFile logFile(QStringLiteral(LOG_FILE));
-    if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream out(&logFile);
-        const QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-        QString logPriority;
-        switch (type) {
-        case QtInfoMsg:
-            logPriority = QStringLiteral("(II) ");
-            break;
-        case QtDebugMsg:
-            logPriority = QStringLiteral("(DD) ");
-            break;
-        case QtWarningMsg:
-            logPriority = QStringLiteral("(WW) ");
-            break;
-        case QtCriticalMsg:
-        case QtFatalMsg:
-            logPriority = QStringLiteral("(EE) ");
-            break;
-        default:
-            logPriority = QStringLiteral("");
-            break;
+            out << timestamp << " " << logPriority << QStringLiteral("[%1] ").arg(category) << msg << "\n";
+            out.flush();
+            logFile.close();
+
+            return;
         }
-
-        // prepare log message
-        out << timestamp << " " << logPriority << msg << "\n";
-        out.flush();
-        logFile.close();
     }
-}
 
-static void messageHandler(QtMsgType type, const QString &prefix, const QString &msg)
-{
-    // prepend program name
-    QString logMessage = QStringLiteral("[") + prefix + QStringLiteral("] ") + msg;
+    FILE *targetStream = (type == QtCriticalMsg || type == QtFatalMsg) ? stderr : stdout;
+    QTextStream out = QTextStream(targetStream);
 
-    // log to file or stderr
-    standardLogger(type, logMessage);
-}
-
-void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN DAEMON"), msg);
-}
-
-void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN HELPER"), msg);
-}
-
-void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN GREETER"), msg);
-}
-
-void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
-}
-
-void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPER"), msg);
-}
-
-void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
+    out << systemdPrefix << logPriority << ": " << QStringLiteral("[%1] ").arg(category) << msg << Qt::endl;
+    out.flush();
 }
 }
 

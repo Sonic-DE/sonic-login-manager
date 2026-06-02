@@ -34,12 +34,17 @@
 #include "InitSystem.h"
 #include "MessageHandler.h"
 
+void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
 
     // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(SONICLOGIN::StartPlasmaMessageHandler);
+    qInstallMessageHandler(StartPlasmaMessageHandler);
 
     createConfigDirectory();
     setupCursor(true);

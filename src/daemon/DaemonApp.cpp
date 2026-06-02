@@ -44,6 +44,10 @@ namespace SONICLOGIN
 {
 DaemonApp *DaemonApp::self = nullptr;
 
+void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    messageHandler(type, QStringLiteral("SONICLOGIN DAEMON"), msg);
+}
 DaemonApp::DaemonApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
 {

@@ -10,6 +10,8 @@
 
 #include "InitSystem.h"
 
+#include "MessageHandler.h"
+
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
@@ -24,7 +26,6 @@ namespace SONICLOGIN
 {
 
 SelfProvisioner::SelfProvisioner()
-    : m_hasJournalctl(false)
 {
 }
 
@@ -33,15 +34,6 @@ SelfProvisioner::~SelfProvisioner() = default;
 bool SelfProvisioner::provision()
 {
     qDebug() << "SelfProvisioner: Starting system provisioning...";
-
-    // Detect journalctl availability
-    QProcess proc;
-    proc.setProgram(QStringLiteral("which"));
-    proc.setArguments({QStringLiteral("journalctl")});
-    proc.start();
-    proc.waitForFinished();
-    m_hasJournalctl = (proc.exitCode() == 0);
-    qDebug() << "SelfProvisioner: journalctl detected:" << m_hasJournalctl;
 
     // Run provisioning steps in order
     if (!createGreeterUser()) {
@@ -295,12 +287,12 @@ bool SelfProvisioner::setupLogging()
 {
     qDebug() << "SelfProvisioner: Setting up logging...";
 
-    if (m_hasJournalctl) {
-        qDebug() << "SelfProvisioner: journalctl is available - using systemd logging.";
+    if (SONICLOGIN::isStreamLogged()) {
+        qDebug() << "SelfProvisioner: stdout/stderr are being captured by a supervisor - skipping log file setup.";
         return true;
     }
 
-    // No journalctl - create log directory and file
+    // Create log directory and file
     qDebug() << "SelfProvisioner: No journalctl - creating log directory and file.";
 
     // Create log directory
