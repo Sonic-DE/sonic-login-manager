@@ -1,6 +1,9 @@
 #!/bin/sh
+set -e
 
 sv check elogind || exit 1
 sv check dbus || exit 1
+
+exec 2>&1
 
 exec @CMAKE_INSTALL_FULL_BINDIR@/soniclogin

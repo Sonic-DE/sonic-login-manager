@@ -1,0 +1,6 @@
+#!/bin/sh
+exec 2>&1; set -e
+
+[ -d /var/log/sonic/loginmanager ] || mkdir -p -m 0755 /var/log/sonic/loginmanager
+
+exec svlogd -tt /var/log/sonic/loginmanager

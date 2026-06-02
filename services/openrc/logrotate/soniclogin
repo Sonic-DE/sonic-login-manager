@@ -1,0 +1,17 @@
+# /etc/logrotate.d/soniclogin
+
+/var/log/sonic/loginmanager.log /var/log/sonic/loginmanager.err {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        # Signal supervise-daemon log handle update directly using its PID file
+        if [ -f /run/soniclogin.pid ]; then
+            kill -USR1 $(cat /run/soniclogin.pid)
+        fi
+    endscript
+}

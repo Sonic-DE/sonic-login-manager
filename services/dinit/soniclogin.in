@@ -6,10 +6,7 @@
 
 type = process
 command = @CMAKE_INSTALL_FULL_BINDIR@/soniclogin
-restart = true
-working-dir = /
-run-as = root
-
-# Wait for these core services if they exist on the system
-waits-for: dbus
-waits-for: elogind
+smooth-recovery = true
+logfile         = /var/log/sonic/loginmanager.log
+depends-on      = logind
+depends-on      = login.target

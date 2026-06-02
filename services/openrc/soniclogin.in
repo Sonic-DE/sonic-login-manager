@@ -1,41 +1,31 @@
 #!/sbin/openrc-run
-# Copyright 2024 KDE Community
-# Distributed under the terms of the GNU General Public License v2
+# Copyright 2024 SonicDE Community
+# Distributed under the terms of the BSD0 License
 
 description="Sonic Login Manager"
+supervisor=supervise-daemon
 
-# Dependencies
+command="@CMAKE_INSTALL_FULL_BINDIR@/soniclogin"
+command_args="--foreground"
+pidfile="/run/soniclogin.pid"
+
+output_log="/var/log/sonic/loginmanager.log"
+error_log="/var/log/sonic/loginmanager.err"
+
 depend() {
     need localmount
+
     after bootmisc consolefont modules netmount
-    after udev dbus elogind
-    use xdm
+    after ypbind autofs openvpn gpm lircmd
+    after quota keymaps acpid
+    before alsasound
+    want logind
+    use xfs
+    provide xdm display-manager
 }
 
-# Start the service
-start() {
-    ebegin "Waiting for udev device settlement"
-    udevadm settle --timeout=10
-    eend $?
-
-    ebegin "Starting Sonic Login Manager"
-    start-stop-daemon --start --quiet --background \
-        --exec @CMAKE_INSTALL_FULL_BINDIR@/soniclogin \
-        --pidfile /run/soniclogin.pid \
-        --make-pidfile
-    eend $?
-}
-
-# Stop the service
-stop() {
-    ebegin "Stopping Sonic Login Manager"
-    start-stop-daemon --stop --quiet --pidfile /run/soniclogin.pid
-    eend $?
-}
-
-# Reload configuration
-reload() {
-    ebegin "Reloading Sonic Login Manager"
-    start-stop-daemon --signal HUP --quiet --pidfile /run/soniclogin.pid
-    eend $?
+start_pre() {
+    # Ensure the log files exist with the correct user permissions
+    # if running the daemon under a non-root command_user
+    checkpath -f -m 0666 -o root:root "${output_log}" "${error_log}"
 }

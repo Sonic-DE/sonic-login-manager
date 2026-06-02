@@ -38,25 +38,48 @@ if(SPLIT_BUILD)
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
         COMPONENT openrc
     )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/openrc/logrotate/soniclogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/logrotate.d"
+        COMPONENT openrc
+    )
 elseif(OPENRC_FOUND)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/openrc/soniclogin"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
     )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/openrc/logrotate/soniclogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/logrotate.d"
+    )
 endif()
 
 # runit service - install if detected
 configure_file(runit/run.in runit/run @ONLY)
+configure_file(runit/log/run.in runit/log/run @ONLY)
 if(SPLIT_BUILD)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/run"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/soniclogin"
         COMPONENT runit
     )
+
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/log/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/soniclogin/log"
+        COMPONENT runit
+    )
 elseif(RUNIT_FOUND)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/run"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/soniclogin"
+    )
+
+    install(
+        PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/runit/log/run"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/runit/sv/soniclogin/log"
     )
 endif()
 
@@ -68,10 +91,21 @@ if(SPLIT_BUILD)
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
         COMPONENT dinit
     )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/dinit/logrotate/soniclogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/logrotate.d"
+        COMPONENT dinit
+    )
 elseif(DINIT_FOUND)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/dinit/soniclogin"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
+    )
+
+    install(
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/dinit/logrotate/soniclogin"
+        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/logrotate.d"
     )
 endif()
 
