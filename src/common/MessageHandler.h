@@ -114,25 +114,22 @@ inline bool isStreamLogged()
     }
 
     // If stdout/stderr are unhandled, try to use manual file
-    if (!isStdoutLoggingValid) {
-        ensureLogFileExists(QStringLiteral(LOG_FILE));
-        static QFile logFile(QStringLiteral(LOG_FILE));
-        if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream out(&logFile);
+    ensureLogFileExists(QStringLiteral(LOG_FILE));
+    static QFile logFile(QStringLiteral(LOG_FILE));
+    if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&logFile);
 
-            out << timestamp << " " << logPriority << QStringLiteral("[%1] ").arg(category) << msg << "\n";
-            out.flush();
-            logFile.close();
+        out << timestamp << " " << logPriority << QStringLiteral("[%1] ").arg(category) << msg << "\n";
+        out.flush();
+        logFile.close();
 
-            return;
-        }
+        return;
     }
 
-    FILE *targetStream = (type == QtCriticalMsg || type == QtFatalMsg) ? stderr : stdout;
-    QTextStream out = QTextStream(targetStream);
+    QTextStream standardOut = QTextStream(stdout);
 
-    out << systemdPrefix << logPriority << ": " << QStringLiteral("[%1] ").arg(category) << msg << Qt::endl;
-    out.flush();
+    standardOut << systemdPrefix << timestamp << " " << logPriority << ": " << QStringLiteral("[%1] ").arg(category) << msg << Qt::endl;
+    standardOut.flush();
 }
 }
 
