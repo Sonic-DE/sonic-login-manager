@@ -31,7 +31,7 @@ namespace SONICLOGIN
 #if defined(Q_OS_FREEBSD) || defined(Q_OS_NETBSD) || defined(Q_OS_OPENBSD) || defined(Q_OS_BSD4)
             Entry(ServerPath,          QString,     _S("/usr/local/bin/X"),                     _S("Path to X server binary"));
 #else
-            Entry(ServerPath,          QString,     _S("/usr/bin/X"),                           _S("Path to X server binary"));
+            Entry(ServerPath,          QString,     _S("/usr/lib/Xorg"),                        _S("Path to X server binary"));
 #endif
             Entry(ServerArguments,     QString,     _S("-nolisten tcp"),                        _S("Arguments passed to the X server invocation"));
             Entry(SessionLogFile,      QString,     _S(".local/share/soniclogin/xorg-session.log"),   _S("Path to the user session log file"));

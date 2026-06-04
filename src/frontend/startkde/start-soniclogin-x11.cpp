@@ -102,15 +102,18 @@ int main(int argc, char **argv)
             qWarning() << "NON-SYSTEMD: Failed to prepare XDG_RUNTIME_DIR";
         }
 
+        const QString xdgStateHome = greeterHome + QStringLiteral("/.local/state");
         QDir().mkpath(xdgConfigHome);
         QDir().mkpath(xdgCacheHome);
         QDir().mkpath(xdgDataHome);
+        QDir().mkpath(xdgStateHome);
         qputenv("HOME", greeterHome.toLocal8Bit());
         qputenv("USER", QByteArray("soniclogin"));
         qputenv("LOGNAME", QByteArray("soniclogin"));
         qputenv("XDG_CONFIG_HOME", xdgConfigHome.toLocal8Bit());
         qputenv("XDG_CACHE_HOME", xdgCacheHome.toLocal8Bit());
         qputenv("XDG_DATA_HOME", xdgDataHome.toLocal8Bit());
+        qputenv("XDG_STATE_HOME", xdgStateHome.toLocal8Bit());
         if (!xdgRuntimeDir.isEmpty()) {
             qputenv("XDG_RUNTIME_DIR", xdgRuntimeDir.toLocal8Bit());
         }

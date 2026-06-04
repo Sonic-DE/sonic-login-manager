@@ -21,7 +21,9 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QTextStream>
+#include <linux/capability.h>
 #include <signal.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 
 void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
@@ -59,6 +61,12 @@ int main(int argc, char **argv)
     if (::getuid() == 0) {
         qCritical() << "HelperStartX11User: ERROR - cannot run as root!";
         return 33;
+    }
+
+    {
+        int a_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
+        int a_pcap = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SETPCAP, 0, 0);
+        qInfo() << "HelperStartX11User: ambient CAP_SYS_TTY_CONFIG=" << a_tty << "CAP_SETPCAP=" << a_pcap;
     }
 
     if (argc != 3) {

@@ -22,6 +22,11 @@
 
 #include <unistd.h>
 
+#include <linux/capability.h>
+#include <string.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+
 namespace SONICLOGIN
 {
 class Auth::SocketServer : public QLocalServer
@@ -395,6 +400,34 @@ void Auth::start()
     if (d->greeter) {
         args << QStringLiteral("--greeter");
     }
+
+    // Ensure CAP_SYS_TTY_CONFIG propagates to soniclogin-helper so Xorg can do VT ioctls.
+    // prctl(PR_CAP_AMBIENT_RAISE) requires the capability in both permitted and inheritable.
+    d->child->setChildProcessModifier([]() {
+        struct __user_cap_header_struct capHeader = {_LINUX_CAPABILITY_VERSION_3, 0};
+        struct __user_cap_data_struct capData[2] = {};
+        if (syscall(SYS_capget, &capHeader, capData) == 0) {
+            capData[0].inheritable |= (1U << CAP_SYS_TTY_CONFIG);
+            capData[0].inheritable |= (1U << CAP_SETPCAP);
+            if (syscall(SYS_capset, &capHeader, capData) == 0) {
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SYS_TTY_CONFIG, 0, 0) < 0) {
+                    const char msg[] = "Auth::start: Failed to set CAP_SYS_TTY_CONFIG ambient capability\n";
+                    ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                }
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETPCAP, 0, 0) < 0) {
+                    const char msg[] = "Auth::start: Failed to set CAP_SETPCAP ambient capability\n";
+                    ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                }
+            } else {
+                const char msg[] = "Auth::start: Failed to add capabilities to inheritable set\n";
+                ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+            }
+        } else {
+            const char msg[] = "Auth::start: capget failed\n";
+            ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+        }
+    });
+
     d->child->start(QStringLiteral("%1/soniclogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
 
     d->child->waitForStarted(3000);

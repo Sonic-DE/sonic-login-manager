@@ -25,6 +25,13 @@
 #include "xorguserhelper.h"
 
 #include <fcntl.h>
+#include <linux/capability.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/capability.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 
 namespace SONICLOGIN
@@ -102,6 +109,44 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     auto *process = new QProcess(this);
     process->setProcessEnvironment(env);
     process->setInputChannelMode(QProcess::ForwardedInputChannel);
+
+    // Give the Xorg process CAP_SYS_TTY_CONFIG so it can perform VT ioctls.
+    // We have CAP_SETPCAP ambient, so we can modify our own capability set.
+    process->setChildProcessModifier([]() {
+        auto dbg = [](const char *label, int ok) {
+            ::write(STDERR_FILENO, label, strlen(label));
+            const char *yn = ok ? "YES\n" : "NO\n";
+            ::write(STDERR_FILENO, yn, strlen(yn));
+        };
+        int before_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
+        int before_pcap = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SETPCAP, 0, 0);
+        dbg("XOrgUserHelper child: before capset ambient CAP_SYS_TTY_CONFIG=", before_tty == 1);
+        dbg("XOrgUserHelper child: before capset ambient CAP_SETPCAP=", before_pcap == 1);
+        struct __user_cap_header_struct capHeader = {_LINUX_CAPABILITY_VERSION_3, 0};
+        struct __user_cap_data_struct capData[2] = {};
+        if (capget(&capHeader, capData) == 0) {
+            dbg("XOrgUserHelper child: capget eff=", capData[0].effective & (1U << CAP_SYS_TTY_CONFIG));
+            dbg("XOrgUserHelper child: capget prm=", capData[0].permitted & (1U << CAP_SYS_TTY_CONFIG));
+            dbg("XOrgUserHelper child: capget inh=", capData[0].inheritable & (1U << CAP_SYS_TTY_CONFIG));
+            capData[0].effective |= (1U << CAP_SYS_TTY_CONFIG);
+            capData[0].permitted |= (1U << CAP_SYS_TTY_CONFIG);
+            capData[0].inheritable |= (1U << CAP_SYS_TTY_CONFIG);
+            if (capset(&capHeader, capData) == 0) {
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SYS_TTY_CONFIG, 0, 0) < 0) {
+                    const char msg[] = "XOrgUserHelper: Failed to raise CAP_SYS_TTY_CONFIG ambient\n";
+                    ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                }
+                int after_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
+                dbg("XOrgUserHelper child: after ambient raise CAP_SYS_TTY_CONFIG=", after_tty == 1);
+            } else {
+                const char msg[] = "XOrgUserHelper: capset failed\n";
+                ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+            }
+        } else {
+            const char msg[] = "XOrgUserHelper: capget failed\n";
+            ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+        }
+    });
 
     // Helper lambda to filter and log Xorg output line by line
     // Only log errors (EE), warnings (WW), and key events - skip verbose informational output
@@ -195,6 +240,13 @@ bool XOrgUserHelper::startServer(const QString &cmd)
 
     // Append xauth and display fd to the command
     auto args = QStringList() << QStringLiteral("-auth") << m_xauth.authPath() << QStringLiteral("-displayfd") << QString::number(pipeFds[1]);
+
+    // Xorg log file: default /var/log/Xorg.0.log is root:root 640,
+    // so unprivileged Xorg cannot write it. Use XDG_STATE_HOME if available.
+    QString xorgLogFile =
+        QStringLiteral("%1/Xorg.0.log")
+            .arg(qEnvironmentVariable("XDG_STATE_HOME", QStringLiteral("%1/.local/state").arg(qEnvironmentVariable("HOME", QStringLiteral("/tmp")))));
+    args << QStringLiteral("-logfile") << xorgLogFile;
 
     // Append VT from environment
     // Xorg needs to know which VT to open, regardless of init system.

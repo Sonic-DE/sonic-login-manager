@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -108,6 +109,15 @@ int fetchAvailableVt()
     const int initialVt = getInitialVt();
     // Use the correct TTY device path for the platform
     QString ttyPath = getTtyDevicePath(initialVt);
+
+    // Log VT device ownership and permissions for diagnostic purposes
+    struct stat st;
+    if (::stat(qPrintable(ttyPath), &st) == 0) {
+        qInfo() << "fetchAvailableVt: VT" << initialVt << "device" << ttyPath << "uid=" << st.st_uid << "gid=" << st.st_gid
+                << "mode=" << QString::number(st.st_mode & 0777, 8);
+    } else {
+        qWarning() << "fetchAvailableVt: cannot stat" << ttyPath << ":" << strerror(errno);
+    }
 
     // Check if the TTY device file exists and is accessible
     QFile ttyFile(ttyPath);
