@@ -51,6 +51,8 @@ QString XOrgUserHelper::display() const
 
 bool XOrgUserHelper::start(const QString &cmd)
 {
+    qInfo() << "XOrgUserHelper::start: Starting XOrgUserHelper";
+
     // Create xauthority
     QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
     if (xdgRuntimeDir.isEmpty()) {
@@ -130,7 +132,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
                             << "error:" << process->error() << process->errorString();
                 if (quitOnFinish) {
                     if (exitCode != 0 || exitStatus != QProcess::NormalExit) {
-                        qCritical() << "XOrgUserHelper: ABNORMAL EXIT - process" << program << "exited with exitCode:" << exitCode
+                        qCritical() << "XOrgUserHelper::startProcess: ABNORMAL EXIT - process" << program << "exited with exitCode:" << exitCode
                                     << "- calling QCoreApplication::quit()";
                         QCoreApplication::instance()->quit();
                     } else {
@@ -143,7 +145,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
 
     process->start(program, args);
     if (!process->waitForStarted(10000)) {
-        qWarning("Failed to start \"%s\": %s", qPrintable(cmd), qPrintable(process->errorString()));
+        qWarning("XOrgUserHelper::startProcess: Failed to start \"%s\": %s", qPrintable(cmd), qPrintable(process->errorString()));
         return false;
     }
 
@@ -162,7 +164,7 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // 0 == read from X, 1 == write to X
     int pipeFds[2];
     if (::pipe(pipeFds) != 0) {
-        qCritical("Could not create pipe to start X server");
+        qCritical("XOrgUserHelper::startServer: Could not create pipe to start X server");
         return false;
     }
 
@@ -205,7 +207,7 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     serverCmd += QLatin1Char(' ') + args.join(QLatin1Char(' '));
 
     // Start the server process
-    qInfo("Running server: %s", qPrintable(serverCmd));
+    qInfo("XOrgUserHelper::startServer: Running server: %s", qPrintable(serverCmd));
     if (!startProcess(serverCmd, serverEnv, &m_serverProcess)) {
         qCritical() << "XOrgUserHelper::startServer: startProcess failed, closing pipe";
         ::close(pipeFds[0]);
@@ -223,14 +225,14 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // Read the display number from the pipe
     QFile readPipe;
     if (!readPipe.open(pipeFds[0], QIODevice::ReadOnly)) {
-        qCritical("Failed to open pipe to start X Server");
+        qCritical("XOrgUserHelper::startServer: Failed to open pipe to start X Server");
         ::close(pipeFds[0]);
         return false;
     }
     QByteArray displayNumber = readPipe.readLine();
     if (displayNumber.size() < 2) {
         // X server gave nothing (or a whitespace)
-        qCritical("Failed to read display number from pipe");
+        qCritical("XOrgUserHelper::startServer: Failed to read display number from pipe");
         ::close(pipeFds[0]);
         return false;
     }
@@ -244,7 +246,7 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // For the X server's copy, the display number doesn't matter.
     // An empty file would result in no access control!
     if (!m_xauth.addCookie(m_display)) {
-        qCritical("Failed to write xauth file");
+        qCritical("XOrgUserHelper::startServer: Failed to write xauth file");
         return false;
     }
 
@@ -280,7 +282,7 @@ void XOrgUserHelper::startDisplayCommand()
 void XOrgUserHelper::displayFinished()
 {
     auto cmd = DATA_INSTALL_DIR "/scripts/Xstop";
-    qInfo("Running display stop script: %s", cmd);
+    qInfo("XOrgUserHelper::displayFinished: Running display stop script: %s", cmd);
     QProcess *displayStopScript = nullptr;
     if (startProcess(cmd, sessionEnvironment(), &displayStopScript)) {
         if (!displayStopScript->waitForFinished(5000)) {
