@@ -29,14 +29,7 @@ QString XorgUserDisplayServer::command(Display *display)
     QStringList args;
     args << mainConfig.X11.ServerPath.get() << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")
-         << QStringLiteral("-novtswitch");
-
-    // Only add -sharevts when using elogind (not systemd-logind)
-    // With systemd-logind, VT management is handled by logind and -sharevts
-    // can cause permission denied errors on modesetting
-    // elogind requires -sharevts because it doesn't handle VT sharing the same way
-
-    args << QStringLiteral("-verbose") << QStringLiteral("3");
+         << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3");
 
     return args.join(QLatin1Char(' '));
 }
