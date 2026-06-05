@@ -29,7 +29,7 @@ namespace SONICLOGIN
         // TODO: Not absolutely sure if everything belongs here. Xsessions, VT and probably some more seem universal
         Section(X11,
 #if defined(Q_OS_FREEBSD) || defined(Q_OS_NETBSD) || defined(Q_OS_OPENBSD) || defined(Q_OS_BSD4)
-            Entry(ServerPath,          QString,     _S("/usr/local/bin/X"),                     _S("Path to X server binary"));
+            Entry(ServerPath,          QString,     _S("/usr/local/libexec/Xorg"),              _S("Path to X server binary"));
 #else
             Entry(ServerPath,          QString,     _S("/usr/lib/Xorg"),                        _S("Path to X server binary"));
 #endif
