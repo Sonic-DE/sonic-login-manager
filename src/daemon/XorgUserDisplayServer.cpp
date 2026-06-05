@@ -21,15 +21,19 @@
 #include "LogindDBusTypes.h"
 #include "Seat.h"
 
+#include "Constants.h"
+
 namespace SONICLOGIN
 {
 
 QString XorgUserDisplayServer::command(Display *display)
 {
     QStringList args;
+    QString xorgLogFile = QStringLiteral(STATE_DIR) + QStringLiteral("/.local/state/Xorg.0.log");
+
     args << mainConfig.X11.ServerPath.get() << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")
-         << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3");
+         << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3") << QStringLiteral("-logfile") << xorgLogFile;
 
     return args.join(QLatin1Char(' '));
 }

@@ -114,7 +114,7 @@ bool SelfProvisioner::createGreeterUser()
     if (getent.exitCode() == 0) {
         qDebug() << "SelfProvisioner: soniclogin user already exists.";
 
-        // Ensure home directory points to state dir
+        // Always ensure home directory points to state dir
         QString output = QString::fromLocal8Bit(getent.readAll());
         QString currentHome = output.section(QLatin1Char(':'), 5, 5);
         if (currentHome != QStringLiteral(STATE_DIR)) {
@@ -129,38 +129,8 @@ bool SelfProvisioner::createGreeterUser()
 #endif
         }
     } else {
-        qDebug() << "SelfProvisioner: Creating soniclogin user...";
-
-#ifdef Q_OS_FREEBSD
-        // BSD uses pw useradd
-        if (!runCommandIgnorableFailure(QStringLiteral("pw"),
-                                        {QStringLiteral("useradd"),
-                                         QStringLiteral("-n"),
-                                         QStringLiteral("soniclogin"),
-                                         QStringLiteral("-d"),
-                                         QStringLiteral(STATE_DIR),
-                                         QStringLiteral("-s"),
-                                         QStringLiteral("/usr/sbin/nologin"),
-                                         QStringLiteral("-c"),
-                                         QStringLiteral("Sonic Login Greeter Account")})) {
-            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
-            return false;
-        }
-#else
-        // Linux uses useradd
-        if (!runCommandIgnorableFailure(QStringLiteral("useradd"),
-                                        {QStringLiteral("-r"),
-                                         QStringLiteral("-s"),
-                                         QStringLiteral("/sbin/nologin"),
-                                         QStringLiteral("-d"),
-                                         QStringLiteral(STATE_DIR),
-                                         QStringLiteral("-c"),
-                                         QStringLiteral("Sonic Login Greeter Account"),
-                                         QStringLiteral("soniclogin")})) {
-            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
-            return false;
-        }
-#endif
+        qWarning() << "SelfProvisioner: soniclogin user does not exist, skipping user creation";
+        qWarning() << "SelfProvisioner: create the soniclogin user manually or run this as root";
     }
 
     // Add soniclogin user to required groups (video, input, render)
@@ -211,21 +181,26 @@ bool SelfProvisioner::createStateDirectory()
 {
     qDebug() << "SelfProvisioner: Setting up state directory:" << QStringLiteral(STATE_DIR);
 
-    QDir dir;
-    if (dir.exists(QStringLiteral(STATE_DIR))) {
-        qDebug() << "SelfProvisioner: State directory already exists.";
-    } else {
-        if (!dir.mkpath(QStringLiteral(STATE_DIR))) {
-            qCritical() << "SelfProvisioner: Failed to create state directory:" << QStringLiteral(STATE_DIR);
-            return false;
+    const QStringList subdirs = {
+        QStringLiteral(STATE_DIR),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.config"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.cache"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.local"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.local/share"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.local/state"),
+    };
+
+    for (const QString &path : subdirs) {
+        QDir dir;
+        if (!dir.exists(path)) {
+            if (!dir.mkpath(path)) {
+                qCritical() << "SelfProvisioner: Failed to create directory:" << path;
+                return false;
+            }
+            qDebug() << "SelfProvisioner: Created directory:" << path;
         }
-        qDebug() << "SelfProvisioner: Created state directory.";
     }
 
-    // Set directory permissions (750 - owner rwx, group r-x, others none)
-    ::chmod(QStringLiteral(STATE_DIR).toLocal8Bit().constData(), 0750);
-
-    // Set ownership to soniclogin user/group
     QProcess idProc;
     idProc.setProgram(QStringLiteral("id"));
     idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
@@ -243,7 +218,10 @@ bool SelfProvisioner::createStateDirectory()
     gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
 
     if (ok1 && ok2) {
-        ::chown(QStringLiteral(STATE_DIR).toLocal8Bit().constData(), uid, gid);
+        for (const QString &path : subdirs) {
+            ::chown(path.toLocal8Bit().constData(), uid, gid);
+            ::chmod(path.toLocal8Bit().constData(), 0755);
+        }
     }
 
     return true;
@@ -264,9 +242,29 @@ bool SelfProvisioner::createRuntimeDirectory()
         qDebug() << "SelfProvisioner: Created runtime directory.";
     }
 
-    // Runtime dir is owned by root, 711
-    ::chmod(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0711);
-    ::chown(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0, 0);
+    // Runtime dir must be owned by the greeter user so it can create its home subdirectories.
+    // Keep it world-readable/traversable since this is a system account.
+    ::chmod(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0755);
+
+    QProcess idProc;
+    idProc.setProgram(QStringLiteral("id"));
+    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
+    idProc.setProcessChannelMode(QProcess::MergedChannels);
+    idProc.start();
+    idProc.waitForFinished();
+    bool ok1 = false;
+    uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
+
+    idProc.setProgram(QStringLiteral("id"));
+    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
+    idProc.start();
+    idProc.waitForFinished();
+    bool ok2 = false;
+    gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
+
+    if (ok1 && ok2) {
+        ::chown(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), uid, gid);
+    }
 
     return true;
 }

@@ -46,6 +46,8 @@ int main(int argc, char **argv)
     // Install message handler to log to soniclogin.log
     qInstallMessageHandler(StartPlasmaMessageHandler);
 
+    qDebug() << "StartSonicLoginX11: Starting...";
+
     createConfigDirectory();
     setupCursor(true);
     signal(SIGTERM, sigtermHandler);
@@ -53,70 +55,51 @@ int main(int argc, char **argv)
     // Detect init system once and reuse the result
     const InitSystem initSystem = detectInitSystem();
 
-    // Non-systemd: Fix environment BEFORE setupPlasmaEnvironment() is called
-    // The parent process runs as root, so we need to set correct home for greeter
-    // This is only needed when not running under systemd (which handles environment differently)
-    if (initSystem != InitSystem::Systemd) {
-        // Get the greeter user's home directory for proper environment
-        // Some setups may have an empty pw_dir for system users.
-        // In that case, fall back to STATE_DIR.
-        QString greeterHome;
-        struct passwd *pw = getpwnam("soniclogin");
-        if (pw && pw->pw_dir && pw->pw_dir[0] != '\0') {
-            greeterHome = QString::fromLocal8Bit(pw->pw_dir);
-        } else {
-            greeterHome = QStringLiteral(STATE_DIR);
-            qWarning() << "NON-SYSTEMD: Greeter pw_dir missing/empty, falling back HOME to STATE_DIR:" << greeterHome;
+    // Ensure greeter home and XDG directories exist before setupPlasmaEnvironment()
+    // and before greeter components start. This is needed on both systemd and
+    // non-systemd; systemd may provide environment variables but does not create
+    // these application-owned directories for the soniclogin system account.
+    QString greeterHome = QStringLiteral(STATE_DIR);
+
+    const QString xdgConfigHome = greeterHome + QStringLiteral("/.config");
+    const QString xdgCacheHome = greeterHome + QStringLiteral("/.cache");
+    const QString xdgDataHome = greeterHome + QStringLiteral("/.local/share");
+    const QString xdgStateHome = greeterHome + QStringLiteral("/.local/state");
+
+    qputenv("HOME", greeterHome.toLocal8Bit());
+    qputenv("USER", QByteArray("soniclogin"));
+    qputenv("LOGNAME", QByteArray("soniclogin"));
+    qputenv("XDG_CONFIG_HOME", xdgConfigHome.toLocal8Bit());
+    qputenv("XDG_CACHE_HOME", xdgCacheHome.toLocal8Bit());
+    qputenv("XDG_DATA_HOME", xdgDataHome.toLocal8Bit());
+    qputenv("XDG_STATE_HOME", xdgStateHome.toLocal8Bit());
+
+    // XDG_RUNTIME_DIR can still prefer an existing systemd-provided value.
+    QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
+    if (xdgRuntimeDir.isEmpty()) {
+        xdgRuntimeDir = QStringLiteral(RUNTIME_DIR);
+    }
+
+    auto ensureRuntimeDir = [](const QString &path) -> bool {
+        if (path.isEmpty()) {
+            return false;
         }
 
-        if (!QDir().mkpath(greeterHome)) {
-            qWarning() << "NON-SYSTEMD: Failed to create/fetch HOME directory:" << greeterHome;
+        QDir dir;
+        if (!dir.mkpath(path)) {
+            return false;
         }
 
-        const QString xdgConfigHome = greeterHome + QStringLiteral("/.config");
-        const QString xdgCacheHome = greeterHome + QStringLiteral("/.cache");
-        const QString xdgDataHome = greeterHome + QStringLiteral("/.local/share");
-        auto ensureRuntimeDir = [](const QString &path) -> bool {
-            if (path.isEmpty()) {
-                return false;
-            }
+        ::chmod(path.toLocal8Bit().constData(), 0755);
 
-            QDir dir;
-            if (!dir.mkpath(path)) {
-                return false;
-            }
+        QFileInfo fi(path);
+        return fi.exists() && fi.isDir() && fi.isWritable();
+    };
 
-            ::chmod(path.toLocal8Bit().constData(), 0700);
-
-            QFileInfo fi(path);
-            return fi.exists() && fi.isDir() && fi.isWritable();
-        };
-
-        // use XDG_RUNTIME_DIR from environment, fall back to /tmp/xauth_<uid> if not set
-        QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
-        if (xdgRuntimeDir.isEmpty()) {
-            xdgRuntimeDir = QStringLiteral("/tmp/xauth_%1").arg(getuid());
-            qWarning() << "NON-SYSTEMD: XDG_RUNTIME_DIR empty, using fallback:" << xdgRuntimeDir;
-        }
-        if (!ensureRuntimeDir(xdgRuntimeDir)) {
-            qWarning() << "NON-SYSTEMD: Failed to prepare XDG_RUNTIME_DIR";
-        }
-
-        const QString xdgStateHome = greeterHome + QStringLiteral("/.local/state");
-        QDir().mkpath(xdgConfigHome);
-        QDir().mkpath(xdgCacheHome);
-        QDir().mkpath(xdgDataHome);
-        QDir().mkpath(xdgStateHome);
-        qputenv("HOME", greeterHome.toLocal8Bit());
-        qputenv("USER", QByteArray("soniclogin"));
-        qputenv("LOGNAME", QByteArray("soniclogin"));
-        qputenv("XDG_CONFIG_HOME", xdgConfigHome.toLocal8Bit());
-        qputenv("XDG_CACHE_HOME", xdgCacheHome.toLocal8Bit());
-        qputenv("XDG_DATA_HOME", xdgDataHome.toLocal8Bit());
-        qputenv("XDG_STATE_HOME", xdgStateHome.toLocal8Bit());
-        if (!xdgRuntimeDir.isEmpty()) {
-            qputenv("XDG_RUNTIME_DIR", xdgRuntimeDir.toLocal8Bit());
-        }
+    if (!ensureRuntimeDir(xdgRuntimeDir)) {
+        qWarning() << "StartSonicLoginX11: Failed to prepare XDG_RUNTIME_DIR:" << xdgRuntimeDir;
+    } else {
+        qputenv("XDG_RUNTIME_DIR", xdgRuntimeDir.toLocal8Bit());
     }
 
     // Query whether org.freedesktop.locale1 is available. If it is, try to
@@ -147,7 +130,7 @@ int main(int argc, char **argv)
             queryAndSet("XKB_DEFAULT_VARIANT", QStringLiteral("X11Variant"));
             queryAndSet("XKB_DEFAULT_OPTIONS", QStringLiteral("X11Options"));
         } else {
-            qWarning() << "not a reply org.freedesktop.locale1" << resultMessage;
+            qWarning() << "StartSonicLoginX11: not a reply org.freedesktop.locale1" << resultMessage;
         }
     }
 
@@ -170,7 +153,7 @@ int main(int argc, char **argv)
         msg << QStringLiteral("soniclogin-x11.target") << QStringLiteral("fail");
         QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
         if (!reply.isValid()) {
-            qWarning() << "Could not start systemd managed Plasma session:" << reply.error().name() << reply.error().message();
+            qWarning() << "StartSonicLoginX11: Could not start systemd managed Plasma session:" << reply.error().name() << reply.error().message();
         }
     } else {
         // Generic non-systemd: spawn greeter components directly via QProcess
@@ -183,7 +166,7 @@ int main(int argc, char **argv)
         const QString xdgRuntimeDir = QString::fromLocal8Bit(qgetenv("XDG_RUNTIME_DIR"));
 
         if (greeterHome.isEmpty()) {
-            qWarning() << "NON-SYSTEMD: HOME unexpectedly empty before child launch; earlier env fix did not persist";
+            qWarning() << "StartSonicLoginX11: HOME unexpectedly empty before child launch; earlier env fix did not persist";
         }
 
         // Create proper environment for greeter processes
@@ -201,7 +184,7 @@ int main(int argc, char **argv)
         if (!socketPath.isEmpty()) {
             greeterEnv.insert("SONICLOGIN_SOCKET", socketPath);
         } else {
-            qWarning() << "NON-SYSTEMD: SONICLOGIN_SOCKET is empty!";
+            qWarning() << "StartSonicLoginX11: SONICLOGIN_SOCKET is empty!";
         }
 
         // Start KWin X11 first (required for the greeter)
@@ -211,10 +194,10 @@ int main(int argc, char **argv)
         kwinProcess->setProcessEnvironment(greeterEnv);
         kwinProcess->start(kwinPath, QStringList());
         if (!kwinProcess->waitForStarted()) {
-            qWarning() << "NON-SYSTEMD: Failed to start " << kwinPath << "with error:" << kwinProcess->errorString();
+            qWarning() << "StartSonicLoginX11: Failed to start " << kwinPath << "with error:" << kwinProcess->errorString();
         }
         if (kwinProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: kwin_x11 not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
+            qWarning() << "StartSonicLoginX11: kwin_x11 not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
         }
 
         // Start the greeter
@@ -224,10 +207,10 @@ int main(int argc, char **argv)
         greeterProcess->setProcessEnvironment(greeterEnv);
         greeterProcess->start(greeterPath);
         if (!greeterProcess->waitForStarted()) {
-            qWarning() << "NON-SYSTEMD: Failed to start" << greeterPath << "with error:" << greeterProcess->errorString();
+            qWarning() << "StartSonicLoginX11: Failed to start" << greeterPath << "with error:" << greeterProcess->errorString();
         }
         if (greeterProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: greeter not running after start, state=" << greeterProcess->state() << "error=" << greeterProcess->errorString();
+            qWarning() << "StartSonicLoginX11: greeter not running after start, state=" << greeterProcess->state() << "error=" << greeterProcess->errorString();
         }
 
         // Start the wallpaper service
@@ -237,17 +220,18 @@ int main(int argc, char **argv)
         wallpaperProcess->setProcessEnvironment(greeterEnv);
         wallpaperProcess->start(wallpaperPath, QStringList());
         if (!wallpaperProcess->waitForStarted()) {
-            qWarning() << "NON-SYSTEMD: Failed to start" << wallpaperPath << "with error:" << wallpaperProcess->errorString();
+            qWarning() << "StartSonicLoginX11: Failed to start" << wallpaperPath << "with error:" << wallpaperProcess->errorString();
         }
         if (wallpaperProcess->state() != QProcess::Running) {
-            qWarning() << "NON-SYSTEMD: wallpaper not running after start, state=" << wallpaperProcess->state() << "error=" << wallpaperProcess->errorString();
+            qWarning() << "StartSonicLoginX11: wallpaper not running after start, state=" << wallpaperProcess->state()
+                       << "error=" << wallpaperProcess->errorString();
         }
     }
 
     // stopped by the sigterm handler
     app.exec();
 
-    qDebug() << "stopping";
+    qDebug() << "StartSonicLoginX11: stopping";
 
     // Stop greeter session components
     if (initSystem == InitSystem::Systemd) {
@@ -259,10 +243,10 @@ int main(int argc, char **argv)
         msg << QStringLiteral("soniclogin-x11.target") << QStringLiteral("fail");
         QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
         if (!reply.isValid()) {
-            qWarning() << "Could not stop systemd managed Plasma session:" << reply.error().name() << reply.error().message();
+            qWarning() << "StartSonicLoginX11: Could not stop systemd managed Plasma session:" << reply.error().name() << reply.error().message();
         }
 
-        qDebug() << "final cleanup";
+        qDebug() << "StartSonicLoginX11: final cleanup";
 
         // systemd returns when the call is made, but not all jobs are torn down
         // this waits until kwin is definitely gone too, which helps logind
@@ -274,7 +258,7 @@ int main(int argc, char **argv)
             msg << QStringLiteral("soniclogin-kwin_x11.service") << QStringLiteral("fail");
             QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
             if (!reply.isValid()) {
-                qWarning() << "Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();
+                qWarning() << "StartSonicLoginX11: Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();
             }
         }
     }

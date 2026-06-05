@@ -244,13 +244,6 @@ bool XOrgUserHelper::startServer(const QString &cmd)
     // Append xauth and display fd to the command
     auto args = QStringList() << QStringLiteral("-auth") << m_xauth.authPath() << QStringLiteral("-displayfd") << QString::number(pipeFds[1]);
 
-    // Xorg log file: default /var/log/Xorg.0.log is root:root 640,
-    // so unprivileged Xorg cannot write it. Use XDG_STATE_HOME if available.
-    QString xorgLogFile =
-        QStringLiteral("%1/Xorg.0.log")
-            .arg(qEnvironmentVariable("XDG_STATE_HOME", QStringLiteral("%1/.local/state").arg(qEnvironmentVariable("HOME", QStringLiteral("/tmp")))));
-    args << QStringLiteral("-logfile") << xorgLogFile;
-
     // Append VT from environment
     // Xorg needs to know which VT to open, regardless of init system.
     QString vtNr = serverEnv.value(QStringLiteral("XDG_VTNR"));
