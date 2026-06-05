@@ -22,10 +22,12 @@
 
 #include <unistd.h>
 
+#ifdef Q_OS_LINUX
 #include <linux/capability.h>
-#include <string.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#endif
+#include <string.h>
 
 namespace SONICLOGIN
 {
@@ -401,6 +403,7 @@ void Auth::start()
         args << QStringLiteral("--greeter");
     }
 
+#ifdef Q_OS_LINUX
     // Ensure CAP_SYS_TTY_CONFIG propagates to soniclogin-helper so Xorg can do VT ioctls.
     // prctl(PR_CAP_AMBIENT_RAISE) requires the capability in both permitted and inheritable.
     d->child->setChildProcessModifier([]() {
@@ -427,6 +430,7 @@ void Auth::start()
             ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
         }
     });
+#endif
 
     d->child->start(QStringLiteral("%1/soniclogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
 

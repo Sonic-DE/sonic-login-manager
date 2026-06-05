@@ -30,11 +30,13 @@ target_link_libraries(soniclogin-helper
 
 target_link_libraries(soniclogin-helper ${PAM_LIBRARIES})
 
-# libcap for ambient capabilities (CAP_SYS_TTY_CONFIG)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBCAP REQUIRED libcap)
-target_include_directories(soniclogin-helper PRIVATE ${LIBCAP_INCLUDE_DIRS})
-target_link_libraries(soniclogin-helper ${LIBCAP_LIBRARIES})
+# libcap for ambient capabilities (CAP_SYS_TTY_CONFIG) - Linux only
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBCAP REQUIRED libcap)
+    target_include_directories(soniclogin-helper PRIVATE ${LIBCAP_INCLUDE_DIRS})
+    target_link_libraries(soniclogin-helper ${LIBCAP_LIBRARIES})
+endif()
 
 # On FreeBSD (possibly other BSDs as well), we want to use
 # setusercontext() to set up the login configuration from login.conf
@@ -63,7 +65,10 @@ add_executable(soniclogin-helper-start-x11user HelperStartX11User.cpp xorguserhe
                                                 ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
                                                 )
-target_link_libraries(soniclogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU ${LIBCAP_LIBRARIES})
+target_link_libraries(soniclogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    target_link_libraries(soniclogin-helper-start-x11user ${LIBCAP_LIBRARIES})
+endif()
 
 
 install(TARGETS soniclogin-helper-start-x11user RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")

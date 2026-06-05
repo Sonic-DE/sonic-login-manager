@@ -25,13 +25,14 @@
 #include "xorguserhelper.h"
 
 #include <fcntl.h>
+#ifdef Q_OS_LINUX
 #include <linux/capability.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/capability.h>
 #include <sys/prctl.h>
+#endif
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <sys/sysmacros.h>
 #include <unistd.h>
 
 namespace SONICLOGIN
@@ -110,6 +111,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     process->setProcessEnvironment(env);
     process->setInputChannelMode(QProcess::ForwardedInputChannel);
 
+#ifdef Q_OS_LINUX
     // Give the Xorg process CAP_SYS_TTY_CONFIG so it can perform VT ioctls.
     // We have CAP_SETPCAP ambient, so we can modify our own capability set.
     process->setChildProcessModifier([]() {
@@ -147,6 +149,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
             ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
         }
     });
+#endif
 
     // Helper lambda to filter and log Xorg output line by line
     // Only log errors (EE), warnings (WW), and key events - skip verbose informational output
