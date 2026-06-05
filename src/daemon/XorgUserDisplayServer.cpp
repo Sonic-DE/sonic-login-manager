@@ -12,7 +12,7 @@
  * along with this program; if not, write to the
  * Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- ***************************************************************************/
+ **************************************************************************/
 
 #include "XorgUserDisplayServer.h"
 #include "Configuration.h"
@@ -23,13 +23,31 @@
 
 #include "Constants.h"
 
+#include <pwd.h>
+#include <unistd.h>
+
 namespace SONICLOGIN
 {
 
-QString XorgUserDisplayServer::command(Display *display)
+QString XorgUserDisplayServer::command(Display *display, const QString &userName)
 {
     QStringList args;
-    QString xorgLogFile = QStringLiteral(STATE_DIR) + QStringLiteral("/.local/state/Xorg.0.log");
+    QString xorgLogFile;
+
+    if (userName.isEmpty()) {
+        xorgLogFile = QStringLiteral(STATE_DIR) + QStringLiteral("/.local/state/Xorg.0.log");
+    } else {
+        QString userHome;
+        struct passwd *pw = getpwnam(userName.toLocal8Bit().constData());
+        if (pw && pw->pw_dir && pw->pw_dir[0] != '\0') {
+            userHome = QString::fromLocal8Bit(pw->pw_dir);
+        } else {
+            userHome = QStringLiteral("/tmp");
+            qWarning() << "XorgUserDisplayServer::command: user home for" << userName << "missing/empty, falling back to:" << userHome;
+        }
+
+        xorgLogFile = userHome + QStringLiteral("/.local/state/Xorg.0.log");
+    }
 
     args << mainConfig.X11.ServerPath.get() << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")

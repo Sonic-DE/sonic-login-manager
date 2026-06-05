@@ -278,7 +278,7 @@ void Display::startSocketServerAndGreeter()
     m_greeter->setSocket(m_socketServer->socketAddress());
 
     // Set up display server for the greeter
-    m_greeter->setDisplayServerCommand(XorgUserDisplayServer::command(this));
+    m_greeter->setDisplayServerCommand(XorgUserDisplayServer::command(this, QString()));
 
     // start greeter
     m_greeter->start();
@@ -453,7 +453,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     env.insert(QStringLiteral("XDG_SESSION_DESKTOP"), session.desktopNames());
 
     if (session.xdgSessionType() == QLatin1String("x11")) {
-        m_auth->setDisplayServerCommand(XorgUserDisplayServer::command(this));
+        m_auth->setDisplayServerCommand(XorgUserDisplayServer::command(this, user));
     } else {
         m_auth->setDisplayServerCommand(QStringLiteral());
     }

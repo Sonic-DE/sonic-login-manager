@@ -27,7 +27,7 @@ namespace SONICLOGIN
 class XorgUserDisplayServer
 {
 public:
-    static QString command(Display *display);
+    static QString command(Display *display, const QString &userName = QString());
 };
 } // namespace SONICLOGIN
 
