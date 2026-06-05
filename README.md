@@ -45,14 +45,7 @@ Disable SDDM (or whatever display manager you use) and enable Sonic Login Manage
 
 ##### systemd
 
-Trigger the system user to be created:
-
-```shell
-sudo systemd-sysusers
-```
-
-
-Then switch the init system to use Sonic Login Manager:
+Switch the init system to use Sonic Login Manager:
 
 ```shell
 sudo systemctl disable sddm

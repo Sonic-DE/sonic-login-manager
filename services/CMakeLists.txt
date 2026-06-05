@@ -5,28 +5,16 @@ option(SPLIT_BUILD "Generate separate installation components for distros that s
 
 # systemd service - install if detected
 configure_file(systemd/soniclogin.service.in systemd/soniclogin.service)
-configure_file(systemd/soniclogin.conf.in systemd/soniclogin.conf)
 if(SPLIT_BUILD)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/soniclogin.service"
         DESTINATION "${KDE_INSTALL_SYSTEMDUNITDIR}/system"
         COMPONENT systemd
     )
-
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/soniclogin.conf"
-        DESTINATION "lib/sysusers.d"
-        COMPONENT systemd
-    )
 elseif(SYSTEMD_FOUND)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/soniclogin.service"
         DESTINATION "${KDE_INSTALL_SYSTEMDUNITDIR}/system"
-    )
-
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/soniclogin.conf"
-        DESTINATION "lib/sysusers.d"
     )
 endif()
 
@@ -297,10 +285,4 @@ endif()
 
 
 # systemd-tmpfiles can be used standalone without other systemd parts
-configure_file(systemd/soniclogin.conf.in systemd/soniclogin.conf)
-if(DEFINED SYSTEMD_TMPFILES_DIR)
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/systemd/soniclogin.conf"
-        DESTINATION "lib/tmpfiles.d"
-    )
-endif()
+

@@ -1,2 +1,0 @@
-#Type Name ID GECOS                  Home directory Shell
-u     soniclogin -  "SONICLOGIN Greeter Account" ${STATE_DIR}   -

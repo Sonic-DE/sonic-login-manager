@@ -8,8 +8,6 @@
 
 #include "SelfProvisioner.h"
 
-#include "InitSystem.h"
-
 #include "MessageHandler.h"
 
 #include <QCoreApplication>
@@ -104,16 +102,6 @@ bool SelfProvisioner::runCommandIgnorableFailure(const QString &program, const Q
 bool SelfProvisioner::createGreeterUser()
 {
     qDebug() << "SelfProvisioner: Checking for soniclogin user...";
-
-    // Detect the init system at runtime
-    InitSystem initSystem = detectInitSystem();
-
-    // On systemd, user creation is handled by systemd-sysusers via .sysuser.conf
-    // Skip user/group creation since systemd-sysusers runs at boot
-    if (initSystem == InitSystem::Systemd) {
-        qDebug() << "SelfProvisioner: systemd detected - user creation handled by systemd-sysusers";
-        return true;
-    }
 
     // Check if user exists via getent
     QProcess getent;
