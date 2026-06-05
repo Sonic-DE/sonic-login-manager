@@ -111,6 +111,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
     process->setProcessEnvironment(env);
     process->setInputChannelMode(QProcess::ForwardedInputChannel);
 
+#ifdef Q_OS_LINUX
     if (Logind::isAvailable() && Logind::isELogind()) {
         // Give the Xorg process CAP_SYS_TTY_CONFIG so it can perform VT ioctls.
         // We have CAP_SETPCAP ambient, so we can modify our own capability set.
@@ -150,6 +151,7 @@ bool XOrgUserHelper::startProcess(const QString &cmd, const QProcessEnvironment 
             }
         });
     }
+#endif
 
     // Helper lambda to filter and log Xorg output line by line
     // Only log errors (EE), warnings (WW), and key events - skip verbose informational output

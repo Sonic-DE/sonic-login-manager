@@ -404,6 +404,7 @@ void Auth::start()
         args << QStringLiteral("--greeter");
     }
 
+#ifdef Q_OS_LINUX
     if (Logind::isAvailable() && Logind::isELogind()) {
         // Ensure CAP_SYS_TTY_CONFIG propagates to soniclogin-helper so Xorg can do VT ioctls.
         // prctl(PR_CAP_AMBIENT_RAISE) requires the capability in both permitted and inheritable.
@@ -432,6 +433,7 @@ void Auth::start()
             }
         });
     }
+#endif
 
     d->child->start(QStringLiteral("%1/soniclogin-helper").arg(QStringLiteral(LIBEXEC_INSTALL_DIR)), args);
 

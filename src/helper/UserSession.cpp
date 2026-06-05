@@ -320,6 +320,7 @@ void UserSession::setupChildProcess()
     delete[] pam_groups;
     delete[] user_groups;
 
+#ifdef Q_OS_LINUX
     if (Logind::isAvailable() && Logind::isELogind()) {
         // Set CAP_SYS_TTY_CONFIG and CAP_SETPCAP as ambient capabilities so they survive setuid().
         // CAP_SETPCAP lets child processes modify their own capability sets before execve().
@@ -351,6 +352,7 @@ void UserSession::setupChildProcess()
             qWarning() << "UserSession::childModifier: capget failed:" << strerror(errno);
         }
     }
+#endif
 
     if (setuid(pw.pw_uid) != 0) {
         qCritical() << "setuid(" << pw.pw_uid << ") failed for user: " << username;
@@ -358,11 +360,13 @@ void UserSession::setupChildProcess()
     }
     qInfo() << "UserSession::childModifier: setuid complete, uid=" << getuid() << "gid=" << getgid() << "euid=" << geteuid();
 
+#ifdef Q_OS_LINUX
     if (Logind::isAvailable() && Logind::isELogind()) {
         int a_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
         int a_pcap = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SETPCAP, 0, 0);
         qInfo() << "UserSession::childModifier: AFTER setuid ambient CAP_SYS_TTY_CONFIG=" << a_tty << "CAP_SETPCAP=" << a_pcap;
     }
+#endif
 
     if (chdir(pw.pw_dir) != 0) {
         qCritical() << "chdir(" << pw.pw_dir << ") failed for user: " << username;
