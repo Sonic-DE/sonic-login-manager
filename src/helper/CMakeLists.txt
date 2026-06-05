@@ -3,6 +3,7 @@ include(CheckLibraryExists)
 include_directories(
     "${CMAKE_SOURCE_DIR}/src/common"
     "${CMAKE_SOURCE_DIR}/src/auth"
+    "${CMAKE_SOURCE_DIR}/src/daemon"
 )
 include_directories("${CMAKE_BINARY_DIR}/src/common")
 
@@ -17,6 +18,7 @@ target_sources(soniclogin-helper PRIVATE
     ${CMAKE_SOURCE_DIR}/src/auth/AuthRequest.cpp
     ${CMAKE_SOURCE_DIR}/src/auth/AuthPrompt.cpp
     ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
+    ${CMAKE_SOURCE_DIR}/src/daemon/LogindDBusTypes.cpp
     HelperApp.cpp
     UserSession.cpp
     backend/PamHandle.cpp
@@ -64,6 +66,7 @@ add_executable(soniclogin-helper-start-x11user HelperStartX11User.cpp xorguserhe
                                                 ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
+                                                ${CMAKE_SOURCE_DIR}/src/daemon/LogindDBusTypes.cpp
                                                 )
 target_link_libraries(soniclogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU)
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")

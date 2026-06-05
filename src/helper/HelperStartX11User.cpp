@@ -12,6 +12,7 @@
  */
 
 #include "Auth.h"
+#include "LogindDBusTypes.h"
 #include "MessageHandler.h"
 #include "SignalHandler.h"
 #include "xorguserhelper.h"
@@ -65,13 +66,11 @@ int main(int argc, char **argv)
         return 33;
     }
 
-#ifdef Q_OS_LINUX
-    {
+    if (Logind::isAvailable() && Logind::isELogind()) {
         int a_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
         int a_pcap = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SETPCAP, 0, 0);
         qInfo() << "HelperStartX11User: ambient CAP_SYS_TTY_CONFIG=" << a_tty << "CAP_SETPCAP=" << a_pcap;
     }
-#endif
 
     if (argc != 3) {
         qCritical() << "HelperStartX11User: ERROR - wrong number of arguments:" << argc << "(expected 3)";

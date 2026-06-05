@@ -14,6 +14,7 @@
 #include "Configuration.h"
 #include "Constants.h"
 #include "HelperApp.h"
+#include "LogindDBusTypes.h"
 #include "UserSession.h"
 #include "VirtualTerminal.h"
 
@@ -319,50 +320,49 @@ void UserSession::setupChildProcess()
     delete[] pam_groups;
     delete[] user_groups;
 
-#ifdef Q_OS_LINUX
-    // Set CAP_SYS_TTY_CONFIG and CAP_SETPCAP as ambient capabilities so they survive setuid().
-    // CAP_SETPCAP lets child processes modify their own capability sets before execve().
-    // prctl(PR_CAP_AMBIENT_RAISE) requires the capability to be in both permitted and inheritable.
-    struct __user_cap_header_struct capHeader = {_LINUX_CAPABILITY_VERSION_3, 0};
-    struct __user_cap_data_struct capData[2] = {};
-    if (capget(&capHeader, capData) == 0) {
-        capData[0].inheritable |= (1U << CAP_SYS_TTY_CONFIG);
-        capData[0].inheritable |= (1U << CAP_SETPCAP);
-        if (capset(&capHeader, capData) == 0) {
-            if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SYS_TTY_CONFIG, 0, 0) < 0) {
-                qWarning() << "UserSession::childModifier: Failed to set CAP_SYS_TTY_CONFIG ambient capability:" << strerror(errno);
+    if (Logind::isAvailable() && Logind::isELogind()) {
+        // Set CAP_SYS_TTY_CONFIG and CAP_SETPCAP as ambient capabilities so they survive setuid().
+        // CAP_SETPCAP lets child processes modify their own capability sets before execve().
+        // prctl(PR_CAP_AMBIENT_RAISE) requires the capability to be in both permitted and inheritable.
+        struct __user_cap_header_struct capHeader = {_LINUX_CAPABILITY_VERSION_3, 0};
+        struct __user_cap_data_struct capData[2] = {};
+        if (capget(&capHeader, capData) == 0) {
+            capData[0].inheritable |= (1U << CAP_SYS_TTY_CONFIG);
+            capData[0].inheritable |= (1U << CAP_SETPCAP);
+            if (capset(&capHeader, capData) == 0) {
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SYS_TTY_CONFIG, 0, 0) < 0) {
+                    qWarning() << "UserSession::childModifier: Failed to set CAP_SYS_TTY_CONFIG ambient capability:" << strerror(errno);
+                } else {
+                    qInfo() << "UserSession::childModifier: Set CAP_SYS_TTY_CONFIG as ambient capability";
+                }
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETPCAP, 0, 0) < 0) {
+                    qWarning() << "UserSession::childModifier: Failed to set CAP_SETPCAP ambient capability:" << strerror(errno);
+                } else {
+                    qInfo() << "UserSession::childModifier: Set CAP_SETPCAP as ambient capability";
+                }
+                // Prevent setuid() from dropping ambient capabilities
+                if (prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP) < 0) {
+                    qWarning() << "UserSession::childModifier: Failed to set SECBIT_NO_SETUID_FIXUP:" << strerror(errno);
+                }
             } else {
-                qInfo() << "UserSession::childModifier: Set CAP_SYS_TTY_CONFIG as ambient capability";
-            }
-            if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETPCAP, 0, 0) < 0) {
-                qWarning() << "UserSession::childModifier: Failed to set CAP_SETPCAP ambient capability:" << strerror(errno);
-            } else {
-                qInfo() << "UserSession::childModifier: Set CAP_SETPCAP as ambient capability";
-            }
-            // Prevent setuid() from dropping ambient capabilities
-            if (prctl(PR_SET_SECUREBITS, SECBIT_NO_SETUID_FIXUP) < 0) {
-                qWarning() << "UserSession::childModifier: Failed to set SECBIT_NO_SETUID_FIXUP:" << strerror(errno);
+                qWarning() << "UserSession::childModifier: Failed to add capabilities to inheritable set:" << strerror(errno);
             }
         } else {
-            qWarning() << "UserSession::childModifier: Failed to add capabilities to inheritable set:" << strerror(errno);
+            qWarning() << "UserSession::childModifier: capget failed:" << strerror(errno);
         }
-    } else {
-        qWarning() << "UserSession::childModifier: capget failed:" << strerror(errno);
     }
-#endif
 
     if (setuid(pw.pw_uid) != 0) {
         qCritical() << "setuid(" << pw.pw_uid << ") failed for user: " << username;
         exit(Auth::HELPER_OTHER_ERROR);
     }
     qInfo() << "UserSession::childModifier: setuid complete, uid=" << getuid() << "gid=" << getgid() << "euid=" << geteuid();
-#ifdef Q_OS_LINUX
-    {
+
+    if (Logind::isAvailable() && Logind::isELogind()) {
         int a_tty = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SYS_TTY_CONFIG, 0, 0);
         int a_pcap = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET, CAP_SETPCAP, 0, 0);
         qInfo() << "UserSession::childModifier: AFTER setuid ambient CAP_SYS_TTY_CONFIG=" << a_tty << "CAP_SETPCAP=" << a_pcap;
     }
-#endif
 
     if (chdir(pw.pw_dir) != 0) {
         qCritical() << "chdir(" << pw.pw_dir << ") failed for user: " << username;
