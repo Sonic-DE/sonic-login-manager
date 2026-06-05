@@ -46,47 +46,8 @@ inline void ensureLogFileExists(const QString &s_logFilePath)
     }
 }
 
-// Helper to determine if stdout/stderr are actively being piped, socket-connected, or captured to a file
-inline bool isStreamLogged()
-{
-    struct stat stdoutStat;
-    struct stat stderrStat;
-
-    // Fetch descriptor states for stdout (1) and stderr (2)
-    if (fstat(1, &stdoutStat) < 0 || fstat(2, &stderrStat) < 0) {
-        return false; // Error reading descriptors, fallback to local log file
-    }
-
-    // If it's an interactive terminal (TTY), it's not being captured by a supervisor daemon
-    if (isatty(1) || isatty(2)) {
-        return false;
-    }
-
-    // Verify if they are directed to a Pipe (S_ISFIFO) or a Socket (S_ISSOCK).
-    // Runit, s6, and systemd use pipes/sockets to funnel data directly into their logging utilities.
-    bool stdoutIsPipeOrSocket = S_ISFIFO(stdoutStat.st_mode) || S_ISSOCK(stdoutStat.st_mode);
-    bool stderrIsPipeOrSocket = S_ISFIFO(stderrStat.st_mode) || S_ISSOCK(stderrStat.st_mode);
-
-    // Verify if they are redirected to a regular file (S_ISREG).
-    // OpenRC (via supervise-daemon) and Dinit point stdout directly to specified file paths.
-    bool stdoutIsRegularFile = S_ISREG(stdoutStat.st_mode);
-    bool stderrIsRegularFile = S_ISREG(stderrStat.st_mode);
-
-    // If either stream is actively being piped, socketed, or written to a logfile by the supervisor, return true
-    return (stdoutIsPipeOrSocket || stdoutIsRegularFile || stderrIsPipeOrSocket || stderrIsRegularFile);
-}
-
 [[maybe_unused]] static void messageHandler(QtMsgType type, const QString &category, const QString &msg)
 {
-    static bool loggingCapabilityChecked = false;
-    static bool isStdoutLoggingValid = false;
-
-    if (!loggingCapabilityChecked) {
-        loggingCapabilityChecked = true;
-        // Physically inspect file descriptors to see if any supervisor is collecting data
-        isStdoutLoggingValid = isStreamLogged();
-    }
-
     const QString timestamp = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
     QString systemdPrefix;
     QString logPriority;
@@ -113,7 +74,6 @@ inline bool isStreamLogged()
         break;
     }
 
-    // If stdout/stderr are unhandled, try to use manual file
     ensureLogFileExists(QStringLiteral(LOG_FILE));
     static QFile logFile(QStringLiteral(LOG_FILE));
     if (logFile.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {

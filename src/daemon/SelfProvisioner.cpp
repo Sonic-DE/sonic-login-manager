@@ -275,11 +275,6 @@ bool SelfProvisioner::setupLogging()
 {
     qDebug() << "SelfProvisioner: Setting up logging...";
 
-    if (SONICLOGIN::isStreamLogged()) {
-        qDebug() << "SelfProvisioner: stdout/stderr are being captured by a supervisor - skipping log file setup.";
-        return true;
-    }
-
     // Create log directory and file
     qDebug() << "SelfProvisioner: No journalctl - creating log directory and file.";
 
