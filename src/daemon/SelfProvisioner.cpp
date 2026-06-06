@@ -70,14 +70,22 @@ bool SelfProvisioner::runCommand(const QString &program, const QStringList &args
     proc.setArguments(args);
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start();
+
+    if (!proc.waitForStarted()) {
+        qCritical() << "SelfProvisioner: Failed to start command:" << program << args << "error:" << proc.errorString();
+        return false;
+    }
+
     if (!proc.waitForFinished(-1)) {
         qCritical() << "SelfProvisioner: Command timed out:" << program << args;
         return false;
     }
+
     if (proc.exitCode() != 0) {
         qCritical() << "SelfProvisioner: Command failed:" << program << args << "exit code:" << proc.exitCode() << "output:" << proc.readAll();
         return false;
     }
+
     return true;
 }
 
@@ -88,12 +96,141 @@ bool SelfProvisioner::runCommandIgnorableFailure(const QString &program, const Q
     proc.setArguments(args);
     proc.setProcessChannelMode(QProcess::MergedChannels);
     proc.start();
+
+    if (!proc.waitForStarted()) {
+        qWarning() << "SelfProvisioner: Failed to start command (ignored):" << program << args << "error:" << proc.errorString();
+        return false;
+    }
+
     if (!proc.waitForFinished(-1)) {
         qWarning() << "SelfProvisioner: Command timed out (ignored):" << program << args;
         return false;
     }
+
     if (proc.exitCode() != 0) {
         qWarning() << "SelfProvisioner: Command failed (ignored):" << program << args << "exit code:" << proc.exitCode();
+        return false;
+    }
+
+    return true;
+}
+
+bool SelfProvisioner::userExists(const QString &user, QString *passwdLine)
+{
+    qDebug() << "SelfProvisioner: Checking if user exists:" << user;
+
+#ifdef Q_OS_FREEBSD
+    // On FreeBSD, prefer pw usershow as it's more reliable
+    QProcess proc;
+    proc.setProgram(QStringLiteral("pw"));
+    proc.setArguments({QStringLiteral("usershow"), user});
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    proc.waitForFinished();
+
+    if (proc.exitCode() == 0) {
+        if (passwdLine) {
+            *passwdLine = QString::fromLocal8Bit(proc.readAll()).trimmed();
+        }
+        return true;
+    }
+#else
+    // On Linux, use getent passwd
+    QProcess proc;
+    proc.setProgram(QStringLiteral("getent"));
+    proc.setArguments({QStringLiteral("passwd"), user});
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    proc.waitForFinished();
+
+    if (proc.exitCode() == 0) {
+        if (passwdLine) {
+            *passwdLine = QString::fromLocal8Bit(proc.readAll()).trimmed();
+        }
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+bool SelfProvisioner::groupExists(const QString &group)
+{
+    qDebug() << "SelfProvisioner: Checking if group exists:" << group;
+
+#ifdef Q_OS_FREEBSD
+    // On FreeBSD, prefer pw groupshow as it's more reliable
+    QProcess proc;
+    proc.setProgram(QStringLiteral("pw"));
+    proc.setArguments({QStringLiteral("groupshow"), group});
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    proc.waitForFinished();
+
+    return proc.exitCode() == 0;
+#else
+    // On Linux, use getent group
+    QProcess proc;
+    proc.setProgram(QStringLiteral("getent"));
+    proc.setArguments({QStringLiteral("group"), group});
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start();
+    proc.waitForFinished();
+
+    return proc.exitCode() == 0;
+#endif
+}
+
+QString SelfProvisioner::nologinShell() const
+{
+    // Check for /usr/sbin/nologin first (preferred)
+    if (QFile::exists(QStringLiteral("/usr/sbin/nologin"))) {
+        return QStringLiteral("/usr/sbin/nologin");
+    }
+    // Fall back to /sbin/nologin
+    if (QFile::exists(QStringLiteral("/sbin/nologin"))) {
+        return QStringLiteral("/sbin/nologin");
+    }
+    // Last resort /bin/false
+    return QStringLiteral("/bin/false");
+}
+
+bool SelfProvisioner::getUserIds(uid_t *uid, gid_t *gid)
+{
+    // Get UID for soniclogin user
+    QProcess idProc;
+    idProc.setProgram(QStringLiteral("id"));
+    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
+    idProc.setProcessChannelMode(QProcess::MergedChannels);
+    idProc.start();
+    idProc.waitForFinished();
+    bool ok1 = false;
+    *uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
+
+    // Get GID for soniclogin group
+    idProc.setProgram(QStringLiteral("id"));
+    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
+    idProc.start();
+    idProc.waitForFinished();
+    bool ok2 = false;
+    *gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
+
+    return ok1 && ok2;
+}
+
+bool SelfProvisioner::setOwnership(const QString &path, uid_t uid, gid_t gid)
+{
+    if (::chown(path.toLocal8Bit().constData(), uid, gid) != 0) {
+        qCritical() << "SelfProvisioner: Failed to set ownership for" << path << ":" << strerror(errno);
+        return false;
+    }
+    return true;
+}
+
+bool SelfProvisioner::setPermissions(const QString &path, mode_t mode)
+{
+    if (::chmod(path.toLocal8Bit().constData(), mode) != 0) {
+        qCritical() << "SelfProvisioner: Failed to set permissions for" << path << ":" << strerror(errno);
         return false;
     }
     return true;
@@ -103,34 +240,95 @@ bool SelfProvisioner::createGreeterUser()
 {
     qDebug() << "SelfProvisioner: Checking for soniclogin user...";
 
-    // Check if user exists via getent
-    QProcess getent;
-    getent.setProgram(QStringLiteral("getent"));
-    getent.setArguments({QStringLiteral("passwd"), QStringLiteral("soniclogin")});
-    getent.setProcessChannelMode(QProcess::MergedChannels);
-    getent.start();
-    getent.waitForFinished();
-
-    if (getent.exitCode() == 0) {
+    // Check if user exists
+    QString passwdLine;
+    if (userExists(QStringLiteral("soniclogin"), &passwdLine)) {
         qDebug() << "SelfProvisioner: soniclogin user already exists.";
 
         // Always ensure home directory points to state dir
-        QString output = QString::fromLocal8Bit(getent.readAll());
-        QString currentHome = output.section(QLatin1Char(':'), 5, 5);
+        QString currentHome = passwdLine.section(QLatin1Char(':'), 5, 5);
         if (currentHome != QStringLiteral(STATE_DIR)) {
             qDebug() << "SelfProvisioner: Updating soniclogin home directory to" << QStringLiteral(STATE_DIR);
 #ifdef Q_OS_FREEBSD
             // BSD uses different syntax
-            runCommandIgnorableFailure(QStringLiteral("pw"),
-                                       {QStringLiteral("usermod"), QStringLiteral("soniclogin"), QStringLiteral("-d"), QStringLiteral(STATE_DIR)});
+            if (!runCommand(QStringLiteral("pw"), {QStringLiteral("usermod"), QStringLiteral("soniclogin"), QStringLiteral("-d"), QStringLiteral(STATE_DIR)})) {
+                qCritical() << "SelfProvisioner: Failed to update soniclogin home directory";
+                return false;
+            }
 #else
             // Linux uses usermod -d
-            runCommandIgnorableFailure(QStringLiteral("usermod"), {QStringLiteral("-d"), QStringLiteral(STATE_DIR), QStringLiteral("soniclogin")});
+            if (!runCommand(QStringLiteral("usermod"), {QStringLiteral("-d"), QStringLiteral(STATE_DIR), QStringLiteral("soniclogin")})) {
+                qCritical() << "SelfProvisioner: Failed to update soniclogin home directory";
+                return false;
+            }
 #endif
         }
     } else {
-        qWarning() << "SelfProvisioner: soniclogin user does not exist, skipping user creation";
-        qWarning() << "SelfProvisioner: create the soniclogin user manually or run this as root";
+        // User doesn't exist, check if we're running as root
+        if (geteuid() != 0) {
+            qCritical() << "SelfProvisioner: soniclogin user does not exist and we're not running as root. Cannot create user.";
+            return false;
+        }
+
+        // First ensure the group exists
+        if (!groupExists(QStringLiteral("soniclogin"))) {
+            qDebug() << "SelfProvisioner: Creating soniclogin group...";
+#ifdef Q_OS_FREEBSD
+            // BSD uses pw groupadd
+            if (!runCommand(QStringLiteral("pw"), {QStringLiteral("groupadd"), QStringLiteral("soniclogin")})) {
+                qCritical() << "SelfProvisioner: Failed to create soniclogin group";
+                return false;
+            }
+#else
+            // Linux uses groupadd --system
+            if (!runCommand(QStringLiteral("groupadd"), {QStringLiteral("--system"), QStringLiteral("soniclogin")})) {
+                qCritical() << "SelfProvisioner: Failed to create soniclogin group";
+                return false;
+            }
+#endif
+        }
+
+        // Now create the user
+        qDebug() << "SelfProvisioner: Creating soniclogin user...";
+        QString shell = nologinShell();
+#ifdef Q_OS_FREEBSD
+        // BSD uses pw useradd
+        if (!runCommand(QStringLiteral("pw"),
+                        {QStringLiteral("useradd"),
+                         QStringLiteral("soniclogin"),
+                         QStringLiteral("-g"),
+                         QStringLiteral("soniclogin"),
+                         QStringLiteral("-d"),
+                         QStringLiteral(STATE_DIR),
+                         QStringLiteral("-s"),
+                         shell})) {
+            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
+            return false;
+        }
+#else
+        // Linux uses useradd --system
+        if (!runCommand(QStringLiteral("useradd"),
+                        {QStringLiteral("--system"),
+                         QStringLiteral("--gid"),
+                         QStringLiteral("soniclogin"),
+                         QStringLiteral("--home-dir"),
+                         QStringLiteral(STATE_DIR),
+                         QStringLiteral("--shell"),
+                         shell,
+                         QStringLiteral("--no-create-home"),
+                         QStringLiteral("soniclogin")})) {
+            qCritical() << "SelfProvisioner: Failed to create soniclogin user";
+            return false;
+        }
+#endif
+
+        // Verify the user was created
+        if (!userExists(QStringLiteral("soniclogin"))) {
+            qCritical() << "SelfProvisioner: User creation command succeeded but user still doesn't exist";
+            return false;
+        }
+
+        qDebug() << "SelfProvisioner: Successfully created soniclogin user";
     }
 
     // Add soniclogin user to required groups (video, input, render)
@@ -142,26 +340,8 @@ bool SelfProvisioner::createGreeterUser()
 #endif
     for (const QString &grp : groups) {
         // Check if group exists
-        QProcess getgrent;
-        getgrent.setProgram(QStringLiteral("getent"));
-        getgrent.setArguments({QStringLiteral("group"), grp});
-        getgrent.setProcessChannelMode(QProcess::MergedChannels);
-        getgrent.start();
-        getgrent.waitForFinished();
-        if (getgrent.exitCode() != 0) {
+        if (!groupExists(grp)) {
             continue; // Group doesn't exist, skip
-        }
-
-        // Check if user is already in group
-        QProcess groupsProc;
-        groupsProc.setProgram(QStringLiteral("groups"));
-        groupsProc.setArguments({QStringLiteral("soniclogin")});
-        groupsProc.setProcessChannelMode(QProcess::MergedChannels);
-        groupsProc.start();
-        groupsProc.waitForFinished();
-        QString groupsOutput = QString::fromLocal8Bit(groupsProc.readAll());
-        if (groupsOutput.contains(grp)) {
-            continue; // Already in group
         }
 
         qDebug() << "SelfProvisioner: Adding soniclogin to group" << grp;
@@ -201,26 +381,22 @@ bool SelfProvisioner::createStateDirectory()
         }
     }
 
-    QProcess idProc;
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
-    idProc.setProcessChannelMode(QProcess::MergedChannels);
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok1 = false;
-    uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
+    // Set ownership and permissions for state directories
+    uid_t uid;
+    gid_t gid;
+    if (!getUserIds(&uid, &gid)) {
+        qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
+        return false;
+    }
 
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok2 = false;
-    gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
-
-    if (ok1 && ok2) {
-        for (const QString &path : subdirs) {
-            ::chown(path.toLocal8Bit().constData(), uid, gid);
-            ::chmod(path.toLocal8Bit().constData(), 0755);
+    for (const QString &path : subdirs) {
+        if (!setOwnership(path, uid, gid)) {
+            qCritical() << "SelfProvisioner: Failed to set ownership for directory:" << path;
+            return false;
+        }
+        if (!setPermissions(path, 0755)) {
+            qCritical() << "SelfProvisioner: Failed to set permissions for directory:" << path;
+            return false;
         }
     }
 
@@ -244,26 +420,22 @@ bool SelfProvisioner::createRuntimeDirectory()
 
     // Runtime dir must be owned by the greeter user so it can create its home subdirectories.
     // Keep it world-readable/traversable since this is a system account.
-    ::chmod(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), 0755);
+    if (!setPermissions(QStringLiteral(RUNTIME_DIR), 0755)) {
+        qCritical() << "SelfProvisioner: Failed to set permissions for runtime directory";
+        return false;
+    }
 
-    QProcess idProc;
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
-    idProc.setProcessChannelMode(QProcess::MergedChannels);
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok1 = false;
-    uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
+    // Set ownership for runtime directory
+    uid_t uid;
+    gid_t gid;
+    if (!getUserIds(&uid, &gid)) {
+        qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
+        return false;
+    }
 
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok2 = false;
-    gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
-
-    if (ok1 && ok2) {
-        ::chown(QStringLiteral(RUNTIME_DIR).toLocal8Bit().constData(), uid, gid);
+    if (!setOwnership(QStringLiteral(RUNTIME_DIR), uid, gid)) {
+        qCritical() << "SelfProvisioner: Failed to set ownership for runtime directory";
+        return false;
     }
 
     return true;
@@ -296,7 +468,10 @@ bool SelfProvisioner::setupLogging()
     }
 
     // Set directory permissions (777 so soniclogin helper can write)
-    ::chmod(logDirectory.absolutePath().toUtf8().constData(), 0777);
+    if (!setPermissions(logDirectory.absolutePath(), 0777)) {
+        qCritical() << "SelfProvisioner: Failed to set permissions for log directory:" << logDirectory.absolutePath();
+        return false;
+    }
 
     // Create log file
     if (!QFile::exists(QStringLiteral(LOG_FILE))) {
@@ -309,26 +484,22 @@ bool SelfProvisioner::setupLogging()
     }
 
     // Set log file ownership (soniclogin:soniclogin) and permissions (666 so helper can write)
-    QProcess idProc;
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-u"), QStringLiteral("soniclogin")});
-    idProc.setProcessChannelMode(QProcess::MergedChannels);
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok1 = false;
-    uid_t uid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok1);
-
-    idProc.setProgram(QStringLiteral("id"));
-    idProc.setArguments({QStringLiteral("-g"), QStringLiteral("soniclogin")});
-    idProc.start();
-    idProc.waitForFinished();
-    bool ok2 = false;
-    gid_t gid = QString::fromLocal8Bit(idProc.readAll()).trimmed().toUInt(&ok2);
-
-    if (ok1 && ok2) {
-        ::chown(QStringLiteral(LOG_FILE).toLocal8Bit().constData(), uid, gid);
+    uid_t uid;
+    gid_t gid;
+    if (!getUserIds(&uid, &gid)) {
+        qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
+        return false;
     }
-    ::chmod(QStringLiteral(LOG_FILE).toLocal8Bit().constData(), 0666);
+
+    if (!setOwnership(QStringLiteral(LOG_FILE), uid, gid)) {
+        qCritical() << "SelfProvisioner: Failed to set ownership for log file";
+        return false;
+    }
+
+    if (!setPermissions(QStringLiteral(LOG_FILE), 0666)) {
+        qCritical() << "SelfProvisioner: Failed to set permissions for log file";
+        return false;
+    }
 
     qDebug() << "SelfProvisioner: Log file setup complete.";
     return true;

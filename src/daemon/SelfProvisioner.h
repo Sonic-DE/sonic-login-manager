@@ -45,6 +45,16 @@ private:
     bool setupLogging();
     bool cleanupAuthSockets();
 
+    // Helper methods for user/group management
+    bool userExists(const QString &user, QString *passwdLine = nullptr);
+    bool groupExists(const QString &group);
+    QString nologinShell() const;
+
+    // Helper methods for file operations
+    bool getUserIds(uid_t *uid, gid_t *gid);
+    bool setOwnership(const QString &path, uid_t uid, gid_t gid);
+    bool setPermissions(const QString &path, mode_t mode);
+
     QString m_stateDir;
     QString m_runtimeDir;
     QString m_logDir;
