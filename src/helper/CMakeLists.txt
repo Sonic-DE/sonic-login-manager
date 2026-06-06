@@ -34,7 +34,6 @@ target_link_libraries(soniclogin-helper ${PAM_LIBRARIES})
 
 # libcap for ambient capabilities (CAP_SYS_TTY_CONFIG) - Linux only
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBCAP REQUIRED libcap)
     target_include_directories(soniclogin-helper PRIVATE ${LIBCAP_INCLUDE_DIRS})
     target_link_libraries(soniclogin-helper ${LIBCAP_LIBRARIES})
