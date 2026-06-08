@@ -36,16 +36,16 @@ static void addDirectoryToConfig(KSharedConfig::Ptr config, const QDir &dir)
 
 SonicLoginSettings &SonicLoginSettings::getInstance()
 {
-    auto config = KSharedConfig::openConfig(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_FILE), KConfig::NoGlobals);
+    auto config = KSharedConfig::openConfig(QStringLiteral(SONICLOGIN_CONFIG_FILE), KConfig::NoGlobals);
 
-    QDir sonicLoginSystemConfigDir(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_DIR));
+    QDir sonicLoginSystemConfigDir(QStringLiteral(SONICLOGIN_CONFIG_DIR));
     if (sonicLoginSystemConfigDir.exists()) {
         addDirectoryToConfig(config, sonicLoginSystemConfigDir);
     }
 
-    config->addConfigSources({QStringLiteral(SONICLOGIN_CONFIG_FILE)});
+    config->addConfigSources({QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_FILE)});
 
-    QDir sonicLoginConfigDir(QStringLiteral(SONICLOGIN_CONFIG_DIR));
+    QDir sonicLoginConfigDir(QStringLiteral(SONICLOGIN_SYSTEM_CONFIG_DIR));
     if (sonicLoginConfigDir.exists()) {
         addDirectoryToConfig(config, sonicLoginConfigDir);
     }
