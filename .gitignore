@@ -7,6 +7,7 @@
 
 .clang-format
 .qmlls.ini
+.ccls-cache
 
 build*/
 
