@@ -101,16 +101,18 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGINT received - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing << "first=" << first
-                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager << "seatManager=" << (void *)m_seatManager;
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing
+                   << "firstLoginLock=" << m_firstloginLock << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
+                   << "seatManager=" << (void *)m_seatManager;
         quit();
     });
     connect(m_signalHandler, &SignalHandler::sigtermReceived, this, [this] {
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGTERM received - diagnostic information:"
-                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing << "first=" << first
-                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager << "seatManager=" << (void *)m_seatManager;
+                   << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing
+                   << "firstLoginLock=" << m_firstloginLock << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
+                   << "seatManager=" << (void *)m_seatManager;
         quit();
     });
     connect(this, &QCoreApplication::aboutToQuit, this, [] {
