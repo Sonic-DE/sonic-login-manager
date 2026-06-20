@@ -13,48 +13,39 @@
 #include <QtCore/QObject>
 #include <QtCore/QProcess>
 
-namespace SONICLOGIN
-{
+namespace SONICLOGIN {
 class HelperApp;
 class XOrgUserHelper;
 class WaylandHelper;
-class UserSession : public QProcess
-{
-    Q_OBJECT
+class UserSession : public QProcess {
+  Q_OBJECT
 public:
-    explicit UserSession(HelperApp *parent);
+  explicit UserSession(HelperApp *parent);
 
-    bool start();
-    void stop();
+  bool start();
+  void stop();
 
-    QString displayServerCommand() const;
-    void setDisplayServerCommand(const QString &command);
+  QString displayServerCommand() const;
+  void setDisplayServerCommand(const QString &command);
 
-    void setPath(const QString &path);
-    QString path() const;
+  void setPath(const QString &path);
+  QString path() const;
 
 Q_SIGNALS:
-    void finished(int exitCode);
+  void finished(int exitCode);
 
 private Q_SLOTS:
-    void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-protected:
-    void setupChildProcess() override;
-#endif
+  void onProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
 private:
-    void setup();
+  void setup();
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    // Don't call it directly, it will be invoked by the child process only
-    void childModifier();
-#endif
+  // Don't call it directly, it will be invoked by the child process only
+  void childModifier();
 
-    QString m_path{};
-    QString m_displayServerCmd;
+  QString m_path{};
+  QString m_displayServerCmd;
 };
-}
+} // namespace SONICLOGIN
 
 #endif // SONICLOGIN_AUTH_SESSION_H
