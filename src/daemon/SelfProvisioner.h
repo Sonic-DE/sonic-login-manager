@@ -42,6 +42,7 @@ private:
     bool createGreeterUser();
     bool createStateDirectory();
     bool createRuntimeDirectory();
+    bool createDbusDirectory();
     bool setupLogging();
     bool cleanupAuthSockets();
 

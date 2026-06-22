@@ -44,6 +44,11 @@ bool SelfProvisioner::provision()
         return false;
     }
 
+    if (!createDbusDirectory()) {
+        qCritical() << "SelfProvisioner: Failed to create dbus directory";
+        return false;
+    }
+
     if (!createRuntimeDirectory()) {
         qCritical() << "SelfProvisioner: Failed to create runtime directory";
         return false;
@@ -364,10 +369,12 @@ bool SelfProvisioner::createStateDirectory()
     const QStringList subdirs = {
         QStringLiteral(STATE_DIR),
         QStringLiteral(STATE_DIR) + QStringLiteral("/.config"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/.config/fontconfig"),
         QStringLiteral(STATE_DIR) + QStringLiteral("/.cache"),
         QStringLiteral(STATE_DIR) + QStringLiteral("/.local"),
         QStringLiteral(STATE_DIR) + QStringLiteral("/.local/share"),
         QStringLiteral(STATE_DIR) + QStringLiteral("/.local/state"),
+        QStringLiteral(STATE_DIR) + QStringLiteral("/wallpapers"),
     };
 
     for (const QString &path : subdirs) {
@@ -436,6 +443,47 @@ bool SelfProvisioner::createRuntimeDirectory()
     if (!setOwnership(QStringLiteral(RUNTIME_DIR), uid, gid)) {
         qCritical() << "SelfProvisioner: Failed to set ownership for runtime directory";
         return false;
+    }
+
+    return true;
+}
+
+bool SelfProvisioner::createDbusDirectory()
+{
+    qDebug() << "SelfProvisioner: Setting up dbus directory...";
+
+    const QString dbusDir = QStringLiteral(STATE_DIR) + QStringLiteral("/.dbus");
+    const QString sessionBusDir = dbusDir + QStringLiteral("/session-bus");
+
+    QDir dir;
+    if (!dir.exists(sessionBusDir)) {
+        if (!dir.mkpath(sessionBusDir)) {
+            qCritical() << "SelfProvisioner: Failed to create dbus session-bus directory:" << sessionBusDir;
+            return false;
+        }
+        qDebug() << "SelfProvisioner: Created dbus session-bus directory:" << sessionBusDir;
+    }
+
+    // Set ownership (soniclogin:soniclogin) and permissions (700) for dbus directories.
+    // Both .dbus and .dbus/session-bus must be private to the greeter user because the
+    // session bus socket lives there and must not be accessible to other users.
+    uid_t uid;
+    gid_t gid;
+    if (!getUserIds(&uid, &gid)) {
+        qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
+        return false;
+    }
+
+    const QStringList dbusPaths = {dbusDir, sessionBusDir};
+    for (const QString &path : dbusPaths) {
+        if (!setOwnership(path, uid, gid)) {
+            qCritical() << "SelfProvisioner: Failed to set ownership for dbus directory:" << path;
+            return false;
+        }
+        if (!setPermissions(path, 0700)) {
+            qCritical() << "SelfProvisioner: Failed to set permissions for dbus directory:" << path;
+            return false;
+        }
     }
 
     return true;
