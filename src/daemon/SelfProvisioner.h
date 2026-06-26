@@ -39,6 +39,12 @@ private:
     bool runCommand(const QString &program, const QStringList &args);
     bool runCommandIgnorableFailure(const QString &program, const QStringList &args);
 
+    // One-time import of legacy /etc/plasmalogin.* and /usr/lib/plasmalogin/
+    // configs into the Sonic Login Manager locations. Copies (does not move),
+    // never touches the source files, and only writes to destinations that
+    // do not already exist.
+    bool importLegacyPlasmaLoginConfigs();
+
     bool createGreeterUser();
     bool createStateDirectory();
     bool createRuntimeDirectory();
@@ -55,6 +61,9 @@ private:
     bool getUserIds(uid_t *uid, gid_t *gid);
     bool setOwnership(const QString &path, uid_t uid, gid_t gid);
     bool setPermissions(const QString &path, mode_t mode);
+
+    // Recursive directory copy helper used by importLegacyPlasmaLoginConfigs.
+    static bool copyDirRecursive(const QString &srcDir, const QString &dstDir);
 
     QString m_stateDir;
     QString m_runtimeDir;

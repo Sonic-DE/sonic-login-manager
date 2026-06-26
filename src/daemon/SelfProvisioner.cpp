@@ -5,6 +5,7 @@
  */
 
 #include "Constants.h"
+#include "config.h"
 
 #include "SelfProvisioner.h"
 
@@ -14,11 +15,15 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QLoggingCategory>
 #include <QProcess>
 #include <QStandardPaths>
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+Q_LOGGING_CATEGORY(SONICLOGIN_SELFPROV, "soniclogin.selfprovisioner")
 
 namespace SONICLOGIN
 {
@@ -63,6 +68,8 @@ bool SelfProvisioner::provision()
         qCritical() << "SelfProvisioner: Failed to clean up auth sockets";
         return false;
     }
+
+    importLegacyPlasmaLoginConfigs();
 
     qDebug() << "SelfProvisioner: System provisioning complete.";
     return true;
@@ -557,14 +564,18 @@ bool SelfProvisioner::cleanupAuthSockets()
 {
     qDebug() << "SelfProvisioner: Cleaning up stale auth sockets...";
 
-    // Clean up old auth sockets in /tmp
-    const QStringList patterns = {QStringLiteral("/tmp/soniclogin-auth*"), QStringLiteral("/tmp/xauth_*")};
+    // Each pattern is an absolute path glob. Split into directory and
+    // name filter so QDir can resolve absolute paths correctly.
+    const QStringList patterns = {QStringLiteral("/tmp/soniclogin-auth*"), QStringLiteral("/tmp/xauth_*"), QStringLiteral("/run/soniclogin/kcm-ipc-*")};
 
     for (const QString &pattern : patterns) {
-        QDir dir;
-        QStringList entries = dir.entryList(QStringList(pattern), QDir::Files);
+        const int slashIdx = pattern.lastIndexOf(QLatin1Char('/'));
+        const QString dirPath = (slashIdx > 0) ? pattern.left(slashIdx) : QStringLiteral(".");
+        const QString nameFilter = (slashIdx >= 0) ? pattern.mid(slashIdx + 1) : pattern;
+        QDir dir(dirPath);
+        const QStringList entries = dir.entryList(QStringList(nameFilter), QDir::Files);
         for (const QString &entry : entries) {
-            QString fullPath = QStringLiteral("/tmp/") + entry;
+            const QString fullPath = dirPath + QLatin1Char('/') + entry;
             qDebug() << "SelfProvisioner: Removing stale socket:" << fullPath;
             if (!QFile::remove(fullPath)) {
                 qWarning() << "SelfProvisioner: Failed to remove:" << fullPath;
@@ -573,6 +584,115 @@ bool SelfProvisioner::cleanupAuthSockets()
     }
 
     return true;
+}
+
+bool SelfProvisioner::copyDirRecursive(const QString &srcDir, const QString &dstDir)
+{
+    if (!QDir().mkpath(dstDir)) {
+        qCWarning(SONICLOGIN_SELFPROV) << "copyDirRecursive: failed to create destination" << dstDir;
+        return false;
+    }
+
+    QDir src(srcDir);
+    const QFileInfoList entries = src.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries);
+    for (const QFileInfo &entry : entries) {
+        const QString dstPath = dstDir + QLatin1Char('/') + entry.fileName();
+        if (entry.isDir()) {
+            if (!copyDirRecursive(entry.absoluteFilePath(), dstPath)) {
+                return false;
+            }
+        } else if (entry.isFile()) {
+            if (!QFile::copy(entry.absoluteFilePath(), dstPath)) {
+                qCWarning(SONICLOGIN_SELFPROV) << "copyDirRecursive: failed to copy" << entry.absoluteFilePath() << "->" << dstPath;
+                return false;
+            }
+            QFile::setPermissions(dstPath, QFile::permissions(entry.absoluteFilePath()));
+        }
+    }
+    return true;
+}
+
+bool SelfProvisioner::importLegacyPlasmaLoginConfigs()
+{
+    QDir runtimeDir(RUNTIME_DIR);
+    if (!runtimeDir.exists()) {
+        QDir().mkpath(RUNTIME_DIR);
+    }
+    const QString sentinelPath = QStringLiteral(RUNTIME_DIR "/imported-plasmalogin-to-soniclogin");
+    if (QFile::exists(sentinelPath)) {
+        qCDebug(SONICLOGIN_SELFPROV) << "import: sentinel exists; skipping scan this boot";
+        return true;
+    }
+
+    struct ImportPair {
+        QString legacy;
+        QString target;
+    };
+    QList<ImportPair> pairs;
+    pairs.append({QStringLiteral("/etc/plasmalogin.conf"), QStringLiteral(CONFIG_FILE)});
+    pairs.append({QStringLiteral("/etc/plasmalogin.conf.d"), QStringLiteral(CONFIG_DIR)});
+
+    int copied = 0;
+    int skipped = 0;
+    int failed = 0;
+
+    for (const ImportPair &pair : pairs) {
+        if (QFileInfo::exists(pair.target)) {
+            qCInfo(SONICLOGIN_SELFPROV) << "import: skipping" << pair.legacy << "because" << pair.target << "already exists";
+            ++skipped;
+            continue;
+        }
+        if (!QFileInfo::exists(pair.legacy)) {
+            qCDebug(SONICLOGIN_SELFPROV) << "import: no source" << pair.legacy << ", nothing to do";
+            continue;
+        }
+        const QFileInfo legacyInfo(pair.legacy);
+        bool ok = false;
+        if (legacyInfo.isDir()) {
+            ok = copyDirRecursive(pair.legacy, pair.target);
+        } else if (legacyInfo.isFile()) {
+            ok = QFile::copy(pair.legacy, pair.target);
+            if (ok) {
+                QFile::setPermissions(pair.target, QFile::permissions(pair.legacy));
+            }
+        } else {
+            qCWarning(SONICLOGIN_SELFPROV) << "import:" << pair.legacy << "is neither file nor directory, skipping";
+            continue;
+        }
+        if (ok) {
+            qCInfo(SONICLOGIN_SELFPROV) << "import: copied" << pair.legacy << "->" << pair.target;
+            ++copied;
+        } else {
+            qCWarning(SONICLOGIN_SELFPROV) << "import: failed to copy" << pair.legacy << "->" << pair.target;
+            ++failed;
+        }
+    }
+
+    const QString sysDefaultsRoot = QFileInfo(QStringLiteral(SYSTEM_CONFIG_DIR)).absolutePath();
+    if (QFileInfo(sysDefaultsRoot).isDir()) {
+        qCInfo(SONICLOGIN_SELFPROV) << "import: skipping /usr/lib/plasmalogin because" << sysDefaultsRoot << "already exists";
+        ++skipped;
+    } else if (!QFileInfo(QStringLiteral("/usr/lib/plasmalogin")).isDir()) {
+        qCDebug(SONICLOGIN_SELFPROV) << "import: no source /usr/lib/plasmalogin, nothing to do";
+    } else if (copyDirRecursive(QStringLiteral("/usr/lib/plasmalogin"), sysDefaultsRoot)) {
+        qCInfo(SONICLOGIN_SELFPROV) << "import: copied /usr/lib/plasmalogin to" << sysDefaultsRoot;
+        ++copied;
+    } else {
+        qCWarning(SONICLOGIN_SELFPROV) << "import: failed to copy /usr/lib/plasmalogin to" << sysDefaultsRoot;
+        ++failed;
+    }
+
+    QFile sentinel(sentinelPath);
+    if (sentinel.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        sentinel.write("ok\n");
+        sentinel.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+        sentinel.close();
+    } else {
+        qCWarning(SONICLOGIN_SELFPROV) << "import: failed to create sentinel" << sentinelPath;
+    }
+
+    qCInfo(SONICLOGIN_SELFPROV) << "import: copied" << copied << "files, skipped" << skipped << "existing targets," << failed << "failed";
+    return failed == 0;
 }
 
 } // namespace SONICLOGIN
