@@ -1,7 +1,9 @@
-set(SONICLOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/defaults.conf"      CACHE PATH  "Path of the system plasma-login config file")
-set(SONICLOGIN_SYSTEM_CONFIG_DIR   "${CMAKE_INSTALL_PREFIX}/lib/plasmalogin/plasmalogin.conf.d" CACHE PATH  "Path of the system plasma-login config directory")
-set(SONICLOGIN_CONFIG_FILE         "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf"          CACHE PATH  "Path of the plasma-login config file")
-set(SONICLOGIN_CONFIG_DIR          "${CMAKE_INSTALL_FULL_SYSCONFDIR}/plasmalogin.conf.d"        CACHE PATH  "Path of the plasma-login config directory")
+include(GNUInstallDirs)
+
+set(SONICLOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/soniclogin/defaults.conf"      CACHE PATH  "Path of the system soniclogin config file")
+set(SONICLOGIN_SYSTEM_CONFIG_DIR   "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/soniclogin/soniclogin.conf.d" CACHE PATH  "Path of the system soniclogin config directory")
+set(SONICLOGIN_CONFIG_FILE         "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf"          CACHE PATH  "Path of the soniclogin config file")
+set(SONICLOGIN_CONFIG_DIR          "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf.d"        CACHE PATH  "Path of the soniclogin config directory")
 
 configure_file(config.h.in config.h IMMEDIATE @ONLY)
 
