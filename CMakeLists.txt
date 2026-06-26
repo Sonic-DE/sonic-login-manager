@@ -60,14 +60,6 @@ if(SYSTEMD_FOUND)
     if (NOT DEFINED SYSTEMD_SYSTEM_UNIT_DIR)
         pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
     endif()
-
-    if (NOT DEFINED SYSTEMD_SYSUSERS_DIR)
-        pkg_get_variable(SYSTEMD_SYSUSERS_DIR systemd sysusersdir)
-    endif()
-
-    if (NOT DEFINED SYSTEMD_TMPFILES_DIR)
-        pkg_get_variable(SYSTEMD_TMPFILES_DIR systemd tmpfilesdir)
-    endif()
 endif()
 
 # Auto-detect init systems for automatic installation

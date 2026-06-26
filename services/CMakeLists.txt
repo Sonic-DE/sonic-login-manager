@@ -135,12 +135,6 @@ if(SPLIT_BUILD)
     )
 
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/tmpfiles-setup"
-        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/soniclogin-srv/dependencies.d"
-        COMPONENT s6
-    )
-
-    install(
         FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/udevadm"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/soniclogin-srv/dependencies.d"
         COMPONENT s6
@@ -197,11 +191,6 @@ elseif(S6_FOUND)
     )
 
     install(
-        FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/tmpfiles-setup"
-        DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/soniclogin-srv/dependencies.d"
-    )
-
-    install(
         FILES "${CMAKE_CURRENT_SOURCE_DIR}/s6/dependencies/udevadm"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/s6/sv/soniclogin-srv/dependencies.d"
     )
@@ -229,28 +218,16 @@ endif()
 
 # sysvinit script - install if detected
 configure_file(sysvinit/soniclogin.in sysvinit/soniclogin)
-configure_file(sysvinit/soniclogin.conf.in sysvinit/soniclogin.conf)
 if(SPLIT_BUILD)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/soniclogin"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
         COMPONENT sysvinit
     )
-
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/soniclogin.conf"
-        DESTINATION "lib/tmpfiles.d"
-        COMPONENT sysvinit
-    )
 elseif(SYSVINIT_FOUND)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/soniclogin"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/init.d"
-    )
-
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/soniclogin.conf"
-        DESTINATION "lib/tmpfiles.d"
     )
 endif()
 
@@ -282,7 +259,4 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/k
         DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/X11"
     )
 endif()
-
-
-# systemd-tmpfiles can be used standalone without other systemd parts
 
