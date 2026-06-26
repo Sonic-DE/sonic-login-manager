@@ -79,14 +79,14 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     QString xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
-    KConfigGroup cfg = SonicLoginSettings::getInstance()
-                           .sharedConfig()
-                           ->group(QStringLiteral("Greeter"))
-                           .group(QStringLiteral("Wallpaper"))
-                           .group(SonicLoginSettings::getInstance().wallpaperPluginId());
+    const auto wallpaperGroup = SonicLoginSettings::getInstance().sharedConfig()->group(QStringLiteral("Greeter")).group(QStringLiteral("Wallpaper"));
+
+    const bool hasWallpaperConfig = !wallpaperGroup.keyList().isEmpty() || !wallpaperGroup.groupList().isEmpty();
+
+    KConfigGroup cfg = wallpaperGroup.group(SonicLoginSettings::getInstance().wallpaperPluginId());
 
     // Fall back to POTD if the current wallpaper plugin has no images configured
-    if (SonicLoginSettings::getInstance().wallpaperPluginId() == QStringLiteral("org.kde.image") && cfg.readEntry(QStringLiteral("Image")).isEmpty()) {
+    if (!hasWallpaperConfig) {
         m_wallpaperPackage.setPath(QStringLiteral("org.kde.potd"));
         if (!m_wallpaperPackage.isValid()) {
             qWarning() << "Error loading POTD wallpaper, falling back to black background";
