@@ -32,9 +32,14 @@ QQC2.StackView {
                 return
             }
             const props = { configDialog }
+            const temp = Qt.createComponent(Qt.resolvedUrl(sourceFile)).createObject(null, props)
             wallpaperConfig.keys().forEach(key => {
-                props["cfg_" + key] = wallpaperConfig[key]
-            });
+                const cfgKey = "cfg_" + key
+                if (cfgKey in temp) {
+                    props[cfgKey] = wallpaperConfig[key]
+                }
+            })
+            temp.destroy()
 
             const newItem = replace(sourceFile, props, QQC2.StackView.ReplaceTransition)
 
