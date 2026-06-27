@@ -1,8 +1,10 @@
 kcmutils_add_qml_kcm(kcm_soniclogin)
 add_definitions(-DTRANSLATION_DOMAIN="kcm_soniclogin")
+add_compile_definitions(QT_MESSAGELOGCONTEXT)
 
 target_sources(kcm_soniclogin PRIVATE
     kcm.cpp kcm.h
+    kcm_messagelogger.cpp
     soniclogindata.cpp soniclogindata.h
 )
 

@@ -7,12 +7,15 @@
 */
 
 #include <QFile>
+#include <QLoggingCategory>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
 
 #include <QDBusConnection>
 #include <QDBusError>
+
+Q_LOGGING_CATEGORY(KCMSONICLOGIN, "soniclogin.wallpaper")
 
 #include <KConfig>
 #include <KConfigGroup>
@@ -79,27 +82,26 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     QString xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
-    const auto wallpaperGroup = SonicLoginSettings::getInstance().sharedConfig()->group(QStringLiteral("Greeter")).group(QStringLiteral("Wallpaper"));
+    auto sharedConfig = SonicLoginSettings::getInstance().sharedConfig();
+    sharedConfig->reparseConfiguration();
 
+    const auto wallpaperGroup = sharedConfig->group(QStringLiteral("Greeter")).group(QStringLiteral("Wallpaper"));
     const bool hasWallpaperConfig = !wallpaperGroup.keyList().isEmpty() || !wallpaperGroup.groupList().isEmpty();
 
-    KConfigGroup cfg = wallpaperGroup.group(SonicLoginSettings::getInstance().wallpaperPluginId());
+    const QString pluginId = SonicLoginSettings::getInstance().wallpaperPluginId();
+    KConfigGroup cfg = wallpaperGroup.group(pluginId);
 
     // Fall back to POTD if the current wallpaper plugin has no images configured
     if (!hasWallpaperConfig) {
         m_wallpaperPackage.setPath(QStringLiteral("org.kde.potd"));
         if (!m_wallpaperPackage.isValid()) {
             qWarning() << "Error loading POTD wallpaper, falling back to black background";
-            m_wallpaperPackage.setPath(SonicLoginSettings::getInstance().wallpaperPluginId());
+            m_wallpaperPackage.setPath(pluginId);
         } else {
             xmlPath = m_wallpaperPackage.filePath(QByteArrayLiteral("config"), QStringLiteral("main.xml"));
 
             // Use config for the POTD plugin
-            cfg = SonicLoginSettings::getInstance()
-                      .sharedConfig()
-                      ->group(QStringLiteral("Greeter"))
-                      .group(QStringLiteral("Wallpaper"))
-                      .group(m_wallpaperPackage.path());
+            cfg = sharedConfig->group(QStringLiteral("Greeter")).group(QStringLiteral("Wallpaper")).group(m_wallpaperPackage.path());
         }
     }
 
@@ -126,7 +128,8 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/sonic/login/wallpaper/main.qml")));
 
-    const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)}, {QStringLiteral("pluginName"), m_wallpaperPackage.path()}};
+    const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)},
+                                    {QStringLiteral("pluginName"), m_wallpaperPackage.metadata().pluginId()}};
     QObject *wallpaperObject = component->createWithInitialProperties(properties, window->rootContext());
     auto wallpaperItem = qobject_cast<QQuickItem *>(wallpaperObject);
     if (!wallpaperItem) {

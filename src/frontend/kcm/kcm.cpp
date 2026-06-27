@@ -38,6 +38,8 @@ Q_LOGGING_CATEGORY(KCMSONICLOGIN, "soniclogin.kcm")
 
 #include "kcm.h"
 
+extern void installKcmMessageHandler();
+
 K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json",
                            registerPlugin<SonicLoginKcm>();
                            registerPlugin<SonicLoginData>();)
@@ -45,29 +47,25 @@ K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json",
 SonicLoginKcm::SonicLoginKcm(QObject *parent, const KPluginMetaData &data)
     : KQuickManagedConfigModule(parent, data),
       m_wallpaperSettings(new WallpaperSettings(this)) {
-  setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
-  registerSettings(&SonicLoginSettings::getInstance());
+    installKcmMessageHandler();
+    setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
+    registerSettings(&SonicLoginSettings::getInstance());
 
-  constexpr const char *url = "org.kde.private.kcms.soniclogin";
-  qRegisterMetaType<QList<WallpaperInfo>>("QList<WallpaperInfo>");
-  qmlRegisterAnonymousType<SonicLoginSettings>(url, 1);
-  qmlRegisterAnonymousType<WallpaperInfo>(url, 1);
-  qmlRegisterAnonymousType<WallpaperIntegration>(url, 1);
-  qmlRegisterAnonymousType<KConfigPropertyMap>(url, 1);
-  qmlRegisterAnonymousType<UserModel>(url, 1);
-  qmlRegisterAnonymousType<SessionModel>(url, 1);
-  qmlProtectModule(url, 1);
+    constexpr const char *url = "org.kde.private.kcms.soniclogin";
+    qRegisterMetaType<QList<WallpaperInfo>>("QList<WallpaperInfo>");
+    qmlRegisterAnonymousType<SonicLoginSettings>(url, 1);
+    qmlRegisterAnonymousType<WallpaperInfo>(url, 1);
+    qmlRegisterAnonymousType<WallpaperIntegration>(url, 1);
+    qmlRegisterAnonymousType<KConfigPropertyMap>(url, 1);
+    qmlRegisterAnonymousType<UserModel>(url, 1);
+    qmlRegisterAnonymousType<SessionModel>(url, 1);
+    qmlProtectModule(url, 1);
 
-  constexpr const char *uri = "org.kde.plasma.plasmoid";
-  qmlRegisterUncreatableType<QObject>(
-      uri, 2, 0, "PlasmoidPlaceholder",
-      QStringLiteral("Do not create objects of type Plasmoid"));
+    constexpr const char *uri = "org.kde.plasma.plasmoid";
+    qmlRegisterUncreatableType<QObject>(uri, 2, 0, "PlasmoidPlaceholder", QStringLiteral("Do not create objects of type Plasmoid"));
 
-  connect(&SonicLoginSettings::getInstance(),
-          &SonicLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings,
-          &WallpaperSettings::loadWallpaperConfig);
-  connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged,
-          this, &SonicLoginKcm::currentWallpaperChanged);
+    connect(&SonicLoginSettings::getInstance(), &SonicLoginSettings::WallpaperPluginIdChanged, m_wallpaperSettings, &WallpaperSettings::loadWallpaperConfig);
+    connect(m_wallpaperSettings, &WallpaperSettings::currentWallpaperChanged, this, &SonicLoginKcm::currentWallpaperChanged);
 }
 
 void SonicLoginKcm::load() {

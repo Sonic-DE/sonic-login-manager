@@ -6,6 +6,7 @@ include_directories(
 
 add_executable(soniclogin-wallpaper)
 
+add_compile_definitions(QT_MESSAGELOGCONTEXT)
 
 ecm_add_qml_module(soniclogin-wallpaper URI "org.kde.sonic.login.wallpaper" GENERATE_PLUGIN_SOURCE)
 
