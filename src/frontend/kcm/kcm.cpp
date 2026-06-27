@@ -164,8 +164,12 @@ void SonicLoginKcm::save()
     };
 
     if (m_pendingAuthUser.isEmpty()) {
+        // Take ownership of the save so the host stops calling save() in a
+        // tight loop while we wait for the user's admin credentials.
+        setNeedsSave(false);
         Q_EMIT authRequired();
     } else {
+        setNeedsSave(false);
         m_pendingContinuation();
         m_pendingContinuation = nullptr;
     }
@@ -177,6 +181,10 @@ QJsonObject SonicLoginKcm::collectWallpapers(const QUrl &imageUri)
     const QString imagePath = imageUri.toLocalFile();
 
     QJsonObject result;
+
+    if (baseName.isEmpty()) {
+        return result;
+    }
 
     if (imagePath.isEmpty()) {
         return result;
@@ -260,8 +268,10 @@ void SonicLoginKcm::synchronizeSettings() {
   };
 
   if (m_pendingAuthUser.isEmpty()) {
+      setNeedsSave(false);
       Q_EMIT authRequired();
   } else {
+      setNeedsSave(false);
       m_pendingContinuation();
       m_pendingContinuation = nullptr;
   }
@@ -280,8 +290,10 @@ void SonicLoginKcm::resetSynchronizedSettings() {
   };
 
   if (m_pendingAuthUser.isEmpty()) {
+      setNeedsSave(false);
       Q_EMIT authRequired();
   } else {
+      setNeedsSave(false);
       m_pendingContinuation();
       m_pendingContinuation = nullptr;
   }
@@ -303,10 +315,18 @@ void SonicLoginKcm::cancelAuth()
     m_pendingContinuation = nullptr;
     m_pendingAuthUser.clear();
     m_pendingAuthPassword.clear();
+    // The user backed out of auth — the save wasn't applied, so mark the
+    // settings dirty again so the host's Apply button reflects that.
+    setNeedsSave(true);
 }
 
 void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
 {
+    const auto clearCredentials = qScopeGuard([this]() {
+        m_pendingAuthUser.clear();
+        m_pendingAuthPassword.clear();
+    });
+
     QFile pidFile(QStringLiteral("/run/soniclogin/daemon.pid"));
     if (!pidFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         Q_EMIT errorOccurred(kxi18n("Sonic Login daemon is not running. Start it and try again.").toString());
@@ -364,7 +384,6 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
                 out << it.key() << QByteArray::fromBase64(it.value().toString().toLatin1());
             }
         }
-        // MsgResetSettings has no payload.
     }
     socket.write(block);
     socket.flush();
@@ -397,15 +416,8 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
             updateState();
             setNeedsSave(false);
         }
-        m_pendingAuthPassword.clear();
         Q_EMIT syncAttempted();
     } else {
-        // Clear the rejected credentials so the next authRequired() opens the
-        // dialog fresh instead of silently reusing the bad password, and
-        // re-arm the continuation so the user can retry without having to
-        // click Apply again.
-        m_pendingAuthUser.clear();
-        m_pendingAuthPassword.clear();
         m_pendingContinuation = [this, op, args]() {
             sendToDaemon(op, args);
         };

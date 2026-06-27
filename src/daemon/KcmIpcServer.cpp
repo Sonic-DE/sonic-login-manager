@@ -161,7 +161,8 @@ void KcmIpcServer::onReadyRead()
     // Each connection handles exactly one operation: the client connects,
     // sends [username][password][type][id][payload...], reads the response,
     // and disconnects. We read the whole message in a single transaction so
-    // partial reads just wait for more data.
+    // partial reads just wait for more data. Only after commitTransaction()
+    // succeeds do we authenticate and apply side effects (write files).
     QDataStream reader(socket);
     reader.setVersion(QDataStream::Qt_6_0);
 
@@ -172,28 +173,54 @@ void KcmIpcServer::onReadyRead()
     quint32 id = 0;
     reader >> username >> password >> type >> id;
 
-    // Authenticate before dispatching. The sudo PAM service restricts
-    // access to admin/wheel users, matching the old polkit auth_admin.
-    QString authErr;
-    const bool authed = (reader.status() == QDataStream::Ok) && authenticate(username, password, &authErr);
+    // Read the full payload inside the transaction. No side effects yet.
+    std::optional<QList<QPair<QString, QString>>> syncFiles;
+    std::optional<SavePayload> savePayload;
 
-    QPair<bool, QString> result;
-    if (!authed) {
-        result = qMakePair(false, QStringLiteral("auth: %1").arg(authErr));
-    } else if (type == MsgSyncSettings) {
-        result = handleSync(reader);
-    } else if (type == MsgResetSettings) {
-        result = handleReset(reader);
+    if (reader.status() != QDataStream::Ok) {
+        reader.commitTransaction();
+        return;
+    }
+
+    if (type == MsgSyncSettings) {
+        syncFiles = handleSyncRead(reader);
     } else if (type == MsgSaveConfig) {
-        result = handleSave(reader);
+        savePayload = handleSaveRead(reader);
+    } else if (type == MsgResetSettings) {
+        // handleReset reads no payload; just commit the header.
     } else {
         qCWarning(KCMIPC) << "KcmIpcServer: unknown messageType" << type;
-        result = qMakePair(false, QStringLiteral("unknown message type"));
     }
 
     if (!reader.commitTransaction()) {
         // Full message not yet available; wait for more data.
         return;
+    }
+
+    // Full message verified. Authenticate and apply side effects.
+    QString authErr;
+    if (!authenticate(username, password, &authErr)) {
+        sendResponse(socket, id, false, QStringLiteral("auth: %1").arg(authErr));
+        return;
+    }
+
+    QPair<bool, QString> result;
+    if (type == MsgSyncSettings) {
+        if (syncFiles) {
+            result = handleSyncWrite(*syncFiles);
+        } else {
+            result = qMakePair(false, QStringLiteral("malformed sync payload"));
+        }
+    } else if (type == MsgResetSettings) {
+        result = handleReset(reader);
+    } else if (type == MsgSaveConfig) {
+        if (savePayload) {
+            result = handleSaveWrite(*savePayload);
+        } else {
+            result = qMakePair(false, QStringLiteral("malformed save payload"));
+        }
+    } else {
+        result = qMakePair(false, QStringLiteral("unknown message type"));
     }
 
     sendResponse(socket, id, result.first, result.second);
@@ -290,7 +317,43 @@ static void chownPath(const QString &path)
     chown(path.toLocal8Bit().data(), sonicloginUser.userId().nativeId(), sonicloginUser.groupId().nativeId());
 }
 
-QPair<bool, QString> KcmIpcServer::handleSync(QDataStream &in)
+static void chownRecursive(const QString &path)
+{
+    QDir dir(path);
+    if (!dir.exists()) {
+        return;
+    }
+    const QFileInfoList entries = dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
+    for (const QFileInfo &entry : entries) {
+        if (entry.isDir()) {
+            chownRecursive(entry.absoluteFilePath());
+        }
+        chownPath(entry.absoluteFilePath());
+    }
+    chownPath(path);
+}
+
+std::optional<QList<QPair<QString, QString>>> KcmIpcServer::handleSyncRead(QDataStream &in)
+{
+    quint32 nFiles = 0;
+    in >> nFiles;
+
+    QList<QPair<QString, QString>> files;
+    files.reserve(nFiles);
+    for (quint32 i = 0; i < nFiles; ++i) {
+        QString name;
+        QString content;
+        in >> name >> content;
+        files.append(qMakePair(name, content));
+    }
+
+    if (in.status() != QDataStream::Ok) {
+        return std::nullopt;
+    }
+    return files;
+}
+
+QPair<bool, QString> KcmIpcServer::handleSyncWrite(const QList<QPair<QString, QString>> &files)
 {
     QString homeDir;
     if (auto opt = sonicloginUserHomeDir()) {
@@ -298,9 +361,6 @@ QPair<bool, QString> KcmIpcServer::handleSync(QDataStream &in)
     } else {
         return qMakePair(false, QStringLiteral("soniclogin user not found"));
     }
-
-    quint32 nFiles = 0;
-    in >> nFiles;
 
     QDir cacheLocation(homeDir + QStringLiteral("/.cache"));
     if (cacheLocation.exists()) {
@@ -321,12 +381,9 @@ QPair<bool, QString> KcmIpcServer::handleSync(QDataStream &in)
 
     QStringList fileNames;
     QHash<QString, QString> contents;
-    for (quint32 i = 0; i < nFiles; ++i) {
-        QString name;
-        QString content;
-        in >> name >> content;
-        fileNames.append(name);
-        contents.insert(name, content);
+    for (const auto &file : files) {
+        fileNames.append(file.first);
+        contents.insert(file.first, file.second);
     }
 
     auto createConfigFile = [&](const QString &name) {
@@ -349,7 +406,7 @@ QPair<bool, QString> KcmIpcServer::handleSync(QDataStream &in)
     createConfigFile(QStringLiteral("fontconfig/fonts.conf"));
     createConfigFile(QStringLiteral("kxkbrc"));
 
-    qCInfo(KCMIPC) << "handleSync:" << nFiles << "files for" << homeDir;
+    qCInfo(KCMIPC) << "handleSync:" << files.size() << "files for" << homeDir;
     return qMakePair(true, QString());
 }
 
@@ -382,30 +439,37 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
     return qMakePair(true, QString());
 }
 
-QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
+std::optional<SavePayload> KcmIpcServer::handleSaveRead(QDataStream &in)
 {
-    QString configText;
-    in >> configText;
+    SavePayload payload;
+    in >> payload.configText;
 
     quint32 nWallpapers = 0;
     in >> nWallpapers;
 
-    QList<QPair<QString, QByteArray>> wallpapers;
-    wallpapers.reserve(nWallpapers);
+    payload.wallpapers.reserve(nWallpapers);
     for (quint32 i = 0; i < nWallpapers; ++i) {
         QString relPath;
         QByteArray content;
         in >> relPath >> content;
-        wallpapers.append(qMakePair(relPath, content));
+        payload.wallpapers.append(qMakePair(relPath, content));
     }
 
+    if (in.status() != QDataStream::Ok) {
+        return std::nullopt;
+    }
+    return payload;
+}
+
+QPair<bool, QString> KcmIpcServer::handleSaveWrite(const SavePayload &payload)
+{
     QFile file(QString::fromLatin1(CONFIG_FILE));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate, standardPermissions)) {
         return qMakePair(false, QStringLiteral("cannot open config file for writing"));
     }
 
     QTextStream out(&file);
-    out << configText;
+    out << payload.configText;
     out.flush();
     file.close();
 
@@ -422,8 +486,11 @@ QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
 
     QDir homeDir(homeDirPath);
     QDir wallpaperDir(homeDir.absoluteFilePath(QStringLiteral("wallpapers")));
-    if (!wallpaperDir.removeRecursively()) {
-        qCWarning(KCMIPC) << "Could not clean old wallpaper directory";
+    if (wallpaperDir.exists()) {
+        chownRecursive(wallpaperDir.path());
+        if (!wallpaperDir.removeRecursively()) {
+            qCWarning(KCMIPC) << "Could not clean old wallpaper directory";
+        }
     }
     homeDir.mkdir(QStringLiteral("wallpapers"));
 
@@ -436,10 +503,14 @@ QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
         close(rootWallpaperFd);
     });
 
-    for (const auto &wp : wallpapers) {
+    for (const auto &wp : payload.wallpapers) {
         const QString &wallpaper = wp.first;
         const QByteArray &content = wp.second;
 
+        if (wallpaper.isEmpty()) {
+            qCWarning(KCMIPC) << "Skipping wallpaper with empty key";
+            continue;
+        }
         if (wallpaper.contains(QStringLiteral(".."))) {
             qCWarning(KCMIPC) << "Badly formed wallpaper name detected, aborting";
             return qMakePair(false, QStringLiteral("badly formed wallpaper name"));
@@ -448,7 +519,7 @@ QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
         const QString relativeFilePath = QStringLiteral("wallpapers/") + wallpaper;
         const QString relativeParentDirectory = relativeFilePath.left(relativeFilePath.lastIndexOf(QLatin1Char('/')));
         if (!homeDir.mkpath(relativeParentDirectory)) {
-            qCWarning(KCMIPC) << "Could not create new wallpaper directory";
+            qCWarning(KCMIPC) << "Could not create new wallpaper directory" << relativeParentDirectory;
             return qMakePair(false, QStringLiteral("could not create wallpaper directory"));
         }
 
@@ -463,7 +534,7 @@ QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
         int outFd = openat(rootWallpaperFd, wallpaper.toUtf8().constData(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 #endif
         if (outFd < 0) {
-            qCWarning(KCMIPC) << "Could not open wallpaper file." << strerror(errno);
+            qCWarning(KCMIPC) << "Could not open wallpaper file" << wallpaper << "in" << wallpaperDir.path() << ":" << strerror(errno);
             return qMakePair(false, QStringLiteral("could not open wallpaper file"));
         }
 
@@ -476,7 +547,7 @@ QPair<bool, QString> KcmIpcServer::handleSave(QDataStream &in)
         outFile.write(content);
     }
 
-    qCInfo(KCMIPC) << "handleSave:" << nWallpapers << "wallpapers for" << homeDirPath;
+    qCInfo(KCMIPC) << "handleSave:" << payload.wallpapers.size() << "wallpapers for" << homeDirPath;
     return qMakePair(true, QString());
 }
 
