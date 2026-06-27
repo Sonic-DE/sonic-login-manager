@@ -2,6 +2,7 @@ include_directories(
     "${CMAKE_SOURCE_DIR}/src/common"
     "${CMAKE_SOURCE_DIR}/src/auth"
     "${CMAKE_BINARY_DIR}/src/common"
+    "${CMAKE_BINARY_DIR}/src/frontend/settings"
 )
 
 set(DAEMON_SOURCES
@@ -19,6 +20,7 @@ set(DAEMON_SOURCES
     DaemonApp.cpp
     Display.cpp
     DisplayManager.cpp
+    KcmIpcServer.cpp
     LogindDBusTypes.cpp
     Greeter.cpp
     PowerManager.cpp
@@ -55,7 +57,8 @@ target_link_libraries(soniclogin
                       Qt6::Qml
                       ${PAM_LIBRARIES}
                       KF6::ConfigCore
-                      KF6::ConfigGui)
+                      KF6::ConfigGui
+                      KF6::CoreAddons)
 
 
 install(TARGETS soniclogin DESTINATION "${CMAKE_INSTALL_BINDIR}")

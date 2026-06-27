@@ -16,6 +16,8 @@
 #include "sonicloginsettings.h"
 #include "wallpaperintegration.h"
 
+#include <functional>
+
 class UserModel;
 class SessionModel;
 
@@ -34,7 +36,6 @@ public:
     Q_PROPERTY(UserModel *userModel READ userModel CONSTANT)
     Q_PROPERTY(SessionModel *sessionModel READ sessionModel CONSTANT)
 
-    // TODO: Why not use directly? Could expose in SonicLoginSettings as Q_INVOKABLE
     Q_INVOKABLE QList<WallpaperInfo> availableWallpaperPlugins()
     {
         return SonicLoginSettings::getInstance().availableWallpaperPlugins();
@@ -45,7 +46,13 @@ public:
     Q_INVOKABLE bool KDEWalletAvailable();
     Q_INVOKABLE void openKDEWallet();
 
+    Q_INVOKABLE void submitAuth(const QString &username, const QString &password);
+    Q_INVOKABLE void cancelAuth();
+
+    Q_PROPERTY(QString currentUser READ currentUser CONSTANT)
+
     SonicLoginSettings *settings() const;
+    QString currentUser() const;
     QUrl wallpaperConfigFile() const;
     WallpaperIntegration *wallpaperIntegration() const;
     QString currentWallpaper() const;
@@ -63,29 +70,27 @@ public Q_SLOTS:
 Q_SIGNALS:
     void errorOccurred(const QString &untranslatedMessage);
     void syncAttempted();
+    void authRequired();
 
-    /**
-     * Emitted when the defaults function is called.
-     */
     void defaultsCalled();
-
     void isDefaultsWallpaperChanged();
-
     void currentWallpaperChanged();
-
-    /**
-     * Emitted when the load function is called.
-     */
     void loadCalled();
 
 private:
     bool isSaveNeeded() const override;
     bool isDefaults() const override;
 
-    QVariantMap syncWallpaper(const QUrl &url);
+    QJsonObject collectWallpapers(const QUrl &imageUri);
     KConfigPropertyMap *wallpaperConfiguration() const;
+
+    void sendToDaemon(const QString &op, const QJsonObject &args);
 
     WallpaperSettings *m_wallpaperSettings;
     QString m_currentWallpaper;
     bool m_forceUpdateState = false;
+
+    QString m_pendingAuthUser;
+    QString m_pendingAuthPassword;
+    std::function<void()> m_pendingContinuation;
 };

@@ -13,23 +13,36 @@ import org.kde.kcmutils as KCM
 import org.kde.kirigami as Kirigami
 
 Kirigami.Page {
-    // The following two must be set for correct alignment with wallpaper config
     id: appearanceRoot
     property alias parentLayout: parentLayout
-    // Plugins expect these two properties
     property var wallpaper: kcm.wallpaperIntegration
     property var configDialog: kcm
 
     title: i18nc("@title", "Appearance")
 
-    padding: 6  // Layout_ChildMarginWidth from Breeze
+    padding: 6
 
     ColumnLayout {
         anchors.fill: parent
         spacing: Kirigami.Units.smallSpacing
 
+        Kirigami.InlineMessage {
+            id: errorMessage
+            Layout.fillWidth: true
+            type: Kirigami.MessageType.Error
+            showCloseButton: true
+        }
+
+        Kirigami.InlineMessage {
+            id: successMessage
+            Layout.fillWidth: true
+            type: Kirigami.MessageType.Positive
+            text: i18nc("@info:status", "Settings applied successfully.")
+            showCloseButton: true
+        }
+
         Kirigami.FormLayout {
-            id: parentLayout // Don't change needed for correct alignment with wallpaper config
+            id: parentLayout
 
             QQC2.CheckBox {
                 Kirigami.FormData.label: i18n("Clock")
@@ -71,8 +84,87 @@ Kirigami.Page {
             sourceFile: kcm.wallpaperConfigFile
             onConfigurationChanged: kcm.updateState()
             onConfigurationForceChanged: kcm.forceUpdateState()
-            // Cancel out page margins so it touches the edges
             Layout.margins: -appearanceRoot.padding
+        }
+    }
+
+    Connections {
+        target: kcm
+
+        function onAuthRequired() {
+            authDialog.open()
+        }
+
+        function onSyncAttempted() {
+            authDialog.close()
+            errorMessage.visible = false
+            successMessage.visible = true
+            successHideTimer.restart()
+        }
+
+        function onErrorOccurred(untranslatedMessage) {
+            errorMessage.text = i18n(untranslatedMessage)
+            errorMessage.visible = untranslatedMessage.length > 0
+            successMessage.visible = false
+            errorHideTimer.restart()
+        }
+    }
+
+    Timer {
+        id: successHideTimer
+        interval: 5000
+        onTriggered: successMessage.visible = false
+    }
+
+    Timer {
+        id: errorHideTimer
+        interval: 8000
+        onTriggered: errorMessage.visible = false
+    }
+
+    Kirigami.PromptDialog {
+        id: authDialog
+
+        padding: Kirigami.Units.largeSpacing
+        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+
+        title: i18nc("@title:window", "Authentication Required")
+        subtitle: i18n("Enter your credentials to apply Sonic Login settings.")
+
+        onAccepted: kcm.submitAuth(usernameField.text, passwordField.text)
+        onRejected: kcm.cancelAuth()
+
+        onOpened: {
+            if (usernameField.text.length === 0) {
+                usernameField.text = kcm.currentUser
+            }
+            passwordField.text = ""
+            passwordField.forceActiveFocus()
+        }
+
+        ColumnLayout {
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                text: i18nc("@label:textbox", "Username:")
+                Layout.fillWidth: true
+            }
+            QQC2.TextField {
+                id: usernameField
+                Layout.fillWidth: true
+                onAccepted: passwordField.forceActiveFocus()
+            }
+            QQC2.Label {
+                text: i18nc("@label:textbox", "Password:")
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+            }
+            QQC2.TextField {
+                id: passwordField
+                Layout.fillWidth: true
+                echoMode: QQC2.TextField.Password
+                onAccepted: authDialog.accept()
+            }
         }
     }
 }

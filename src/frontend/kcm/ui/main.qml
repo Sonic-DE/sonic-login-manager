@@ -25,7 +25,7 @@ KCM.SimpleKCM {
 
     actions: [
         Kirigami.Action {
-            text: i18nc("@action:button", "Apply Plasma Settings…")
+            text: i18nc("@action:button", "Apply Desktop Settings…")
             icon.name: "plasma"
             onTriggered: syncSheet.open()
         },
@@ -36,22 +36,24 @@ KCM.SimpleKCM {
         }
     ]
 
-    header: Kirigami.InlineMessage {
-        id: errorMessage
-        position: Kirigami.InlineMessage.Position.Header
-        type: Kirigami.MessageType.Error
-        showCloseButton: true
-        Connections {
-            target: kcm
+    header: ColumnLayout {
+        spacing: 0
 
-            function onErrorOccurred(untranslatedMessage) {
-                errorMessage.text = i18n(untranslatedMessage);
-                errorMessage.visible = untranslatedMessage.length > 0
-            }
+        Kirigami.InlineMessage {
+            id: errorMessage
+            Layout.fillWidth: true
+            position: Kirigami.InlineMessage.Position.Header
+            type: Kirigami.MessageType.Error
+            showCloseButton: true
+        }
 
-            function onSyncAttempted() {
-                syncSheet.close()
-            }
+        Kirigami.InlineMessage {
+            id: successMessage
+            Layout.fillWidth: true
+            position: Kirigami.InlineMessage.Position.Header
+            type: Kirigami.MessageType.Positive
+            text: i18nc("@info:status", "Desktop Settings applied successfully.")
+            showCloseButton: true
         }
     }
 
@@ -61,10 +63,9 @@ KCM.SimpleKCM {
         padding: Kirigami.Units.largeSpacing
         standardButtons: Kirigami.Dialog.Cancel
 
-        title: i18nc("@title:window", "Apply Plasma Settings")
-        subtitle: i18n("This will make the Plasma login screen reflect your customizations to the following Plasma settings:") +
-                xi18nc("@info", "<para><list><item>Color scheme</item><item>Cursor theme and size</item><item>Font and font rendering</item><item>NumLock preference</item><item>Plasma theme</item><item>Scaling DPI</item><item>Screen configuration</item><item>Keyboard layouts</item></list></para>") +
-                i18n("Please note that theme files must be installed globally to be reflected on the Plasma login screen.")
+        title: i18nc("@title:window", "Apply Desktop Settings")
+        subtitle: i18n("This will make the SonicDE login screen reflect your customizations to the following desktop settings:") +
+                xi18nc("@info", "<para><list><item>Color scheme</item><item>Cursor theme and size</item><item>Font and font rendering</item><item>NumLock preference</item><item>Desktop theme</item><item>Scaling DPI</item><item>Screen configuration</item><item>Keyboard layouts</item></list></para>")
 
         customFooterActions: [
             Kirigami.Action {
@@ -78,6 +79,89 @@ KCM.SimpleKCM {
                 onTriggered: kcm.resetSynchronizedSettings()
             }
         ]
+    }
+
+    Kirigami.PromptDialog {
+        id: authDialog
+
+        padding: Kirigami.Units.largeSpacing
+        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+
+        title: i18nc("@title:window", "Authentication Required")
+        subtitle: i18n("Enter your credentials to apply Sonic Login settings.")
+
+        onAccepted: kcm.submitAuth(usernameField.text, passwordField.text)
+        onRejected: kcm.cancelAuth()
+
+        onOpened: {
+            if (usernameField.text.length === 0) {
+                usernameField.text = kcm.currentUser
+            }
+            passwordField.text = ""
+            passwordField.forceActiveFocus()
+        }
+
+        ColumnLayout {
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                text: i18nc("@label:textbox", "Username:")
+                Layout.fillWidth: true
+            }
+QQC2.TextField {
+                id: usernameField
+                Kirigami.FormData.label: i18nc("@label:textbox", "Username:")
+                onAccepted: passwordField.forceActiveFocus()
+            }
+            QQC2.Label {
+                text: i18nc("@label:textbox", "Password:")
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+            }
+            QQC2.TextField {
+                id: passwordField
+                Layout.fillWidth: true
+                echoMode: QQC2.TextField.Password
+                onAccepted: authDialog.accept()
+            }
+        }
+    }
+
+    Connections {
+        target: kcm
+
+        function onAuthRequired() {
+            if (root.isCurrentPage) {
+                authDialog.open()
+            }
+        }
+
+        function onSyncAttempted() {
+            authDialog.close()
+            syncSheet.close()
+            errorMessage.visible = false
+            successMessage.visible = true
+            successHideTimer.restart()
+        }
+
+        function onErrorOccurred(untranslatedMessage) {
+            errorMessage.text = i18n(untranslatedMessage)
+            errorMessage.visible = untranslatedMessage.length > 0
+            successMessage.visible = false
+            errorHideTimer.restart()
+        }
+    }
+
+    Timer {
+        id: successHideTimer
+        interval: 5000
+        onTriggered: successMessage.visible = false
+    }
+
+    Timer {
+        id: errorHideTimer
+        interval: 8000
+        onTriggered: errorMessage.visible = false
     }
 
     ColumnLayout {

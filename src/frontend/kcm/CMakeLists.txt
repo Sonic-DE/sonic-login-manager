@@ -13,14 +13,12 @@ target_include_directories(kcm_soniclogin PRIVATE
 target_link_libraries(kcm_soniclogin PRIVATE
     settings
     KF6::I18n
-    KF6::AuthCore
     KF6::KCMUtilsCore
     KF6::KCMUtilsQuick
     KF6::KIOGui
     KF6::Service
     Qt6::Core
+    Qt6::Network
 )
-
-add_subdirectory(auth)
 
 ki18n_install(po)

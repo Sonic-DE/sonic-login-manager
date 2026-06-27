@@ -17,6 +17,7 @@
 #include "DaemonApp.h"
 
 #include "DisplayManager.h"
+#include "KcmIpcServer.h"
 #include "LogindDBusTypes.h"
 #include "PowerManager.h"
 #include "SeatManager.h"
@@ -96,6 +97,23 @@ DaemonApp::DaemonApp(int &argc, char **argv)
     // create signal handler
     m_signalHandler = new SignalHandler(this);
 
+    // KCM IPC server (replaces the old KAuth/D-Bus helper). Root-only
+    // socket; the setuid helper connects on the KCM's behalf after PAM auth.
+    m_kcmIpcServer = new KcmIpcServer(this);
+    if (!m_kcmIpcServer->start()) {
+        qWarning() << "DaemonApp: KCM IPC server failed to start";
+    }
+
+    // Write PID file so the setuid helper can locate the daemon.
+    QDir().mkpath(QStringLiteral(RUNTIME_DIR));
+    {
+        QFile pidFile(QStringLiteral(RUNTIME_DIR "/daemon.pid"));
+        if (pidFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            pidFile.write(QByteArray::number(QCoreApplication::applicationPid()));
+            pidFile.close();
+        }
+    }
+
     // quit when SIGINT, SIGTERM received, with diagnostic logging
     connect(m_signalHandler, &SignalHandler::sigintReceived, this, [this] {
         pid_t ppid = getppid();
@@ -119,6 +137,7 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         pid_t ppid = getppid();
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: aboutToQuit emitted - parent process (PPID=" << ppid << ") is" << parentName;
+        QFile::remove(QStringLiteral(RUNTIME_DIR "/daemon.pid"));
     });
 
     // Add atexit handler to log when the application exits
@@ -180,6 +199,11 @@ SeatManager *DaemonApp::seatManager() const
 SignalHandler *DaemonApp::signalHandler() const
 {
     return m_signalHandler;
+}
+
+KcmIpcServer *DaemonApp::kcmIpcServer() const
+{
+    return m_kcmIpcServer;
 }
 
 int DaemonApp::newSessionId()

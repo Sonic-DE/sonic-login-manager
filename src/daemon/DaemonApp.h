@@ -26,6 +26,7 @@ namespace SONICLOGIN
 {
 class Configuration;
 class DisplayManager;
+class KcmIpcServer;
 class PowerManager;
 class SeatManager;
 class SignalHandler;
@@ -46,6 +47,7 @@ public:
 
     QString hostName() const;
     DisplayManager *displayManager() const;
+    KcmIpcServer *kcmIpcServer() const;
     PowerManager *powerManager() const;
     SeatManager *seatManager() const;
     SignalHandler *signalHandler() const;
@@ -62,6 +64,7 @@ private:
 
     bool m_testing{false};
     DisplayManager *m_displayManager{nullptr};
+    KcmIpcServer *m_kcmIpcServer{nullptr};
     PowerManager *m_powerManager{nullptr};
     SeatManager *m_seatManager{nullptr};
     SignalHandler *m_signalHandler{nullptr};
