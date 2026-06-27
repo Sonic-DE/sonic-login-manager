@@ -313,9 +313,6 @@ void SonicLoginKcm::cancelAuth()
     m_pendingContinuation = nullptr;
     m_pendingAuthUser.clear();
     m_pendingAuthPassword.clear();
-    // The user backed out of auth — the save wasn't applied, so mark the
-    // settings dirty again so the host's Apply button reflects that.
-    setNeedsSave(true);
 }
 
 void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)

@@ -32,7 +32,12 @@ KCM.SimpleKCM {
         Kirigami.Action {
             text: i18nc("@action:button", "Configure Appearance…")
             icon.name: "edit-image-symbolic"
-            onTriggered: kcm.push("Appearance.qml")
+            onTriggered: {
+                while (kcm.depth > 1) {
+                    kcm.pop()
+                }
+                kcm.push("Appearance.qml")
+            }
         }
     ]
 
@@ -81,59 +86,15 @@ KCM.SimpleKCM {
         ]
     }
 
-    Kirigami.PromptDialog {
+    AuthDialog {
         id: authDialog
-
-        padding: Kirigami.Units.largeSpacing
-        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
-
-        title: i18nc("@title:window", "Authentication Required")
-        subtitle: i18n("Enter your credentials to apply Sonic Login settings.")
-
-        onAccepted: kcm.submitAuth(usernameField.text, passwordField.text)
-        onRejected: kcm.cancelAuth()
-
-        onOpened: {
-            if (usernameField.text.length === 0) {
-                usernameField.text = kcm.currentUser
-            }
-            passwordField.text = ""
-            passwordField.forceActiveFocus()
-        }
-
-        ColumnLayout {
-            spacing: Kirigami.Units.smallSpacing
-
-            QQC2.Label {
-                text: i18nc("@label:textbox", "Username:")
-                Layout.fillWidth: true
-            }
-QQC2.TextField {
-                id: usernameField
-                Kirigami.FormData.label: i18nc("@label:textbox", "Username:")
-                onAccepted: passwordField.forceActiveFocus()
-            }
-            QQC2.Label {
-                text: i18nc("@label:textbox", "Password:")
-                Layout.fillWidth: true
-                Layout.topMargin: Kirigami.Units.smallSpacing
-            }
-            QQC2.TextField {
-                id: passwordField
-                Layout.fillWidth: true
-                echoMode: QQC2.TextField.Password
-                onAccepted: authDialog.accept()
-            }
-        }
     }
 
     Connections {
         target: kcm
 
         function onAuthRequired() {
-            if (root.isCurrentPage) {
-                authDialog.open()
-            }
+            authDialog.openAndClear()
         }
 
         function onSyncAttempted() {
