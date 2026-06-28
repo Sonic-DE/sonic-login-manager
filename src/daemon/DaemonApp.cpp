@@ -218,6 +218,14 @@ bool DaemonApp::tryLockFirstLogin()
     }
     m_firstloginLock = true;
 
+    // "Soft reboot" is a systemd-specific concept. On non-systemd init systems
+    // (OpenRC, runit, dinit, s6, BSD init) there is no equivalent, so treat
+    // the absence of systemd as "no soft reboot" and allow autologin to run.
+    if (!QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.systemd1"))) {
+        qInfo() << "DaemonApp::tryLockFirstLogin: systemd1 not registered on system bus; treating as no soft reboot";
+        return true;
+    }
+
     QDBusMessage msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
                                                       QStringLiteral("/org/freedesktop/systemd1"),
                                                       QStringLiteral("org.freedesktop.DBus.Properties"),
@@ -228,13 +236,13 @@ bool DaemonApp::tryLockFirstLogin()
     const QDBusMessage reply = QDBusConnection::systemBus().call(msg);
 
     if (reply.type() == QDBusMessage::ErrorMessage) {
-        qWarning() << "DBus error:" << reply.errorName() << "-" << reply.errorMessage();
+        qWarning() << "DaemonApp::tryLockFirstLogin: DBus error:" << reply.errorName() << "-" << reply.errorMessage();
         return false;
     }
 
     const QVariant soft_reboot_count = qvariant_cast<QDBusVariant>(reply.arguments().at(0)).variant();
     if (!soft_reboot_count.isValid()) {
-        qWarning() << "DBus variant is invalid:" << reply;
+        qWarning() << "DaemonApp::tryLockFirstLogin: DBus variant is invalid:" << reply;
         return false;
     }
 
