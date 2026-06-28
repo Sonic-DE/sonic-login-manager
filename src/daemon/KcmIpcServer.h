@@ -24,6 +24,12 @@ struct SavePayload {
     QList<QPair<QString, QByteArray>> wallpapers;
 };
 
+struct SyncPayload {
+    QList<QPair<QString, QString>> files;
+    // Cursor theme name -> raw tar archive of the theme directory.
+    QList<QPair<QString, QByteArray>> cursorThemes;
+};
+
 class KcmIpcServer : public QObject
 {
     Q_OBJECT
@@ -48,8 +54,8 @@ private:
 
     bool authenticate(const QString &username, const QString &password, QString *errorOut);
 
-    std::optional<QList<QPair<QString, QString>>> handleSyncRead(QDataStream &in);
-    QPair<bool, QString> handleSyncWrite(const QList<QPair<QString, QString>> &files);
+    std::optional<SyncPayload> handleSyncRead(QDataStream &in);
+    QPair<bool, QString> handleSyncWrite(const SyncPayload &payload);
 
     std::optional<SavePayload> handleSaveRead(QDataStream &in);
     QPair<bool, QString> handleSaveWrite(const SavePayload &payload);

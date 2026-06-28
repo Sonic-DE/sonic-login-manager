@@ -8,12 +8,16 @@
  */
 
 #include <QDataStream>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QList>
 #include <QLocalSocket>
 #include <QLoggingCategory>
+#include <QProcess>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
 
@@ -253,10 +257,29 @@ void SonicLoginKcm::synchronizeSettings() {
                                        QStringLiteral("kxkbrc")),
                 QStringLiteral("kxkbrc"));
 
+  // Locate the cursor theme named in kcminputrc and bundle it so the greeter
+  // can find its assets under the soniclogin user's $XCURSOR_PATH.
+  QJsonObject themes;
+  const QString kcminputrcPath = QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kcminputrc"));
+  if (!kcminputrcPath.isEmpty()) {
+      KConfig cfg(kcminputrcPath);
+      const QString cursorTheme = cfg.group(QStringLiteral("Mouse")).readEntry("cursorTheme", QString());
+      if (!cursorTheme.isEmpty()) {
+          const QByteArray themeTar = bundleCursorTheme(cursorTheme);
+          if (!themeTar.isEmpty()) {
+              themes[cursorTheme] = QString::fromLatin1(themeTar.toBase64());
+              qCInfo(KCMSONICLOGIN) << "synchronizeSettings: bundled cursor theme" << cursorTheme << "size=" << themeTar.size();
+          } else {
+              qCWarning(KCMSONICLOGIN) << "synchronizeSettings: could not bundle cursor theme" << cursorTheme << "(not found locally; relying on system path)";
+          }
+      }
+  }
+
   QByteArray argsJson;
   {
       QJsonObject args;
       args[QStringLiteral("files")] = files;
+      args[QStringLiteral("themes")] = themes;
       argsJson = QJsonDocument(args).toJson(QJsonDocument::Compact);
   }
 
@@ -369,6 +392,13 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
             out << static_cast<quint32>(files.size());
             for (auto it = files.constBegin(); it != files.constEnd(); ++it) {
                 out << it.key() << it.value().toString();
+            }
+            // Append cursor theme tarballs so the daemon can extract them
+            // into the soniclogin user's icons directory.
+            const QJsonObject themes = args.value(QStringLiteral("themes")).toObject();
+            out << static_cast<quint32>(themes.size());
+            for (auto it = themes.constBegin(); it != themes.constEnd(); ++it) {
+                out << it.key() << QByteArray::fromBase64(it.value().toString().toLatin1());
             }
         } else if (type == MsgSaveConfig) {
             const QString config = args.value(QStringLiteral("config")).toString();
@@ -517,3 +547,58 @@ void SonicLoginKcm::openKDEWallet() {
 #include "kcm.moc"
 
 #include "moc_kcm.cpp"
+
+QByteArray SonicLoginKcm::bundleCursorTheme(const QString &themeName)
+{
+    // Reject obviously unsafe names.
+    if (themeName.isEmpty() || themeName.contains(QLatin1Char('/')) || themeName.contains(QLatin1Char('\0')) || themeName == QStringLiteral(".")
+        || themeName == QStringLiteral("..")) {
+        return {};
+    }
+
+    // Look for the theme in standard XDG locations, preferring user-specific
+    // installations over system-wide ones (matching the cursor loader's
+    // precedence).
+    QStringList searchRoots;
+    searchRoots << QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/icons");
+    const QString homeIcons = QDir::homePath() + QStringLiteral("/.icons");
+    if (!searchRoots.contains(homeIcons)) {
+        searchRoots << homeIcons;
+    }
+    searchRoots << QStringLiteral("/usr/share/icons");
+    searchRoots << QStringLiteral("/usr/local/share/icons");
+
+    QString themeDir;
+    for (const QString &root : searchRoots) {
+        const QString candidate = root + QLatin1Char('/') + themeName;
+        if (QFileInfo::exists(candidate + QStringLiteral("/index.theme")) || QFileInfo::exists(candidate + QStringLiteral("/cursors"))) {
+            themeDir = candidate;
+            break;
+        }
+    }
+    if (themeDir.isEmpty()) {
+        return {};
+    }
+
+    // Use tar(1) to produce a deterministic archive of the theme directory
+    // contents. We strip the leading "<themeName>/" component by changing
+    // into the parent directory and archiving with the bare themeName.
+    QProcess tar;
+    tar.setProcessChannelMode(QProcess::MergedChannels);
+    const QString parentDir = QFileInfo(themeDir).absolutePath();
+    tar.start(QStringLiteral("tar"), {QStringLiteral("-cf"), QStringLiteral("-"), QStringLiteral("-C"), parentDir, themeName});
+    if (!tar.waitForStarted(5000)) {
+        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: failed to start tar:" << tar.errorString();
+        return {};
+    }
+    if (!tar.waitForFinished(30000)) {
+        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: tar timed out:" << tar.errorString();
+        tar.kill();
+        return {};
+    }
+    if (tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
+        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: tar failed:" << tar.readAll();
+        return {};
+    }
+    return tar.readAll();
+}

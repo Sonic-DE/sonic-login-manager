@@ -84,6 +84,11 @@ private:
     QJsonObject collectWallpapers(const QUrl &imageUri);
     KConfigPropertyMap *wallpaperConfiguration() const;
 
+    // Locate the cursor theme directory and pack it into a tar archive.
+    // Returns an empty QByteArray when the theme cannot be found in any of
+    // the standard XDG search paths.
+    static QByteArray bundleCursorTheme(const QString &themeName);
+
     void sendToDaemon(const QString &op, const QJsonObject &args);
 
     WallpaperSettings *m_wallpaperSettings;

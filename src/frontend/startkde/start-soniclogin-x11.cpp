@@ -48,17 +48,10 @@ int main(int argc, char **argv)
 
     qDebug() << "StartSonicLoginX11: Starting...";
 
-    createConfigDirectory();
-    setupCursor(true);
     signal(SIGTERM, sigtermHandler);
 
-    // Detect init system once and reuse the result
-    const InitSystem initSystem = detectInitSystem();
-
-    // Ensure greeter home and XDG directories exist before setupPlasmaEnvironment()
-    // and before greeter components start. This is needed on both systemd and
-    // non-systemd; systemd may provide environment variables but does not create
-    // these application-owned directories for the soniclogin system account.
+    // Point HOME/XDG_* at the soniclogin system account before anything that
+    // resolves configs (createConfigDirectory, setupCursor) reads them.
     QString greeterHome = QStringLiteral(STATE_DIR);
 
     const QString xdgConfigHome = greeterHome + QStringLiteral("/.config");
@@ -73,6 +66,12 @@ int main(int argc, char **argv)
     qputenv("XDG_CACHE_HOME", xdgCacheHome.toLocal8Bit());
     qputenv("XDG_DATA_HOME", xdgDataHome.toLocal8Bit());
     qputenv("XDG_STATE_HOME", xdgStateHome.toLocal8Bit());
+
+    createConfigDirectory();
+    setupCursor();
+
+    // Detect init system once and reuse the result
+    const InitSystem initSystem = detectInitSystem();
 
     // XDG_RUNTIME_DIR can still prefer an existing systemd-provided value.
     QString xdgRuntimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");

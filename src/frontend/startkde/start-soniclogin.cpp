@@ -138,8 +138,9 @@ void setEnvironmentVariable(const char *name, QByteArrayView value)
 void createConfigDirectory()
 {
     const QString configDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    qCInfo(PLASMA_STARTUP) << "createConfigDirectory: HOME=" << qgetenv("HOME") << "XDG_CONFIG_HOME=" << qgetenv("XDG_CONFIG_HOME") << "resolved=" << configDir;
     if (!QDir().mkpath(configDir)) {
-        out << "Could not create config directory XDG_CONFIG_HOME: " << configDir << '\n';
+        qCWarning(PLASMA_STARTUP) << "Could not create config directory XDG_CONFIG_HOME:" << configDir;
     }
 }
 
@@ -185,24 +186,43 @@ void runStartupConfig()
     }
 }
 
-void setupCursor(bool wayland)
+void setupCursor()
 {
-#ifdef XCURSOR_PATH
-    QByteArray path(XCURSOR_PATH);
-    path.replace("$XCURSOR_PATH", qgetenv("XCURSOR_PATH"));
-    qputenv("XCURSOR_PATH", path);
-#endif
+    // Build XCURSOR_PATH so the cursor loader can find themes synced from the
+    // user's session into the soniclogin home (under ~/.local/share/icons)
+    // and themes installed system-wide. The synced directory is listed first
+    // so user-selected themes take precedence.
+    const QString syncedIcons = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/icons");
+    QStringList cursorPath;
+    cursorPath << syncedIcons;
+    cursorPath << QStringLiteral("/usr/local/share/icons");
+    cursorPath << QStringLiteral("/usr/share/icons");
+    cursorPath << QStringLiteral("/var/lib/flatpak/exports/share/icons");
+    cursorPath << QString(qgetenv("XCURSOR_PATH"));
 
-    // TODO: consider linking directly
-    if (!wayland) {
-        const KConfig cfg(QStringLiteral("kcminputrc"));
-        const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
-
-        const auto cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
-        const auto cursorSize = inputCfg.readEntry("cursorSize", 24);
-
-        runSync(QStringLiteral("kapplymousetheme"), {cursorTheme, QString::number(cursorSize)});
+    // Deduplicate while preserving order.
+    QStringList uniquePath;
+    for (const QString &entry : std::as_const(cursorPath)) {
+        if (!entry.isEmpty() && !uniquePath.contains(entry)) {
+            uniquePath.append(entry);
+        }
     }
+    qputenv("XCURSOR_PATH", uniquePath.join(QLatin1Char(':')).toLocal8Bit());
+
+    // Apply the cursor synced from the desktop session via kcminputrc. Export
+    // XCURSOR_THEME/XCURSOR_SIZE so Qt apps in the greeter process tree (the
+    // QtQuick greeter scene) load it, then update the X root window cursor.
+    const QString kcminputrcPath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/kcminputrc");
+    const KConfig cfg(QStringLiteral("kcminputrc"));
+    const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
+
+    const auto cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
+    const auto cursorSize = inputCfg.readEntry("cursorSize", 24);
+
+    qputenv("XCURSOR_THEME", cursorTheme.toLocal8Bit());
+    qputenv("XCURSOR_SIZE", QByteArray::number(cursorSize));
+
+    runSync(QStringLiteral("kapplymousetheme"), {cursorTheme, QString::number(cursorSize)});
 }
 
 std::optional<QProcessEnvironment> getSystemdEnvironment()

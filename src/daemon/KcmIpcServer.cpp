@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QLoggingCategory>
+#include <QProcess>
 
 #include <fcntl.h>
 #include <grp.h>
@@ -174,7 +175,7 @@ void KcmIpcServer::onReadyRead()
     reader >> username >> password >> type >> id;
 
     // Read the full payload inside the transaction. No side effects yet.
-    std::optional<QList<QPair<QString, QString>>> syncFiles;
+    std::optional<SyncPayload> syncPayload;
     std::optional<SavePayload> savePayload;
 
     if (reader.status() != QDataStream::Ok) {
@@ -183,7 +184,7 @@ void KcmIpcServer::onReadyRead()
     }
 
     if (type == MsgSyncSettings) {
-        syncFiles = handleSyncRead(reader);
+        syncPayload = handleSyncRead(reader);
     } else if (type == MsgSaveConfig) {
         savePayload = handleSaveRead(reader);
     } else if (type == MsgResetSettings) {
@@ -206,8 +207,8 @@ void KcmIpcServer::onReadyRead()
 
     QPair<bool, QString> result;
     if (type == MsgSyncSettings) {
-        if (syncFiles) {
-            result = handleSyncWrite(*syncFiles);
+        if (syncPayload) {
+            result = handleSyncWrite(*syncPayload);
         } else {
             result = qMakePair(false, QStringLiteral("malformed sync payload"));
         }
@@ -333,27 +334,113 @@ static void chownRecursive(const QString &path)
     chownPath(path);
 }
 
-std::optional<QList<QPair<QString, QString>>> KcmIpcServer::handleSyncRead(QDataStream &in)
+std::optional<SyncPayload> KcmIpcServer::handleSyncRead(QDataStream &in)
 {
+    SyncPayload payload;
+
     quint32 nFiles = 0;
     in >> nFiles;
 
-    QList<QPair<QString, QString>> files;
-    files.reserve(nFiles);
+    payload.files.reserve(nFiles);
     for (quint32 i = 0; i < nFiles; ++i) {
         QString name;
         QString content;
         in >> name >> content;
-        files.append(qMakePair(name, content));
+        payload.files.append(qMakePair(name, content));
+    }
+
+    quint32 nThemes = 0;
+    in >> nThemes;
+
+    payload.cursorThemes.reserve(nThemes);
+    for (quint32 i = 0; i < nThemes; ++i) {
+        QString themeName;
+        QByteArray tarBytes;
+        in >> themeName >> tarBytes;
+        payload.cursorThemes.append(qMakePair(themeName, tarBytes));
     }
 
     if (in.status() != QDataStream::Ok) {
         return std::nullopt;
     }
-    return files;
+    return payload;
 }
 
-QPair<bool, QString> KcmIpcServer::handleSyncWrite(const QList<QPair<QString, QString>> &files)
+static QPair<bool, QString> extractCursorTheme(const QString &homeDir, const QString &themeName, const QByteArray &tarBytes)
+{
+    // Reject obviously unsafe names that could escape the icons directory.
+    if (themeName.isEmpty() || themeName.contains(QLatin1Char('/')) || themeName.contains(QLatin1Char('\\')) || themeName.contains(QLatin1Char('\0'))
+        || themeName == QStringLiteral(".") || themeName == QStringLiteral("..")) {
+        return qMakePair(false, QStringLiteral("refusing to extract unsafe theme name"));
+    }
+
+    QDir iconsDir(homeDir + QStringLiteral("/.local/share/icons"));
+    if (!iconsDir.exists()) {
+        // mkpath creates all missing intermediates ("<home>/.local",
+        // "<home>/.local/share") and the icons directory itself, and
+        // returns true if the directory exists or was created. Note that
+        // QDir::mkdir(name) cannot be used here: it creates <iconsDir>/<name>
+        // rather than the iconsDir path itself, which is the bug that
+        // produced "could not create .local/share/icons" on first sync.
+        const QString iconsPath = iconsDir.absolutePath();
+        if (!QDir().mkpath(iconsPath)) {
+            return qMakePair(false, QStringLiteral("could not create %1").arg(iconsPath));
+        }
+        // Chown and chmod the intermediates we (may have) created so the
+        // soniclogin user owns and can write to its icons directory tree.
+        // mkpath returns true both for newly created and pre-existing
+        // directories; chowning an already-correct path is harmless.
+        const QString localPath = homeDir + QStringLiteral("/.local");
+        const QString sharePath = homeDir + QStringLiteral("/.local/share");
+        for (const QString &p : {localPath, sharePath, iconsPath}) {
+            QFile::setPermissions(p, standardDirectoryPermissions);
+            chownPath(p);
+        }
+    }
+
+    const QString themeDir = iconsDir.absoluteFilePath(themeName);
+    // Remove any previously synced copy of this theme so we don't mix stale
+    // files with the freshly extracted set.
+    QDir existing(themeDir);
+    if (existing.exists()) {
+        existing.removeRecursively();
+    }
+
+    QProcess tar;
+    tar.setProcessChannelMode(QProcess::MergedChannels);
+    // Extract into iconsDir so that the resulting layout is
+    // <homeDir>/.local/share/icons/<themeName>/...
+    tar.setWorkingDirectory(iconsDir.absolutePath());
+    tar.start(QStringLiteral("tar"), {QStringLiteral("-xf"), QStringLiteral("-")});
+    if (!tar.waitForStarted(5000)) {
+        return qMakePair(false, QStringLiteral("failed to start tar: %1").arg(tar.errorString()));
+    }
+    tar.write(tarBytes);
+    tar.closeWriteChannel();
+    if (!tar.waitForFinished(60000)) {
+        tar.kill();
+        return qMakePair(false, QStringLiteral("tar extraction timed out"));
+    }
+    if (tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
+        return qMakePair(false, QStringLiteral("tar extraction failed: %1").arg(QString::fromLocal8Bit(tar.readAll().trimmed())));
+    }
+    if (!QFileInfo::exists(themeDir)) {
+        return qMakePair(false, QStringLiteral("tar did not produce expected theme directory"));
+    }
+
+    // Drop a marker file so reset() knows this is a synced theme we own.
+    const QString markerPath = themeDir + QStringLiteral("/.soniclogin-synced");
+    QFile marker(markerPath);
+    if (marker.open(QFile::WriteOnly | QFile::Text | QFile::Truncate)) {
+        marker.write("synced from user session\n");
+        marker.close();
+    }
+    chownRecursive(themeDir);
+
+    return qMakePair(true, QString());
+}
+
+QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
 {
     QString homeDir;
     if (auto opt = sonicloginUserHomeDir()) {
@@ -381,7 +468,7 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const QList<QPair<QString, QS
 
     QStringList fileNames;
     QHash<QString, QString> contents;
-    for (const auto &file : files) {
+    for (const auto &file : payload.files) {
         fileNames.append(file.first);
         contents.insert(file.first, file.second);
     }
@@ -406,7 +493,18 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const QList<QPair<QString, QS
     createConfigFile(QStringLiteral("fontconfig/fonts.conf"));
     createConfigFile(QStringLiteral("kxkbrc"));
 
-    qCInfo(KCMIPC) << "handleSync:" << files.size() << "files for" << homeDir;
+    // Extract any bundled cursor themes into the soniclogin user's icons
+    // directory so the greeter can load them via $XCURSOR_PATH.
+    QStringList extractedCursorThemes;
+    for (const auto &theme : payload.cursorThemes) {
+        auto result = extractCursorTheme(homeDir, theme.first, theme.second);
+        if (result.first) {
+            extractedCursorThemes.append(theme.first);
+        } else {
+            qCWarning(KCMIPC) << "handleSync: failed to extract cursor theme" << theme.first << ":" << result.second;
+        }
+    }
+
     return qMakePair(true, QString());
 }
 
@@ -434,6 +532,19 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
     QFile(homeDir + QStringLiteral("/.config/kcminputrc")).remove();
     QFile(homeDir + QStringLiteral("/.config/kwinoutputconfig.json")).remove();
     QFile(homeDir + QStringLiteral("/.config/kxkbrc")).remove();
+
+    // Remove any cursor theme directories we synced from the user's session.
+    // We identify them by the marker file left behind during extraction so we
+    // never delete a theme that the soniclogin user installed independently.
+    QDir iconsDir(homeDir + QStringLiteral("/.local/share/icons"));
+    if (iconsDir.exists()) {
+        const QFileInfoList entries = iconsDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const QFileInfo &entry : entries) {
+            if (QFile::exists(entry.absoluteFilePath() + QStringLiteral("/.soniclogin-synced"))) {
+                QDir(entry.absoluteFilePath()).removeRecursively();
+            }
+        }
+    }
 
     qCInfo(KCMIPC) << "handleReset:" << homeDir;
     return qMakePair(true, QString());
