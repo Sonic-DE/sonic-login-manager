@@ -15,8 +15,6 @@
 #include <QDBusConnection>
 #include <QDBusError>
 
-Q_LOGGING_CATEGORY(KCMSONICLOGIN, "soniclogin.wallpaper")
-
 #include <KConfig>
 #include <KConfigGroup>
 #include <KConfigLoader>
@@ -30,9 +28,19 @@ Q_LOGGING_CATEGORY(KCMSONICLOGIN, "soniclogin.wallpaper")
 
 #include "wallpaperapp.h"
 
+#include "MessageHandler.h"
+
+void WallpaperAppMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
+{
+    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPERAPP"), msg);
+}
+
 WallpaperApp::WallpaperApp(int &argc, char **argv)
     : QGuiApplication(argc, argv)
 {
+    // Install message handler to log to soniclogin.log
+    qInstallMessageHandler(WallpaperAppMessageHandler);
+
     m_wallpaperPackage = KPackage::PackageLoader::self()->loadPackage(QStringLiteral("Plasma/Wallpaper"));
     m_wallpaperPackage.setPath(SonicLoginSettings::getInstance().wallpaperPluginId());
 
@@ -58,7 +66,7 @@ WallpaperApp::~WallpaperApp()
 void WallpaperApp::adoptScreen(QScreen *screen)
 {
     if (screen->geometry().isNull()) {
-        qCWarning(KCMSONICLOGIN) << "adoptScreen: Screen" << screen->name() << "has null geometry, deferring.";
+        qWarning() << "adoptScreen: Screen" << screen->name() << "has null geometry, deferring.";
         connect(screen, &QScreen::geometryChanged, this, [this, screen]() {
             if (!screen->geometry().isNull()) {
                 QObject::disconnect(sender());

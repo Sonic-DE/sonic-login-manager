@@ -24,8 +24,6 @@
 #include <pwd.h>
 #include <unistd.h>
 
-Q_LOGGING_CATEGORY(KCMSONICLOGIN, "soniclogin.kcm")
-
 #include <KConfigLoader>
 #include <KConfigPropertyMap>
 #include <KIO/ApplicationLauncherJob>
@@ -114,7 +112,7 @@ void SonicLoginKcm::save()
                 .writeEntry(item->key(), wallpaperConfig->value(item->key()));
         }
     } else {
-        qCWarning(KCMSONICLOGIN) << "save: no wallpaper configuration available; skipping wallpaper settings";
+        qWarning() << "save: no wallpaper configuration available; skipping wallpaper settings";
     }
 
     QJsonObject wallpaperPayload;
@@ -263,10 +261,9 @@ void SonicLoginKcm::synchronizeSettings()
             const QByteArray themeTar = bundleCursorTheme(cursorTheme);
             if (!themeTar.isEmpty()) {
                 themes[cursorTheme] = QString::fromLatin1(themeTar.toBase64());
-                qCInfo(KCMSONICLOGIN) << "synchronizeSettings: bundled cursor theme" << cursorTheme << "size=" << themeTar.size();
+                qInfo() << "synchronizeSettings: bundled cursor theme" << cursorTheme << "size=" << themeTar.size();
             } else {
-                qCWarning(KCMSONICLOGIN) << "synchronizeSettings: could not bundle cursor theme" << cursorTheme
-                                         << "(not found locally; relying on system path)";
+                qWarning() << "synchronizeSettings: could not bundle cursor theme" << cursorTheme << "(not found locally; relying on system path)";
             }
         }
     }
@@ -324,11 +321,11 @@ void SonicLoginKcm::synchronizeSettings()
         addDir(QStringLiteral("outputs"));
         addDir(QStringLiteral("control/configs"));
 
-        qCInfo(KCMSONICLOGIN) << "synchronizeSettings: collected" << kscreenFiles.size() << "kscreen entries from" << kscreenDataDir;
+        qInfo() << "synchronizeSettings: collected" << kscreenFiles.size() << "kscreen entries from" << kscreenDataDir;
         for (auto it = kscreenFiles.constBegin(); it != kscreenFiles.constEnd(); ++it) {
             const QString rel = it.key();
             const QByteArray decoded = QByteArray::fromBase64(it.value().toString().toLatin1());
-            qCInfo(KCMSONICLOGIN) << "synchronizeSettings:   kscreen file" << rel << "size=" << decoded.size();
+            qInfo() << "synchronizeSettings:   kscreen file" << rel << "size=" << decoded.size();
         }
 
         args[QStringLiteral("themes")] = themes;
@@ -663,16 +660,16 @@ QByteArray SonicLoginKcm::bundleCursorTheme(const QString &themeName)
     const QString parentDir = QFileInfo(themeDir).absolutePath();
     tar.start(QStringLiteral("tar"), {QStringLiteral("-cf"), QStringLiteral("-"), QStringLiteral("-C"), parentDir, themeName});
     if (!tar.waitForStarted(5000)) {
-        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: failed to start tar:" << tar.errorString();
+        qWarning() << "bundleCursorTheme: failed to start tar:" << tar.errorString();
         return {};
     }
     if (!tar.waitForFinished(30000)) {
-        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: tar timed out:" << tar.errorString();
+        qWarning() << "bundleCursorTheme: tar timed out:" << tar.errorString();
         tar.kill();
         return {};
     }
     if (tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
-        qCWarning(KCMSONICLOGIN) << "bundleCursorTheme: tar failed:" << tar.readAll();
+        qWarning() << "bundleCursorTheme: tar failed:" << tar.readAll();
         return {};
     }
     return tar.readAll();

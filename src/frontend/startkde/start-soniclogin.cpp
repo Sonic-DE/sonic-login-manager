@@ -14,7 +14,6 @@
 
 #include <ranges>
 
-#include "debug.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -82,7 +81,7 @@ void gentleTermination(QProcess *p)
     if (!p->waitForFinished(5000)) {
         p->kill();
         if (!p->waitForFinished(5000)) {
-            qCWarning(PLASMA_STARTUP) << "Could not fully finish the process" << p->program();
+            qWarning() << "Could not fully finish the process" << p->program();
         }
     }
 }
@@ -138,9 +137,9 @@ void setEnvironmentVariable(const char *name, QByteArrayView value)
 void createConfigDirectory()
 {
     const QString configDir = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
-    qCInfo(PLASMA_STARTUP) << "createConfigDirectory: HOME=" << qgetenv("HOME") << "XDG_CONFIG_HOME=" << qgetenv("XDG_CONFIG_HOME") << "resolved=" << configDir;
+    qInfo() << "createConfigDirectory: HOME=" << qgetenv("HOME") << "XDG_CONFIG_HOME=" << qgetenv("XDG_CONFIG_HOME") << "resolved=" << configDir;
     if (!QDir().mkpath(configDir)) {
-        qCWarning(PLASMA_STARTUP) << "Could not create config directory XDG_CONFIG_HOME:" << configDir;
+        qWarning() << "Could not create config directory XDG_CONFIG_HOME:" << configDir;
     }
 }
 
@@ -432,7 +431,7 @@ static void dropSessionVarsFromSystemdEnvironment()
     msg << varsToDrop;
     auto reply = QDBusConnection::sessionBus().call(msg);
     if (reply.type() == QDBusMessage::ErrorMessage) {
-        // qCWarning(PLASMA_STARTUP) << "Failed to unset systemd environment variables:" << reply.errorName() << reply.errorMessage();
+        qWarning() << "Failed to unset systemd environment variables:" << reply.errorName() << reply.errorMessage();
     }
 }
 

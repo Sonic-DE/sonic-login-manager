@@ -9,7 +9,6 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
-ecm_qt_declare_logging_category(start-soniclogin_SRCS HEADER debug.h IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup)
 
 add_executable(start-soniclogin-x11 start-soniclogin-x11.cpp start-soniclogin.cpp ${start-soniclogin_SRCS})
 

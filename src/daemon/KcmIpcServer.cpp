@@ -6,6 +6,8 @@
 
 #include "KcmIpcServer.h"
 
+#include "MessageHandler.h"
+
 #include "Constants.h"
 
 #include <QCoreApplication>
@@ -43,8 +45,6 @@ constexpr quint32 MsgResponse = 100;
 constexpr QFile::Permissions standardPermissions = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
 constexpr QFile::Permissions standardDirectoryPermissions =
     QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner | QFile::ReadGroup | QFile::ExeGroup | QFile::ReadOther | QFile::ExeOther;
-
-Q_LOGGING_CATEGORY(KCMIPC, "soniclogin.kcmipc")
 
 struct PamConvData {
     QString password;
@@ -98,7 +98,7 @@ QString KcmIpcServer::boundSocketName() const
 bool KcmIpcServer::start()
 {
     if (m_server) {
-        qCWarning(KCMIPC) << "KcmIpcServer: already started";
+        qWarning() << "KcmIpcServer: already started";
         return false;
     }
 
@@ -116,13 +116,13 @@ bool KcmIpcServer::start()
     QLocalServer::removeServer(name);
 
     if (!m_server->listen(name)) {
-        qCWarning(KCMIPC) << "KcmIpcServer: failed to listen on" << name << ":" << m_server->errorString();
+        qWarning() << "KcmIpcServer: failed to listen on" << name << ":" << m_server->errorString();
         delete m_server;
         m_server = nullptr;
         return false;
     }
 
-    qCInfo(KCMIPC) << "KcmIpcServer: listening on" << m_server->fullServerName();
+    qInfo() << "KcmIpcServer: listening on" << m_server->fullServerName();
 
     connect(m_server, &QLocalServer::newConnection, this, &KcmIpcServer::onNewConnection);
 
@@ -134,7 +134,7 @@ void KcmIpcServer::stop()
     if (!m_server) {
         return;
     }
-    qCInfo(KCMIPC) << "KcmIpcServer: stopping on" << m_server->fullServerName();
+    qInfo() << "KcmIpcServer: stopping on" << m_server->fullServerName();
     m_server->close();
     m_server->deleteLater();
     m_server = nullptr;
@@ -190,7 +190,7 @@ void KcmIpcServer::onReadyRead()
     } else if (type == MsgResetSettings) {
         // handleReset reads no payload; just commit the header.
     } else {
-        qCWarning(KCMIPC) << "KcmIpcServer: unknown messageType" << type;
+        qWarning() << "KcmIpcServer: unknown messageType" << type;
     }
 
     if (!reader.commitTransaction()) {
@@ -233,7 +233,7 @@ void KcmIpcServer::onDisconnected()
     if (!socket) {
         return;
     }
-    qCInfo(KCMIPC) << "KcmIpcServer: client disconnected:" << socket;
+    qInfo() << "KcmIpcServer: client disconnected:" << socket;
     socket->deleteLater();
 }
 
@@ -512,7 +512,7 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         if (result.first) {
             extractedCursorThemes.append(theme.first);
         } else {
-            qCWarning(KCMIPC) << "handleSync: failed to extract cursor theme" << theme.first << ":" << result.second;
+            qWarning() << "handleSync: failed to extract cursor theme" << theme.first << ":" << result.second;
         }
     }
 
@@ -522,24 +522,24 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         const QString &relPath = kscreen.first;
         if (relPath.isEmpty() || relPath.startsWith(QLatin1Char('/')) || relPath.startsWith(QLatin1Char('\\')) || relPath.contains(QStringLiteral(".."))
             || relPath.contains(QLatin1Char('\0'))) {
-            qCWarning(KCMIPC) << "handleSync: refusing to write suspicious kscreen path" << relPath;
+            qWarning() << "handleSync: refusing to write suspicious kscreen path" << relPath;
             continue;
         }
         const QString fullPath = kscreenRoot + QLatin1Char('/') + relPath;
         const QString parentDir = QFileInfo(fullPath).absolutePath();
         if (!QDir().mkpath(parentDir)) {
-            qCWarning(KCMIPC) << "handleSync: failed to create kscreen directory for" << relPath;
+            qWarning() << "handleSync: failed to create kscreen directory for" << relPath;
             continue;
         }
         QFile out(fullPath);
         if (!out.open(QFile::WriteOnly | QFile::Text | QFile::Truncate)) {
-            qCWarning(KCMIPC) << "handleSync: failed to open kscreen file for writing" << fullPath << ":" << out.errorString();
+            qWarning() << "handleSync: failed to open kscreen file for writing" << fullPath << ":" << out.errorString();
             continue;
         }
         out.write(kscreen.second);
         out.close();
         extractedKscreenFiles.append(relPath);
-        qCInfo(KCMIPC) << "handleSync: wrote kscreen file" << fullPath << "size=" << kscreen.second.size();
+        qInfo() << "handleSync: wrote kscreen file" << fullPath << "size=" << kscreen.second.size();
     }
 
     for (const QString &dir : {
@@ -551,7 +551,7 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         if (QFileInfo(dir).exists()) {
             chownPath(dir);
             chownRecursive(dir);
-            qCInfo(KCMIPC) << "handleSync: chowned" << dir;
+            qInfo() << "handleSync: chowned" << dir;
         }
     }
 
@@ -568,8 +568,8 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         }
     }
 
-    qCInfo(KCMIPC) << "handleSync:" << payload.files.size() << "files," << extractedCursorThemes.size() << "cursor themes," << extractedKscreenFiles.size()
-                   << "kscreen files for" << homeDir;
+    qInfo() << "handleSync:" << payload.files.size() << "files," << extractedCursorThemes.size() << "cursor themes," << extractedKscreenFiles.size()
+            << "kscreen files for" << homeDir;
     return qMakePair(true, QString());
 }
 
@@ -616,7 +616,7 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
         QDir(kscreenRoot).removeRecursively();
     }
 
-    qCInfo(KCMIPC) << "handleReset:" << homeDir;
+    qInfo() << "handleReset:" << homeDir;
     return qMakePair(true, QString());
 }
 
@@ -670,7 +670,7 @@ QPair<bool, QString> KcmIpcServer::handleSaveWrite(const SavePayload &payload)
     if (wallpaperDir.exists()) {
         chownRecursive(wallpaperDir.path());
         if (!wallpaperDir.removeRecursively()) {
-            qCWarning(KCMIPC) << "Could not clean old wallpaper directory";
+            qWarning() << "Could not clean old wallpaper directory";
         }
     }
     homeDir.mkdir(QStringLiteral("wallpapers"));
@@ -689,18 +689,18 @@ QPair<bool, QString> KcmIpcServer::handleSaveWrite(const SavePayload &payload)
         const QByteArray &content = wp.second;
 
         if (wallpaper.isEmpty()) {
-            qCWarning(KCMIPC) << "Skipping wallpaper with empty key";
+            qWarning() << "Skipping wallpaper with empty key";
             continue;
         }
         if (wallpaper.contains(QStringLiteral(".."))) {
-            qCWarning(KCMIPC) << "Badly formed wallpaper name detected, aborting";
+            qWarning() << "Badly formed wallpaper name detected, aborting";
             return qMakePair(false, QStringLiteral("badly formed wallpaper name"));
         }
 
         const QString relativeFilePath = QStringLiteral("wallpapers/") + wallpaper;
         const QString relativeParentDirectory = relativeFilePath.left(relativeFilePath.lastIndexOf(QLatin1Char('/')));
         if (!homeDir.mkpath(relativeParentDirectory)) {
-            qCWarning(KCMIPC) << "Could not create new wallpaper directory" << relativeParentDirectory;
+            qWarning() << "Could not create new wallpaper directory" << relativeParentDirectory;
             return qMakePair(false, QStringLiteral("could not create wallpaper directory"));
         }
 
@@ -715,20 +715,20 @@ QPair<bool, QString> KcmIpcServer::handleSaveWrite(const SavePayload &payload)
         int outFd = openat(rootWallpaperFd, wallpaper.toUtf8().constData(), O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 #endif
         if (outFd < 0) {
-            qCWarning(KCMIPC) << "Could not open wallpaper file" << wallpaper << "in" << wallpaperDir.path() << ":" << strerror(errno);
+            qWarning() << "Could not open wallpaper file" << wallpaper << "in" << wallpaperDir.path() << ":" << strerror(errno);
             return qMakePair(false, QStringLiteral("could not open wallpaper file"));
         }
 
         QFile outFile;
         if (!outFile.open(outFd, QIODevice::WriteOnly | QIODevice::Truncate, QFileDevice::AutoCloseHandle)) {
-            qCWarning(KCMIPC) << "Could not open wallpaper file from FD.";
+            qWarning() << "Could not open wallpaper file from FD.";
             return qMakePair(false, QStringLiteral("could not open wallpaper file from FD"));
         }
 
         outFile.write(content);
     }
 
-    qCInfo(KCMIPC) << "handleSave:" << payload.wallpapers.size() << "wallpapers for" << homeDirPath;
+    qInfo() << "handleSave:" << payload.wallpapers.size() << "wallpapers for" << homeDirPath;
     return qMakePair(true, QString());
 }
 
