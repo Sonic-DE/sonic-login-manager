@@ -5,3 +5,4 @@ Requires=soniclogin.service
 BindsTo=soniclogin.service
 
 Wants=plasma-wallpaper.service
+Wants=soniclogin-apply-kscreen.service

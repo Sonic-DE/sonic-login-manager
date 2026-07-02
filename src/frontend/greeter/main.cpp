@@ -10,6 +10,7 @@
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QGuiApplication>
+#include <QHash>
 #include <QObject>
 #include <QProcess>
 #include <QQmlContext>
@@ -51,23 +52,38 @@ public:
     static bool testModeEnabled();
 
 private:
+    QHash<QScreen *, PlasmaQuick::QuickViewSharedEngine *> m_windows;
+
     void createWindowForScreen(QScreen *screen)
     {
-        auto *window = new PlasmaQuick::QuickViewSharedEngine();
+        if (screen->geometry().isNull()) {
+            qWarning() << "createWindowForScreen: Screen" << screen->name() << "has null geometry, deferring.";
+            connect(screen, &QScreen::geometryChanged, this, [this, screen]() {
+                if (!screen->geometry().isNull()) {
+                    QObject::disconnect(sender());
+                    createWindowForScreen(screen);
+                }
+            });
+            return;
+        }
+
+        auto *window = m_windows.value(screen, nullptr);
+        if (window) {
+            if (window->geometry() != screen->geometry()) {
+                window->setGeometry(screen->geometry());
+                window->raise();
+                window->show();
+            }
+            return;
+        }
+
+        window = new PlasmaQuick::QuickViewSharedEngine();
         window->QObject::setParent(this);
         window->setScreen(screen);
         window->setColor(s_testMode ? Qt::darkGray : Qt::transparent);
 
-        connect(qApp, &QGuiApplication::screenRemoved, window, [window](QScreen *screenRemoved) {
-            if (screenRemoved == window->screen()) {
-                delete window;
-            }
-        });
-
         window->setGeometry(screen->geometry());
-
         window->setResizeMode(PlasmaQuick::QuickViewSharedEngine::SizeRootObjectToView);
-
         window->setFlags(Qt::BypassWindowManagerHint);
 
         auto *greeterEventFilter = new GreeterEventFilter(this);
@@ -80,6 +96,21 @@ private:
         // Raise greeter above wallpaper and ensure keyboard focus
         window->raise();
         window->requestActivate();
+
+        m_windows.insert(screen, window);
+
+        connect(qApp, &QGuiApplication::screenRemoved, this, [this, window](QScreen *screenRemoved) {
+            if (screenRemoved == window->screen()) {
+                m_windows.remove(window->screen());
+                delete window;
+            }
+        });
+
+        connect(screen, &QScreen::geometryChanged, window, [window]() {
+            if (auto *s = window->screen()) {
+                window->setGeometry(s->geometry());
+            }
+        });
     }
 
     static bool s_testMode;

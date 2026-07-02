@@ -41,6 +41,7 @@ WallpaperApp::WallpaperApp(int &argc, char **argv)
     }
 
     connect(this, &QGuiApplication::screenAdded, this, &WallpaperApp::adoptScreen);
+    connect(this, &QGuiApplication::screenRemoved, this, &WallpaperApp::removeScreen);
 
     auto bus = QDBusConnection::sessionBus();
     bus.registerObject(QStringLiteral("/Wallpaper"), this, QDBusConnection::ExportScriptableSlots);
@@ -57,7 +58,25 @@ WallpaperApp::~WallpaperApp()
 void WallpaperApp::adoptScreen(QScreen *screen)
 {
     if (screen->geometry().isNull()) {
+        qCWarning(KCMSONICLOGIN) << "adoptScreen: Screen" << screen->name() << "has null geometry, deferring.";
+        connect(screen, &QScreen::geometryChanged, this, [this, screen]() {
+            if (!screen->geometry().isNull()) {
+                QObject::disconnect(sender());
+                adoptScreen(screen);
+            }
+        });
         return;
+    }
+
+    for (WallpaperWindow *window : std::as_const(m_windows)) {
+        if (window->screen() == screen) {
+            if (window->geometry() != screen->geometry()) {
+                window->setGeometry(screen->geometry());
+                window->raise();
+                window->show();
+            }
+            return;
+        }
     }
 
     WallpaperWindow *window = new WallpaperWindow(screen);
@@ -71,6 +90,17 @@ void WallpaperApp::adoptScreen(QScreen *screen)
     });
 
     setupWallpaperPlugin(window);
+}
+
+void WallpaperApp::removeScreen(QScreen *screen)
+{
+    for (int i = m_windows.size() - 1; i >= 0; --i) {
+        WallpaperWindow *window = m_windows.at(i);
+        if (window->screen() == screen) {
+            m_windows.removeAt(i);
+            window->deleteLater();
+        }
+    }
 }
 
 void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)

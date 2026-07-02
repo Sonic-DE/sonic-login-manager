@@ -28,6 +28,9 @@ struct SyncPayload {
     QList<QPair<QString, QString>> files;
     // Cursor theme name -> raw tar archive of the theme directory.
     QList<QPair<QString, QByteArray>> cursorThemes;
+    // KScreen per-output and combined config JSONs, keyed by their path
+    // relative to the user's $XDG_DATA_HOME/kscreen/ directory.
+    QList<QPair<QString, QByteArray>> kscreenFiles;
 };
 
 class KcmIpcServer : public QObject

@@ -10,6 +10,7 @@
 #include <KConfigGroup>
 #include <QDBusArgument>
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDebug>
@@ -18,8 +19,21 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QThread>
+#include <QTimer>
 
-#include <QCoreApplication>
+#include <KScreen/Config>
+#include <KScreen/ConfigMonitor>
+#include <KScreen/GetConfigOperation>
+#include <KScreen/Mode>
+#include <KScreen/Output>
+#include <KScreen/SetConfigOperation>
+#include <QGuiApplication>
+#include <QJsonDocument>
+#include <QPoint>
+#include <QRegularExpression>
+#include <QSet>
+#include <QSize>
+#include <QtNumeric>
 #include <qdbusservicewatcher.h>
 #include <signal.h>
 
@@ -39,9 +53,277 @@ void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const
     SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
 }
 
+static QSet<QString> s_lastAppliedLiveHashes;
+
+static void doApply(KScreen::ConfigPtr config, const QString &kscreenDir)
+{
+    if (!config) {
+        return;
+    }
+
+    QSet<QString> liveHashes;
+    for (const auto &output : config->outputs()) {
+        if (output->isConnected()) {
+            liveHashes.insert(output->hash());
+        }
+    }
+    qDebug() << "applyKScreen: live connected outputs:" << liveHashes.size();
+
+    if (liveHashes == s_lastAppliedLiveHashes) {
+        qDebug() << "applyKScreen: live output set unchanged, skipping";
+        return;
+    }
+
+    QString candidatePath;
+    const QString liveHash = config->connectedOutputsHash();
+    const QString liveCandidate = kscreenDir + QLatin1Char('/') + liveHash;
+    if (QFile::exists(liveCandidate)) {
+        candidatePath = liveCandidate;
+        qDebug() << "applyKScreen: using live hash config" << candidatePath;
+    } else {
+        qDebug() << "applyKScreen: no synced config for live hash" << liveHash << ", scanning for most-recent matching synced config";
+        QDir dir(kscreenDir);
+        const QFileInfoList entries = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Time | QDir::Reversed);
+        QRegularExpression hashRegex(QStringLiteral("^[0-9a-f]{32}$"));
+        for (const QFileInfo &fi : entries) {
+            if (!hashRegex.match(fi.fileName()).hasMatch()) {
+                continue;
+            }
+            QFile f(fi.absoluteFilePath());
+            if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                continue;
+            }
+            QJsonParseError err;
+            const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+            if (doc.isNull() || !doc.isArray()) {
+                continue;
+            }
+            bool intersects = false;
+            for (const QVariant &v : doc.toVariant().toList()) {
+                const QString id = v.toMap()[QStringLiteral("id")].toString();
+                if (liveHashes.contains(id)) {
+                    intersects = true;
+                    break;
+                }
+            }
+            if (intersects) {
+                candidatePath = fi.absoluteFilePath();
+                break;
+            }
+        }
+        if (candidatePath.isEmpty()) {
+            qDebug() << "applyKScreen: no synced config matches live outputs, skipping";
+            return;
+        }
+        qDebug() << "applyKScreen: using fallback synced config" << candidatePath;
+    }
+
+    QFile file(candidatePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "applyKScreen: failed to open" << candidatePath << ":" << file.errorString();
+        return;
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument jsonDocument = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (jsonDocument.isNull()) {
+        qWarning() << "applyKScreen: failed to parse JSON from" << candidatePath << ":" << parseError.errorString();
+        return;
+    }
+
+    const QVariantList outputsInfo = jsonDocument.toVariant().toList();
+    if (outputsInfo.isEmpty()) {
+        qDebug() << "applyKScreen: synced JSON is empty";
+        return;
+    }
+
+    for (const QVariant &entry : outputsInfo) {
+        if (entry.typeId() != QMetaType::QVariantMap) {
+            qWarning() << "applyKScreen: synced JSON entry is not a map";
+            return;
+        }
+    }
+
+    QMap<KScreen::OutputPtr, uint32_t> priorities;
+    int matchedCount = 0;
+
+    for (const auto &output : config->outputs()) {
+        if (!output->isConnected()) {
+            output->setEnabled(false);
+            continue;
+        }
+
+        const QString outputHash = output->hash();
+
+        QVariantMap matchedEntry;
+        int hashMatchCount = 0;
+        for (const QVariant &entry : outputsInfo) {
+            const QVariantMap info = entry.toMap();
+            if (info[QStringLiteral("id")].toString() == outputHash) {
+                ++hashMatchCount;
+                matchedEntry = info;
+            }
+        }
+
+        if (hashMatchCount > 1) {
+            bool found = false;
+            for (const QVariant &entry : outputsInfo) {
+                const QVariantMap info = entry.toMap();
+                if (info[QStringLiteral("id")].toString() == outputHash
+                    && info[QStringLiteral("metadata")].toMap()[QStringLiteral("name")].toString() == output->name()) {
+                    matchedEntry = info;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                continue;
+            }
+        } else if (hashMatchCount == 0) {
+            qDebug() << "applyKScreen: no saved entry for output" << output->name() << "(" << outputHash << ")";
+            continue;
+        }
+
+        ++matchedCount;
+        qDebug() << "applyKScreen: matched" << outputHash << "-> output" << output->name() << "(id=" << output->id() << ")";
+
+        const QVariantMap posMap = matchedEntry[QStringLiteral("pos")].toMap();
+        output->setPos(QPoint(posMap[QStringLiteral("x")].toInt(), posMap[QStringLiteral("y")].toInt()));
+
+        output->setEnabled(matchedEntry[QStringLiteral("enabled")].toBool());
+        output->setRotation(static_cast<KScreen::Output::Rotation>(matchedEntry[QStringLiteral("rotation")].toInt()));
+        output->setScale(matchedEntry[QStringLiteral("scale")].toDouble());
+
+        if (matchedEntry.contains(QStringLiteral("mode"))) {
+            const QVariantMap modeInfo = matchedEntry[QStringLiteral("mode")].toMap();
+            const QVariantMap sizeInfo = modeInfo[QStringLiteral("size")].toMap();
+            const int w = sizeInfo[QStringLiteral("width")].toInt();
+            const int h = sizeInfo[QStringLiteral("height")].toInt();
+            const float refresh = modeInfo[QStringLiteral("refresh")].toFloat();
+
+            bool modeFound = false;
+            const auto modes = output->modes();
+            for (auto it = modes.constBegin(); it != modes.constEnd(); ++it) {
+                const KScreen::ModePtr mode = it.value();
+                if (mode->size() == QSize(w, h) && qFuzzyCompare(mode->refreshRate(), refresh)) {
+                    output->setCurrentModeId(mode->id());
+                    modeFound = true;
+                    break;
+                }
+            }
+
+            if (!modeFound) {
+                qWarning() << "applyKScreen: mode" << w << "x" << h << "@" << refresh << "Hz not found for" << output->name() << ", using preferred";
+                const QString preferredId = output->preferredModeId();
+                if (!preferredId.isEmpty()) {
+                    output->setCurrentModeId(preferredId);
+                }
+            }
+        }
+
+        if (matchedEntry.contains(QStringLiteral("vrrpolicy"))) {
+            output->setVrrPolicy(static_cast<KScreen::Output::VrrPolicy>(matchedEntry[QStringLiteral("vrrpolicy")].toUInt()));
+        }
+        if (matchedEntry.contains(QStringLiteral("overscan"))) {
+            output->setOverscan(matchedEntry[QStringLiteral("overscan")].toUInt());
+        }
+        if (matchedEntry.contains(QStringLiteral("rgbrange"))) {
+            output->setRgbRange(static_cast<KScreen::Output::RgbRange>(matchedEntry[QStringLiteral("rgbrange")].toUInt()));
+        }
+
+        if (matchedEntry.contains(QStringLiteral("priority"))) {
+            priorities[output] = matchedEntry[QStringLiteral("priority")].toUInt();
+        } else if (matchedEntry.contains(QStringLiteral("primary"))) {
+            priorities[output] = matchedEntry[QStringLiteral("primary")].toBool() ? 1u : 2u;
+        } else {
+            priorities[output] = 2u;
+        }
+    }
+
+    config->setOutputPriorities(priorities);
+
+    if (!KScreen::Config::canBeApplied(config, KScreen::Config::ValidityFlag::RequireAtLeastOneEnabledScreen)) {
+        qWarning() << "applyKScreen: config failed validation, not applying";
+        return;
+    }
+
+    KScreen::SetConfigOperation setOp(config);
+    if (!setOp.exec()) {
+        qWarning() << "applyKScreen: SetConfigOperation failed:" << setOp.errorString();
+    } else {
+        qDebug() << "applyKScreen: applied" << matchedCount << "outputs";
+        s_lastAppliedLiveHashes = liveHashes;
+    }
+}
+
+static bool applyKScreen(bool standalone)
+{
+    const QString xdgDataHome = QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
+    qDebug() << "applyKScreen: starting, XDG_DATA_HOME=" << xdgDataHome << ", DISPLAY=" << qgetenv("DISPLAY");
+
+    const QString kscreenDir = xdgDataHome + QStringLiteral("/kscreen");
+    if (!QDir(kscreenDir).exists()) {
+        qDebug() << "applyKScreen: kscreen directory does not exist:" << kscreenDir;
+        return true;
+    }
+
+    KScreen::ConfigPtr config;
+    {
+        KScreen::GetConfigOperation getOp;
+        if (getOp.exec() && getOp.config()) {
+            config = getOp.config();
+        }
+    }
+    if (!config) {
+        qDebug() << "applyKScreen: GetConfigOperation failed";
+        return true;
+    }
+
+    KScreen::ConfigMonitor::instance()->addConfig(config);
+
+    // Wait for kscreen backend to finish initial enumeration.
+    {
+        QEventLoop waitLoop;
+        QTimer stableTimer;
+        stableTimer.setSingleShot(true);
+        stableTimer.setInterval(1500);
+        QObject::connect(&stableTimer, &QTimer::timeout, &waitLoop, &QEventLoop::quit);
+        QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, config.data(), [&stableTimer]() {
+            stableTimer.start();
+        });
+        stableTimer.start();
+        waitLoop.exec();
+        qDebug() << "applyKScreen: kscreen initial config stable, applying";
+    }
+
+    doApply(config, kscreenDir);
+
+    QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, config.data(), [config, kscreenDir]() {
+        qDebug() << "applyKScreen: configurationChanged — re-applying";
+        doApply(config, kscreenDir);
+    });
+
+    if (standalone) {
+        QEventLoop loop;
+        QTimer postTimer;
+        postTimer.setSingleShot(true);
+        postTimer.setInterval(1000);
+        QObject::connect(&postTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+        QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, &postTimer, [&postTimer]() {
+            postTimer.start();
+        });
+        postTimer.start();
+        loop.exec();
+        qDebug() << "applyKScreen: standalone mode, output set stable, exiting";
+    }
+
+    return true;
+}
+
 int main(int argc, char **argv)
 {
-    QCoreApplication app(argc, argv);
+    QGuiApplication::setDesktopSettingsAware(false);
+    QGuiApplication app(argc, argv);
 
     // Install message handler to log to soniclogin.log
     qInstallMessageHandler(StartPlasmaMessageHandler);
@@ -66,6 +348,20 @@ int main(int argc, char **argv)
     qputenv("XDG_CACHE_HOME", xdgCacheHome.toLocal8Bit());
     qputenv("XDG_DATA_HOME", xdgDataHome.toLocal8Bit());
     qputenv("XDG_STATE_HOME", xdgStateHome.toLocal8Bit());
+
+    // Check for --apply-kscreen argument
+    bool applyOnly = false;
+    for (int i = 1; i < argc; ++i) {
+        if (QString::fromLocal8Bit(argv[i]) == QStringLiteral("--apply-kscreen")) {
+            applyOnly = true;
+            break;
+        }
+    }
+
+    if (applyOnly) {
+        applyKScreen(/*standalone=*/true);
+        return 0;
+    }
 
     createConfigDirectory();
     setupCursor();
@@ -178,6 +474,21 @@ int main(int argc, char **argv)
         greeterEnv.insert(QStringLiteral("XDG_CACHE_HOME"), xdgCacheHome);
         greeterEnv.insert(QStringLiteral("XDG_DATA_HOME"), xdgDataHome);
         greeterEnv.insert(QStringLiteral("XDG_RUNTIME_DIR"), xdgRuntimeDir);
+        // Propagate the cursor theme variables set by setupCursor() so that
+        // kwin, the greeter, and the wallpaper service load the same cursor
+        // assets from the synced icons directory.
+        const QByteArray cursorTheme = qgetenv("XCURSOR_THEME");
+        const QByteArray cursorSize = qgetenv("XCURSOR_SIZE");
+        const QByteArray cursorPath = qgetenv("XCURSOR_PATH");
+        if (!cursorTheme.isEmpty()) {
+            greeterEnv.insert(QStringLiteral("XCURSOR_THEME"), QString::fromLocal8Bit(cursorTheme));
+        }
+        if (!cursorSize.isEmpty()) {
+            greeterEnv.insert(QStringLiteral("XCURSOR_SIZE"), QString::fromLocal8Bit(cursorSize));
+        }
+        if (!cursorPath.isEmpty()) {
+            greeterEnv.insert(QStringLiteral("XCURSOR_PATH"), QString::fromLocal8Bit(cursorPath));
+        }
         // Pass socket path to greeter via environment
         QString socketPath = qgetenv("SONICLOGIN_SOCKET");
         if (!socketPath.isEmpty()) {
@@ -198,6 +509,23 @@ int main(int argc, char **argv)
         if (kwinProcess->state() != QProcess::Running) {
             qWarning() << "StartSonicLoginX11: kwin_x11 not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
         }
+
+        // Bounded wait for kwin DBus name to ensure RandR state is populated
+        bool kwinRegistered = false;
+        for (int i = 0; i < 15; ++i) {
+            QDBusReply<bool> reply = QDBusConnection::sessionBus().interface()->isServiceRegistered(QStringLiteral("org.kde.KWin"));
+            if (reply.isValid() && reply.value()) {
+                kwinRegistered = true;
+                break;
+            }
+            QThread::msleep(200);
+        }
+        if (!kwinRegistered) {
+            qWarning() << "StartSonicLoginX11: org.kde.KWin did not register on session bus within timeout";
+        }
+
+        // Apply synced KScreen config before starting the greeter
+        applyKScreen(/*standalone=*/false);
 
         // Start the greeter
         QString greeterPath = QStringLiteral(LIBEXEC_INSTALL_DIR "/soniclogin-greeter");

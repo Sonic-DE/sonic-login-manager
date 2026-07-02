@@ -360,6 +360,17 @@ std::optional<SyncPayload> KcmIpcServer::handleSyncRead(QDataStream &in)
         payload.cursorThemes.append(qMakePair(themeName, tarBytes));
     }
 
+    quint32 nKscreenFiles = 0;
+    in >> nKscreenFiles;
+
+    payload.kscreenFiles.reserve(nKscreenFiles);
+    for (quint32 i = 0; i < nKscreenFiles; ++i) {
+        QString relPath;
+        QByteArray content;
+        in >> relPath >> content;
+        payload.kscreenFiles.append(qMakePair(relPath, content));
+    }
+
     if (in.status() != QDataStream::Ok) {
         return std::nullopt;
     }
@@ -505,6 +516,60 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         }
     }
 
+    QStringList extractedKscreenFiles;
+    const QString kscreenRoot = homeDir + QStringLiteral("/.local/share/kscreen");
+    for (const auto &kscreen : payload.kscreenFiles) {
+        const QString &relPath = kscreen.first;
+        if (relPath.isEmpty() || relPath.startsWith(QLatin1Char('/')) || relPath.startsWith(QLatin1Char('\\')) || relPath.contains(QStringLiteral(".."))
+            || relPath.contains(QLatin1Char('\0'))) {
+            qCWarning(KCMIPC) << "handleSync: refusing to write suspicious kscreen path" << relPath;
+            continue;
+        }
+        const QString fullPath = kscreenRoot + QLatin1Char('/') + relPath;
+        const QString parentDir = QFileInfo(fullPath).absolutePath();
+        if (!QDir().mkpath(parentDir)) {
+            qCWarning(KCMIPC) << "handleSync: failed to create kscreen directory for" << relPath;
+            continue;
+        }
+        QFile out(fullPath);
+        if (!out.open(QFile::WriteOnly | QFile::Text | QFile::Truncate)) {
+            qCWarning(KCMIPC) << "handleSync: failed to open kscreen file for writing" << fullPath << ":" << out.errorString();
+            continue;
+        }
+        out.write(kscreen.second);
+        out.close();
+        extractedKscreenFiles.append(relPath);
+        qCInfo(KCMIPC) << "handleSync: wrote kscreen file" << fullPath << "size=" << kscreen.second.size();
+    }
+
+    for (const QString &dir : {
+             kscreenRoot,
+             kscreenRoot + QStringLiteral("/outputs"),
+             kscreenRoot + QStringLiteral("/control"),
+             kscreenRoot + QStringLiteral("/control/configs"),
+         }) {
+        if (QFileInfo(dir).exists()) {
+            chownPath(dir);
+            chownRecursive(dir);
+            qCInfo(KCMIPC) << "handleSync: chowned" << dir;
+        }
+    }
+
+    if (!extractedKscreenFiles.isEmpty()) {
+        if (QDir().mkpath(kscreenRoot)) {
+            chownPath(kscreenRoot);
+            const QString marker = kscreenRoot + QStringLiteral("/.soniclogin-synced");
+            QFile f(marker);
+            if (f.open(QFile::WriteOnly | QFile::Text | QFile::Truncate)) {
+                f.write("synced from user session\n");
+                f.close();
+                chownPath(marker);
+            }
+        }
+    }
+
+    qCInfo(KCMIPC) << "handleSync:" << payload.files.size() << "files," << extractedCursorThemes.size() << "cursor themes," << extractedKscreenFiles.size()
+                   << "kscreen files for" << homeDir;
     return qMakePair(true, QString());
 }
 
@@ -544,6 +609,11 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
                 QDir(entry.absoluteFilePath()).removeRecursively();
             }
         }
+    }
+
+    const QString kscreenRoot = homeDir + QStringLiteral("/.local/share/kscreen");
+    if (QFile::exists(kscreenRoot + QStringLiteral("/.soniclogin-synced"))) {
+        QDir(kscreenRoot).removeRecursively();
     }
 
     qCInfo(KCMIPC) << "handleReset:" << homeDir;

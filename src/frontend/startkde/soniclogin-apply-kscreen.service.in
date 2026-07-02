@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply synced KScreen config (Login Manager Version)
+PartOf=soniclogin-x11.target
+After=soniclogin-kwin_x11.service
+Requires=soniclogin-kwin_x11.service
+
+[Service]
+Type=oneshot
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/start-soniclogin-x11 --apply-kscreen
+Slice=session.slice
+RemainAfterExit=no

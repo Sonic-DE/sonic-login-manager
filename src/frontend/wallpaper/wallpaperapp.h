@@ -42,4 +42,5 @@ private:
 
 private Q_SLOTS:
     void adoptScreen(QScreen *);
+    void removeScreen(QScreen *);
 };
