@@ -2,11 +2,6 @@
 
 Sonic Login Manager provides a display manager for SonicDE, forked from [Plasma Login Manager](https://invent.kde.org/plasma/plasma-login-manager) based on [SDDM](https://github.com/sddm/sddm) and with a new frontend providing a greeter, wallpaper plugin integration, and System Settings module (KCM).
 
-## Systemd
-
-Systemd is a hard requirement for future plans, see 
-https://invent.kde.org/plasma/plasma-login-manager/-/issues/48
-
 ### What we want
 
  - Run on X11
