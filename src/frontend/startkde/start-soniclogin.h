@@ -19,11 +19,11 @@ extern QTextStream out;
 
 void sigtermHandler(int signalNumber);
 QStringList allServices(const QLatin1String &prefix);
-int runSync(const QString &program, const QStringList &args, const QStringList &env = {});
 
 void createConfigDirectory();
 void runStartupConfig();
-void setupCursor();
+void applyCursorEnv();
+void applyCursorTheme(const QString &theme, int size);
 std::optional<QProcessEnvironment> getSystemdEnvironment();
 void importSystemdEnvrionment();
 void runEnvironmentScripts();

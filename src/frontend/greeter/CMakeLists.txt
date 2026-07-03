@@ -9,6 +9,9 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
+find_package(X11 REQUIRED COMPONENTS Xcursor Xfixes)
+find_package(Qt6GuiPrivate REQUIRED)
+
 set(LOGIN_GREETER_SRCS
     main.cpp
     stateconfig.cpp
@@ -64,6 +67,9 @@ target_link_libraries(soniclogin-greeter PRIVATE
     KF6::WindowSystem
     KF6::ConfigCore
     X11::X11
+    X11::Xcursor
+    X11::Xfixes
+    Qt6::GuiPrivate
     PW::KWorkspace
     KF6::ScreenDpms
 )

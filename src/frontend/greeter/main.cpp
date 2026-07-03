@@ -6,6 +6,7 @@
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QCryptographicHash>
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
@@ -15,6 +16,7 @@
 #include <QProcess>
 #include <QQmlContext>
 #include <QScreen>
+#include <QTimer>
 
 #include <KLocalizedString>
 #include <PlasmaQuick/QuickViewSharedEngine>
@@ -33,6 +35,10 @@
 #include "stateconfig.h"
 
 #include <signal.h>
+
+#include <X11/Xcursor/Xcursor.h>
+#include <X11/extensions/Xfixes.h>
+#include <private/qtx11extras_p.h>
 
 class LoginGreeter : public QObject
 {
@@ -188,6 +194,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
 
     LoginGreeter greeter;
+
     return app.exec();
 }
 

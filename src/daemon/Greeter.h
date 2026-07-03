@@ -18,6 +18,7 @@
 #define SONICLOGIN_GREETER_H
 
 #include <QObject>
+#include <QProcessEnvironment>
 
 #include "Auth.h"
 
@@ -74,6 +75,7 @@ private:
 
     Auth *m_auth{nullptr};
     QProcess *m_process{nullptr};
+    QProcessEnvironment m_env;
 
     static void insertEnvironmentList(QStringList names, QProcessEnvironment sourceEnv, QProcessEnvironment &targetEnv);
 };

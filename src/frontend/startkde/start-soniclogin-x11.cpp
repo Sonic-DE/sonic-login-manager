@@ -48,6 +48,9 @@
 #include "InitSystem.h"
 #include "MessageHandler.h"
 
+#include <X11/Xcursor/Xcursor.h>
+#include <private/qtx11extras_p.h>
+
 void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
 {
     SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
@@ -303,6 +306,7 @@ static bool applyKScreen(bool standalone)
 int main(int argc, char **argv)
 {
     QGuiApplication::setDesktopSettingsAware(false);
+    applyCursorEnv();
     QGuiApplication app(argc, argv);
 
     // Install message handler to log to soniclogin.log
@@ -344,7 +348,6 @@ int main(int argc, char **argv)
     }
 
     createConfigDirectory();
-    setupCursor();
 
     // Detect init system once and reuse the result
     const InitSystem initSystem = detectInitSystem();
@@ -503,6 +506,12 @@ int main(int argc, char **argv)
         if (!kwinRegistered) {
             qWarning() << "StartSonicLoginX11: org.kde.KWin did not register on session bus within timeout";
         }
+
+        KConfig cursorCfg(QStringLiteral("kcminputrc"));
+        KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
+        const QString themeName = cursorInputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
+        const int themeSize = cursorInputCfg.readEntry("cursorSize", 24);
+        applyCursorTheme(themeName, themeSize);
 
         // Apply synced KScreen config before starting the greeter
         applyKScreen(/*standalone=*/false);

@@ -24,9 +24,13 @@
 #include "Seat.h"
 #include "XorgUserDisplayServer.h"
 
+#include <KConfig>
+#include <KConfigGroup>
+
 #include <QStandardPaths>
 #include <QtCore/QDebug>
 #include <QtCore/QProcess>
+#include <QtCore/QTimer>
 #include <VirtualTerminal.h>
 
 namespace SONICLOGIN
@@ -55,6 +59,39 @@ QString Greeter::displayServerCommand() const
 void Greeter::setDisplayServerCommand(const QString &cmd)
 {
     m_displayServerCmd = cmd;
+}
+
+static void loadCursorEnv(QProcessEnvironment &env)
+{
+    const QString kcminputrcPath = QStringLiteral(STATE_DIR "/.config/kcminputrc");
+    const QString syncedIcons = QStringLiteral(STATE_DIR "/.local/share/icons");
+
+    const KConfig cfg(kcminputrcPath);
+    const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
+
+    const QString cursorTheme = inputCfg.readEntry(QStringLiteral("cursorTheme"), QStringLiteral("breeze_cursors"));
+    const int cursorSize = inputCfg.readEntry(QStringLiteral("cursorSize"), 24);
+
+    QStringList cursorPath;
+    cursorPath << syncedIcons;
+    cursorPath << QStringLiteral("/usr/local/share/icons");
+    cursorPath << QStringLiteral("/usr/share/icons");
+    cursorPath << QStringLiteral("/var/lib/flatpak/exports/share/icons");
+    const QString existingCursorPath = env.value(QStringLiteral("XCURSOR_PATH"));
+    if (!existingCursorPath.isEmpty()) {
+        cursorPath << existingCursorPath;
+    }
+
+    QStringList uniquePath;
+    for (const QString &entry : std::as_const(cursorPath)) {
+        if (!entry.isEmpty() && !uniquePath.contains(entry)) {
+            uniquePath.append(entry);
+        }
+    }
+
+    env.insert(QStringLiteral("XCURSOR_THEME"), cursorTheme);
+    env.insert(QStringLiteral("XCURSOR_SIZE"), QString::number(cursorSize));
+    env.insert(QStringLiteral("XCURSOR_PATH"), uniquePath.join(QLatin1Char(':')));
 }
 
 bool Greeter::start()
@@ -108,6 +145,10 @@ bool Greeter::start()
                               sysenv,
                               env);
 
+        // Load cursor settings from the synced soniclogin config and push them
+        // into the greeter environment.
+        loadCursorEnv(env);
+
         env.insert(QStringLiteral("PATH"), mainConfig.Users.DefaultPath.get());
         env.insert(QStringLiteral("XDG_SEAT"), m_display->seat()->name());
         env.insert(QStringLiteral("XDG_SEAT_PATH"), daemonApp->displayManager()->seatPath(m_display->seat()->name()));
@@ -120,6 +161,8 @@ bool Greeter::start()
         env.insert(QStringLiteral("SONICLOGIN_SOCKET"), m_socket);
 
         m_auth->insertEnvironment(env);
+
+        m_env = env;
 
         // log message
         qDebug() << "Greeter attempting to start...";
@@ -141,6 +184,8 @@ void Greeter::insertEnvironmentList(QStringList names, QProcessEnvironment sourc
     for (QStringList::const_iterator it = names.constBegin(); it != names.constEnd(); ++it) {
         if (sourceEnv.contains(*it)) {
             targetEnv.insert(*it, sourceEnv.value(*it));
+        } else {
+            qDebug() << "Greeter env:" << *it << "not set in system environment, skipping";
         }
     }
 }

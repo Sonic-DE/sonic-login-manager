@@ -14,9 +14,11 @@
 
 #include <ranges>
 
+#include "Constants.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
+#include <QFile>
 #include <QProcess>
 #include <QStandardPaths>
 
@@ -44,6 +46,11 @@
 #include "debug.h"
 #include "klookandfeelmanager.h"
 #include "lookandfeelsettings.h"
+
+#include <X11/Xatom.h>
+#include <X11/Xcursor/Xcursor.h>
+#include <X11/extensions/Xfixes.h>
+#include <private/qtx11extras_p.h>
 
 using namespace Qt::StringLiterals;
 
@@ -84,26 +91,6 @@ void gentleTermination(QProcess *p)
             qWarning() << "Could not fully finish the process" << p->program();
         }
     }
-}
-
-int runSync(const QString &program, const QStringList &args, const QStringList &env)
-{
-    QProcess p;
-    if (!env.isEmpty()) {
-        p.setEnvironment(QProcess::systemEnvironment() << env);
-    }
-    p.setProcessChannelMode(QProcess::ForwardedChannels);
-    p.start(program, args);
-
-    QObject::connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, &p, [&p] {
-        gentleTermination(&p);
-    });
-    qCDebug(PLASMA_STARTUP) << "started..." << program << args;
-    p.waitForFinished(-1);
-    if (p.exitCode()) {
-        qCWarning(PLASMA_STARTUP) << program << args << "exited with code" << p.exitCode();
-    }
-    return p.exitCode();
 }
 
 template<typename T>
@@ -185,13 +172,11 @@ void runStartupConfig()
     }
 }
 
-void setupCursor()
+void applyCursorEnv()
 {
-    // Build XCURSOR_PATH so the cursor loader can find themes synced from the
-    // user's session into the soniclogin home (under ~/.local/share/icons)
-    // and themes installed system-wide. The synced directory is listed first
-    // so user-selected themes take precedence.
-    const QString syncedIcons = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/icons");
+    const QString kcminputrcPath = QStringLiteral(STATE_DIR "/.config/kcminputrc");
+    const QString syncedIcons = QStringLiteral(STATE_DIR "/.local/share/icons");
+
     QStringList cursorPath;
     cursorPath << syncedIcons;
     cursorPath << QStringLiteral("/usr/local/share/icons");
@@ -199,7 +184,6 @@ void setupCursor()
     cursorPath << QStringLiteral("/var/lib/flatpak/exports/share/icons");
     cursorPath << QString(qgetenv("XCURSOR_PATH"));
 
-    // Deduplicate while preserving order.
     QStringList uniquePath;
     for (const QString &entry : std::as_const(cursorPath)) {
         if (!entry.isEmpty() && !uniquePath.contains(entry)) {
@@ -208,20 +192,79 @@ void setupCursor()
     }
     qputenv("XCURSOR_PATH", uniquePath.join(QLatin1Char(':')).toLocal8Bit());
 
-    // Apply the cursor synced from the desktop session via kcminputrc. Export
-    // XCURSOR_THEME/XCURSOR_SIZE so Qt apps in the greeter process tree (the
-    // QtQuick greeter scene) load it, then update the X root window cursor.
-    const QString kcminputrcPath = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/kcminputrc");
-    const KConfig cfg(QStringLiteral("kcminputrc"));
+    const KConfig cfg(kcminputrcPath);
     const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
 
-    const auto cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
-    const auto cursorSize = inputCfg.readEntry("cursorSize", 24);
+    const QString cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
+    const int cursorSize = inputCfg.readEntry("cursorSize", 24);
 
     qputenv("XCURSOR_THEME", cursorTheme.toLocal8Bit());
     qputenv("XCURSOR_SIZE", QByteArray::number(cursorSize));
+}
 
-    runSync(QStringLiteral("kapplymousetheme"), {cursorTheme, QString::number(cursorSize)});
+static void setCursorXResources(const QString &theme, int size)
+{
+    Display *disp = QX11Info::display();
+    if (!disp) {
+        return; // defensive; callers run post-QGuiApplication
+    }
+    const Window root = DefaultRootWindow(disp);
+
+    Atom actualType = None;
+    int actualFormat = 0;
+    unsigned long nitems = 0;
+    unsigned long bytesAfter = 0;
+    unsigned char *prop = nullptr;
+
+    // long_length is in 32-bit multiples; 8192 -> 32 KiB, ample for
+    // RESOURCE_MANAGER. Returns Success even if the property is absent
+    // (actualFormat == 0 in that case). Returned data is null-terminated.
+    const int status = XGetWindowProperty(disp, root, XA_RESOURCE_MANAGER, 0, 8192, False, XA_STRING, &actualType, &actualFormat, &nitems, &bytesAfter, &prop);
+
+    QStringList lines;
+    if (status == Success && actualFormat == 8 && prop) {
+        lines = QString::fromUtf8(reinterpret_cast<const char *>(prop)).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    }
+    if (prop) {
+        XFree(prop);
+    }
+
+    // Remove any existing Xcursor.theme / Xcursor.size entries.
+    lines.removeIf([](const QString &l) {
+        return l.startsWith(QStringLiteral("Xcursor.theme:")) || l.startsWith(QStringLiteral("Xcursor.size:"));
+    });
+
+    lines.append(QStringLiteral("Xcursor.theme:\t%1").arg(theme));
+    lines.append(QStringLiteral("Xcursor.size:\t%1").arg(size));
+
+    const QByteArray newData = lines.join(QLatin1Char('\n')).toUtf8();
+
+    XChangeProperty(disp,
+                    root,
+                    XA_RESOURCE_MANAGER,
+                    XA_STRING,
+                    8,
+                    PropModeReplace,
+                    reinterpret_cast<const unsigned char *>(newData.constData()),
+                    newData.size()); // nelements = byte count, NO trailing null
+    XFlush(disp);
+}
+
+void applyCursorTheme(const QString &theme, int size)
+{
+    if (!theme.isEmpty()) {
+        XcursorSetTheme(QX11Info::display(), QFile::encodeName(theme));
+    }
+    if (size >= 0) {
+        XcursorSetDefaultSize(QX11Info::display(), size);
+    }
+    Cursor handle = XcursorLibraryLoadCursor(QX11Info::display(), "left_ptr");
+    XDefineCursor(QX11Info::display(), DefaultRootWindow(QX11Info::display()), handle);
+    XFreeCursor(QX11Info::display(), handle);
+    XFlush(QX11Info::display());
+
+    // Also publish the theme/size on the root window RESOURCE_MANAGER .
+    setCursorXResources(theme, size);
 }
 
 std::optional<QProcessEnvironment> getSystemdEnvironment()

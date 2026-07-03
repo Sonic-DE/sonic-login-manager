@@ -9,6 +9,16 @@ include_directories(
     "${CMAKE_BINARY_DIR}/src/common"
 )
 
+find_package(X11 REQUIRED COMPONENTS Xcursor)
+find_package(Qt6GuiPrivate REQUIRED)
+
+ecm_qt_declare_logging_category(start-soniclogin_SRCS HEADER debug.h
+                                IDENTIFIER PLASMA_STARTUP
+                                CATEGORY_NAME org.kde.startup
+                                DEFAULT_SEVERITY Debug
+                                DESCRIPTION "start-soniclogin-x11 debug"
+                                EXPORT PLASMAWORKSPACE
+                            )
 
 add_executable(start-soniclogin-x11 start-soniclogin-x11.cpp start-soniclogin.cpp ${start-soniclogin_SRCS})
 
@@ -22,6 +32,9 @@ target_link_libraries(start-soniclogin-x11 PRIVATE
     KF6::Package
     KF6::Screen
     PW::KLookAndFeel
+    X11::X11          # NEW — for XGetWindowProperty/XChangeProperty/XA_RESOURCE_MANAGER
+    X11::Xcursor
+    Qt6::GuiPrivate
 )
 
 
