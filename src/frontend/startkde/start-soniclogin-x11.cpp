@@ -281,41 +281,21 @@ static bool applyKScreen(bool standalone)
 
     KScreen::ConfigMonitor::instance()->addConfig(config);
 
-    // Wait for kscreen backend to finish initial enumeration.
-    {
-        QEventLoop waitLoop;
-        QTimer stableTimer;
-        stableTimer.setSingleShot(true);
-        stableTimer.setInterval(1500);
-        QObject::connect(&stableTimer, &QTimer::timeout, &waitLoop, &QEventLoop::quit);
-        QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, config.data(), [&stableTimer]() {
-            stableTimer.start();
-        });
-        stableTimer.start();
-        waitLoop.exec();
-        qDebug() << "applyKScreen: kscreen initial config stable, applying";
-    }
-
     doApply(config, kscreenDir);
 
-    QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, config.data(), [config, kscreenDir]() {
-        qDebug() << "applyKScreen: configurationChanged — re-applying";
-        doApply(config, kscreenDir);
+    QTimer *reapplyTimer = new QTimer(config.data());
+    reapplyTimer->setInterval(1000);
+    reapplyTimer->setSingleShot(true);
+
+    QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, config.data(), [reapplyTimer]() {
+        qDebug() << "applyKScreen: configurationChanged — scheduling re-apply in 1s";
+        reapplyTimer->start();
     });
 
-    if (standalone) {
-        QEventLoop loop;
-        QTimer postTimer;
-        postTimer.setSingleShot(true);
-        postTimer.setInterval(1000);
-        QObject::connect(&postTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
-        QObject::connect(KScreen::ConfigMonitor::instance(), &KScreen::ConfigMonitor::configurationChanged, &postTimer, [&postTimer]() {
-            postTimer.start();
-        });
-        postTimer.start();
-        loop.exec();
-        qDebug() << "applyKScreen: standalone mode, output set stable, exiting";
-    }
+    QObject::connect(reapplyTimer, &QTimer::timeout, config.data(), [config, kscreenDir]() {
+        qDebug() << "applyKScreen: re-applying after settle delay";
+        doApply(config, kscreenDir);
+    });
 
     return true;
 }
