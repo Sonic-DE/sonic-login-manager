@@ -66,13 +66,12 @@ SonicLoginData::SonicLoginData(QObject *parent)
         break;
     case InitSystem::Dinit:
         // Check if dinit service file exists
-        relevant = QFile::exists(QStringLiteral("/etc/dinit/soniclogin"));
+        relevant = QFile::exists(QStringLiteral("/etc/dinit.d/soniclogin"));
         break;
     case InitSystem::Unknown:
     default:
-        // If we can't detect the init system, check if soniclogin executable exists
-        // This is a fallback that assumes if the package is installed, it's relevant
-        relevant = QFile::exists(QStandardPaths::findExecutable(QStringLiteral("soniclogin")));
+        // If we can't detect the init system, assume false
+        relevant = false;
         break;
     }
 
