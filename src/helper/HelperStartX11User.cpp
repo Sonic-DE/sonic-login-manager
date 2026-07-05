@@ -113,6 +113,30 @@ int main(int argc, char **argv)
         process->setArguments(args);
         process->setProcessEnvironment(helper.sessionEnvironment());
 
+#ifdef Q_OS_LINUX
+        // Terminate ambient-capability propagation at the session boundary.
+        // Xorg (sibling process) needs CAP_SYS_TTY_CONFIG for VT ioctls; the
+        // session and everything it launches must NOT inherit it.
+        if (Logind::isAvailable() && Logind::isELogind()) {
+            process->setChildProcessModifier([]() {
+                // Drop CAP_SYS_TTY_CONFIG and CAP_SETPCAP from the bounding
+                // set. Requires CAP_SETPCAP effective (present here via
+                // ambient). Must happen BEFORE the ambient clear below,
+                // which would strip it from effective.
+                int bdrop_tty = prctl(PR_CAPBSET_DROP, CAP_SYS_TTY_CONFIG, 0, 0, 0);
+                int bdrop_pcap = prctl(PR_CAPBSET_DROP, CAP_SETPCAP, 0, 0, 0);
+                qInfo() << "HelperStartX11User session child: bounding drop CAP_SYS_TTY_CONFIG=" << (bdrop_tty == 0 ? "YES" : "NO");
+                qInfo() << "HelperStartX11User session child: bounding drop CAP_SETPCAP=" << (bdrop_pcap == 0 ? "YES" : "NO");
+
+                // Clear the entire ambient set. Ambient caps are copied
+                // verbatim across execve of unprivileged binaries; without
+                // this they leak into the session.
+                int amb_clear = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0);
+                qInfo() << "HelperStartX11User session child: ambient clear all=" << (amb_clear == 0 ? "YES" : "NO");
+            });
+        }
+#endif
+
         // Log process errors
         QObject::connect(process, &QProcess::errorOccurred, &app, [program](QProcess::ProcessError error) {
             qCritical() << "HelperStartX11User: session process ERROR:" << error << program;
