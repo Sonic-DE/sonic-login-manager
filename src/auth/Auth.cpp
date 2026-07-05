@@ -12,6 +12,7 @@
 #include "LogindDBusTypes.h"
 #include "SafeDataStream.h"
 
+#include <QtCore/QDebug>
 #include <QtCore/QProcess>
 #include <QtCore/QUuid>
 #include <QtNetwork/QLocalServer>
@@ -28,7 +29,6 @@
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #endif
-#include <string.h>
 
 namespace SONICLOGIN
 {
@@ -416,20 +416,16 @@ void Auth::start()
                 capData[0].inheritable |= (1U << CAP_SETPCAP);
                 if (syscall(SYS_capset, &capHeader, capData) == 0) {
                     if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SYS_TTY_CONFIG, 0, 0) < 0) {
-                        const char msg[] = "Auth::start: Failed to set CAP_SYS_TTY_CONFIG ambient capability\n";
-                        ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                        qWarning() << "Auth::start: Failed to set CAP_SYS_TTY_CONFIG ambient capability";
                     }
                     if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETPCAP, 0, 0) < 0) {
-                        const char msg[] = "Auth::start: Failed to set CAP_SETPCAP ambient capability\n";
-                        ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                        qWarning() << "Auth::start: Failed to set CAP_SETPCAP ambient capability";
                     }
                 } else {
-                    const char msg[] = "Auth::start: Failed to add capabilities to inheritable set\n";
-                    ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                    qWarning() << "Auth::start: Failed to add capabilities to inheritable set";
                 }
             } else {
-                const char msg[] = "Auth::start: capget failed\n";
-                ::write(STDERR_FILENO, msg, sizeof(msg) - 1);
+                qWarning() << "Auth::start: capget failed";
             }
         });
     }
