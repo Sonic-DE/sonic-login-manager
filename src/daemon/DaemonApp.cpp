@@ -120,7 +120,8 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGINT received - diagnostic information:"
                    << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing
-                   << "firstLoginLock=" << m_firstloginLock << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
+                   << "firstBootResolved=" << m_isFirstBoot.has_value() << "isFirstBoot=" << m_isFirstBoot.value_or(true)
+                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
                    << "seatManager=" << (void *)m_seatManager;
         quit();
     });
@@ -129,7 +130,8 @@ DaemonApp::DaemonApp(int &argc, char **argv)
         QString parentName = getProcessNameByPid(ppid);
         qWarning() << "DaemonApp: SIGTERM received - diagnostic information:"
                    << "parentProcess(PPID)=" << ppid << "=" << parentName << "hostName=" << hostName() << "testing=" << m_testing
-                   << "firstLoginLock=" << m_firstloginLock << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
+                   << "firstBootResolved=" << m_isFirstBoot.has_value() << "isFirstBoot=" << m_isFirstBoot.value_or(true)
+                   << "lastSessionId=" << m_lastSessionId << "displayManager=" << (void *)m_displayManager
                    << "seatManager=" << (void *)m_seatManager;
         quit();
     });
@@ -211,19 +213,23 @@ int DaemonApp::newSessionId()
     return m_lastSessionId++;
 }
 
-bool DaemonApp::tryLockFirstLogin()
+bool DaemonApp::isFirstBoot()
 {
-    if (m_firstloginLock) {
-        return false;
+    // Whether this boot is a first boot (no soft reboot since power-on) is a
+    // machine-global fact that cannot change while the daemon runs, so resolve
+    // it once and cache the answer — including the "treat as first boot" error
+    // paths, which must stay sticky too.
+    if (m_isFirstBoot.has_value()) {
+        return m_isFirstBoot.value();
     }
-    m_firstloginLock = true;
 
     // "Soft reboot" is a systemd-specific concept. On non-systemd init systems
     // (OpenRC, runit, dinit, s6, BSD init) there is no equivalent, so treat
     // the absence of systemd as "no soft reboot" and allow autologin to run.
     if (!QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.systemd1"))) {
-        qInfo() << "DaemonApp::tryLockFirstLogin: systemd1 not registered on system bus; treating as no soft reboot";
-        return true;
+        qInfo() << "DaemonApp::isFirstBoot: systemd1 not registered on system bus; treating as no soft reboot";
+        m_isFirstBoot = true;
+        return m_isFirstBoot.value();
     }
 
     QDBusMessage msg = QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.systemd1"),
@@ -236,17 +242,20 @@ bool DaemonApp::tryLockFirstLogin()
     const QDBusMessage reply = QDBusConnection::systemBus().call(msg);
 
     if (reply.type() == QDBusMessage::ErrorMessage) {
-        qWarning() << "DaemonApp::tryLockFirstLogin: DBus error:" << reply.errorName() << "-" << reply.errorMessage();
-        return true;
+        qWarning() << "DaemonApp::isFirstBoot: DBus error:" << reply.errorName() << "-" << reply.errorMessage();
+        m_isFirstBoot = true;
+        return m_isFirstBoot.value();
     }
 
     const QVariant soft_reboot_count = qvariant_cast<QDBusVariant>(reply.arguments().at(0)).variant();
     if (!soft_reboot_count.isValid()) {
-        qWarning() << "DaemonApp::tryLockFirstLogin: DBus variant is invalid:" << reply;
-        return true;
+        qWarning() << "DaemonApp::isFirstBoot: DBus variant is invalid:" << reply;
+        m_isFirstBoot = true;
+        return m_isFirstBoot.value();
     }
 
-    return soft_reboot_count.toUInt() == 0;
+    m_isFirstBoot = soft_reboot_count.toUInt() == 0;
+    return m_isFirstBoot.value();
 };
 }
 

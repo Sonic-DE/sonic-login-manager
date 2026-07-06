@@ -200,7 +200,7 @@ Display::Display(Seat *parent)
     connect(m_greeter, &Greeter::displayServerFailed, this, &Display::displayServerFailed);
 
     // Load autologin configuration (whether to autologin, user, session, session type)
-    if ((mainConfig.Autologin.Relogin.get() || daemonApp->tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
+    if ((mainConfig.Autologin.Relogin.get() || seat()->tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
         // determine session type
         QString autologinSession = mainConfig.Autologin.Session.get();
         m_autologinSession = Session::create(Session::WaylandSession, autologinSession);
