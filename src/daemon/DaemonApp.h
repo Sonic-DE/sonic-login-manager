@@ -20,6 +20,8 @@
 #include <QCoreApplication>
 #include <QtCore>
 
+#include <optional>
+
 #define daemonApp DaemonApp::instance()
 
 namespace SONICLOGIN
@@ -43,7 +45,7 @@ public:
         return self;
     }
 
-    bool tryLockFirstLogin();
+    bool isFirstBoot();
 
     QString hostName() const;
     DisplayManager *displayManager() const;
@@ -60,7 +62,7 @@ private:
 
     int m_lastSessionId{0};
 
-    bool m_firstloginLock{false};
+    std::optional<bool> m_isFirstBoot;
 
     bool m_testing{false};
     DisplayManager *m_displayManager{nullptr};
