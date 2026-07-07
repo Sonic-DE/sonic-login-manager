@@ -237,13 +237,13 @@ bool DaemonApp::tryLockFirstLogin()
 
     if (reply.type() == QDBusMessage::ErrorMessage) {
         qWarning() << "DaemonApp::tryLockFirstLogin: DBus error:" << reply.errorName() << "-" << reply.errorMessage();
-        return false;
+        return true;
     }
 
     const QVariant soft_reboot_count = qvariant_cast<QDBusVariant>(reply.arguments().at(0)).variant();
     if (!soft_reboot_count.isValid()) {
         qWarning() << "DaemonApp::tryLockFirstLogin: DBus variant is invalid:" << reply;
-        return false;
+        return true;
     }
 
     return soft_reboot_count.toUInt() == 0;
