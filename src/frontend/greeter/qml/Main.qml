@@ -43,16 +43,16 @@ Item {
         target: mainStack
     }
 
-    Connections {
-        target: greeterEventFilter
+    SonicLogin.GreeterEventFilter {
+        window: root.Window.window
 
-        function onKeyPressed(): void {
+        onKeyPressed: {
             // callLater, as otherwise 'enter' key press would arrive after waking
             // and the uiVisible check would pass and a login attempt would be made
             Qt.callLater(() => SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window));
         }
 
-        function onEscapeKeyPressed(): void {
+        onEscapeKeyPressed: {
             SonicLogin.GreeterState.timeoutWindow(loginScreenRoot.Window.window);
             /*
 -            if (inputPanel.keyboardActive) {
