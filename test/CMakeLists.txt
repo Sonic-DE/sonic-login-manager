@@ -12,6 +12,17 @@ set_tests_properties(Configuration PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT
 
 target_link_libraries(ConfigurationTest Qt6::Core Qt6::Test)
 
+add_executable(GreeterEventFilterTest
+    GreeterEventFilterTest.cpp
+    ../src/frontend/greeter/greetereventfilter.cpp
+)
+target_link_libraries(GreeterEventFilterTest PRIVATE Qt6::Quick Qt6::Test KF6::ScreenDpms)
+add_test(NAME GreeterEventFilter COMMAND GreeterEventFilterTest)
+# Do not access the real display or its DPMS service during the Escape-key test.
+set_tests_properties(GreeterEventFilter PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus"
+)
+
 add_test(
     NAME FindNativeXServer
     COMMAND ${CMAKE_COMMAND}

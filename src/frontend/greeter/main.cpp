@@ -92,10 +92,6 @@ private:
         window->setResizeMode(PlasmaQuick::QuickViewSharedEngine::SizeRootObjectToView);
         window->setFlags(Qt::BypassWindowManagerHint);
 
-        auto *greeterEventFilter = new GreeterEventFilter(this);
-        window->installEventFilter(greeterEventFilter);
-        window->rootContext()->setContextProperty(QStringLiteral("greeterEventFilter"), greeterEventFilter);
-
         window->setSource(QUrl("qrc:/qt/qml/org/kde/sonic/login/Main.qml"));
         window->show();
 
@@ -192,6 +188,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "Settings", &SonicLoginSettings::getInstance());
     qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "StateConfig", StateConfig::self());
     qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "BlurScreenBridge", new BlurScreenBridge);
+    qmlRegisterType<GreeterEventFilter>("org.kde.sonic.login", 0, 1, "GreeterEventFilter");
 
     LoginGreeter greeter;
 
