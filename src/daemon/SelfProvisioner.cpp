@@ -33,21 +33,25 @@ namespace SONICLOGIN
 
 SelfProvisioner::SelfProvisioner()
 {
-    // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(SelfProvisionerMessageHandler);
 }
 
 SelfProvisioner::~SelfProvisioner() = default;
 
 bool SelfProvisioner::provision()
 {
-    qDebug() << "SelfProvisioner: Starting system provisioning...";
-
-    // Run provisioning steps in order
     if (!createGreeterUser()) {
         qCritical() << "SelfProvisioner: Failed to create soniclogin user";
         return false;
     }
+
+    if (!setupLogging()) {
+        qCritical() << "SelfProvisioner: Failed to set up logging";
+        return false;
+    }
+
+    qInstallMessageHandler(SelfProvisionerMessageHandler);
+
+    qDebug() << "SelfProvisioner: Starting system provisioning...";
 
     if (!createStateDirectory()) {
         qCritical() << "SelfProvisioner: Failed to create state directory";
@@ -61,11 +65,6 @@ bool SelfProvisioner::provision()
 
     if (!createRuntimeDirectory()) {
         qCritical() << "SelfProvisioner: Failed to create runtime directory";
-        return false;
-    }
-
-    if (!setupLogging()) {
-        qCritical() << "SelfProvisioner: Failed to set up logging";
         return false;
     }
 
