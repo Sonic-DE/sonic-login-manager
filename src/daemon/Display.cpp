@@ -25,139 +25,25 @@
 #include "InitSystem.h"
 #include "Seat.h"
 #include "SocketServer.h"
-#include "Utils.h"
 #include "XorgUserDisplayServer.h"
 
 #include <QDebug>
-#include <QFile>
 #include <QLocalSocket>
 #include <QTimer>
 
-#include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
-#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
 
 #include <KConfigGroup>
 #include <KDesktopFile>
 
-#include "Login1Manager.h"
-#include "Login1Session.h"
 #include "VirtualTerminal.h"
 
 static int s_ttyFailures = 0;
 
-namespace SONICLOGIN
-{
-#ifdef __FreeBSD__
-QString getTtyDevicePath(int vt)
-{
-    // FreeBSD VT numbering: VT1=ttyv0, VT2=ttyv1, VT3=ttyv2, etc.
-    char c = (vt <= 10 ? '0' : 'a') + (vt - 1);
-    return QStringLiteral("/dev/ttyv%1").arg(c);
-}
-#else
-QString getTtyDevicePath(int vt)
-{
-    // Linux VT numbering: VT1=tty1, VT2=tty2, etc.
-    return QStringLiteral("/dev/tty%1").arg(vt);
-}
-#endif
-
-bool isTtyInUse(int vt)
-{
-    QString ttyPath = getTtyDevicePath(vt);
-
-    if (Logind::isAvailable()) {
-        OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
-        auto reply = manager.ListSessions();
-        reply.waitForFinished();
-
-        const auto info = reply.value();
-        for (const SessionInfo &s : info) {
-            OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), s.sessionPath.path(), QDBusConnection::systemBus());
-            if (ttyPath == session.tTY() && session.state() != QLatin1String("closing")) {
-                qWarning() << "tty" << ttyPath << "already in use by" << session.user().path.path() << session.state() << session.display() << session.desktop()
-                           << session.vTNr();
-                return true;
-            }
-        }
-    }
-    // Fallback for non-systemd systems: check if the TTY device is being used
-    // by checking for active login sessions via utmp/wtmp or process list
-    QFile ttyFile(ttyPath);
-    if (ttyFile.exists()) {
-        // On non-systemd systems, we can't reliably track TTY usage
-        // Just check if we can open the TTY exclusively
-        int fd = ::open(qPrintable(ttyFile.fileName()), O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (fd >= 0) {
-            ::close(fd);
-            // TTY is available
-            return false;
-        }
-        // If we can't open it, it might be in use by someone else
-        // but we should still try to use it
-        qWarning() << "TTY" << ttyPath << "might be in use, but will attempt to use it anyway";
-    }
-    return false;
-}
-
-int fetchAvailableVt()
-{
-    const int initialVt = getInitialVt();
-    // Use the correct TTY device path for the platform
-    QString ttyPath = getTtyDevicePath(initialVt);
-
-    // Log VT device ownership and permissions for diagnostic purposes
-    struct stat st;
-    if (::stat(qPrintable(ttyPath), &st) == 0) {
-        qInfo() << "fetchAvailableVt: VT" << initialVt << "device" << ttyPath << "uid=" << st.st_uid << "gid=" << st.st_gid
-                << "mode=" << QString::number(st.st_mode & 0777, 8);
-    } else {
-        qWarning() << "fetchAvailableVt: cannot stat" << ttyPath << ":" << strerror(errno);
-    }
-
-    // Check if the TTY device file exists and is accessible
-    QFile ttyFile(ttyPath);
-    bool ttyInUse = false;
-    if (ttyFile.exists()) {
-        int fd = ::open(qPrintable(ttyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (fd >= 0) {
-            ::close(fd);
-            // TTY is available
-            ttyInUse = false;
-        } else {
-            // If we can't open it, it might be in use
-            ttyInUse = true;
-            qWarning() << "fetchAvailableVt: initial VT" << initialVt << "might be in use:" << strerror(errno);
-        }
-    } else {
-        qWarning() << "fetchAvailableVt: initial VT" << initialVt << "device" << ttyPath << "does not exist";
-    }
-
-    if (!ttyInUse) {
-        return initialVt;
-    }
-
-    const auto vt = VirtualTerminal::currentVt();
-    if (vt > 0) {
-        QString currentTtyPath = getTtyDevicePath(vt);
-        QFile currentTtyFile(currentTtyPath);
-        if (currentTtyFile.exists()) {
-            int fd = ::open(qPrintable(currentTtyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
-            if (fd >= 0) {
-                ::close(fd);
-                return vt;
-            } else {
-                qWarning() << "fetchAvailableVt: current VT" << vt << "might be in use:" << strerror(errno);
-            }
-        }
-    }
-    return VirtualTerminal::setUpNewVt();
-}
-
+namespace SONICLOGIN {
 Display::Display(Seat *parent)
     : QObject(parent)
     , m_auth(new Auth(this))
@@ -166,7 +52,7 @@ Display::Display(Seat *parent)
     , m_greeter(new Greeter(this))
 {
     if (seat()->canTTY()) {
-        m_terminalId = fetchAvailableVt();
+        m_terminalId = seat()->availableVt();
     }
     qDebug("Using VT %d", m_terminalId);
 
@@ -385,24 +271,7 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
         return false;
     }
 
-    m_reuseSessionId = QString();
-
-    if (Logind::isAvailable()) {
-        OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
-        auto reply = manager.ListSessions();
-        reply.waitForFinished();
-
-        const auto info = reply.value();
-        for (const SessionInfo &s : reply.value()) {
-            if (s.userName == user) {
-                OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), s.sessionPath.path(), QDBusConnection::systemBus());
-                if (session.service() == QLatin1String("soniclogin") && session.state() == QLatin1String("online")) {
-                    m_reuseSessionId = s.sessionId;
-                    break;
-                }
-            }
-        }
-    }
+    m_reuseSessionId = seat()->reusableSessionId(user);
 
     // save session desktop file name, we'll use it to set the
     // last session later, in slotAuthenticationFinished()
@@ -474,15 +343,8 @@ void Display::slotAuthenticationFinished(const QString &user, bool success)
     if (success) {
         qDebug() << "Authentication for user " << user << " successful";
 
-        if (!m_reuseSessionId.isNull() && Logind::isAvailable()) {
-            OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
-            manager.UnlockSession(m_reuseSessionId);
-            manager.ActivateSession(m_reuseSessionId);
-        } else if (!m_reuseSessionId.isNull()) {
-            // Session reuse requested but logind is not available
-            // This shouldn't happen in normal operation as session reuse
-            // requires logind, but handle gracefully
-            qDebug() << "Session reuse requested but logind is not available";
+        if (!m_reuseSessionId.isNull()) {
+            seat()->activateSession(m_reuseSessionId);
         }
 
         if (m_socket) {
