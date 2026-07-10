@@ -16,12 +16,10 @@ QQC2.ApplicationWindow {
     modality: Qt.WindowModal
     flags: Qt.Dialog
 
-    minimumWidth: Kirigami.Units.gridUnit * 25
-    width: Kirigami.Units.gridUnit * 25
+    minimumWidth: Kirigami.Units.gridUnit * 20
+    width: Kirigami.Units.gridUnit * 20
     height: contentLayout.implicitHeight + footer.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-    // Guards onClosing so it only calls cancelAuth() when the user
-    // closes via the title bar X button, not after submit/reject.
     property bool wasSubmitted: false
 
     ColumnLayout {
@@ -30,23 +28,29 @@ QQC2.ApplicationWindow {
         anchors.margins: Kirigami.Units.largeSpacing
         spacing: Kirigami.Units.smallSpacing
 
-        QQC2.Label {
-            text: i18n("Enter your credentials to apply Sonic Login settings.")
+        RowLayout {
             Layout.fillWidth: true
-            wrapMode: Text.Wrap
-        }
+            spacing: Kirigami.Units.largeSpacing
 
-        QQC2.TextField {
-            id: usernameField
-            Layout.fillWidth: true
-            placeholderText: i18nc("@label:textbox", "Username")
-            text: kcm.currentUser
-            onAccepted: passwordField.forceActiveFocus()
+            Kirigami.Icon {
+                source: "system-lock-screen"
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: Kirigami.Units.iconSizes.large * 1.5
+                implicitHeight: Kirigami.Units.iconSizes.large * 1.5
+            }
+
+            QQC2.Label {
+                text: i18n("An application is requesting authentication.")
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                verticalAlignment: Text.AlignVCenter
+            }
         }
 
         Kirigami.PasswordField {
             id: passwordField
             Layout.fillWidth: true
+            placeholderText: i18nc("@label:textbox", "Password")
             onAccepted: dialog.doAccept()
         }
     }
@@ -76,9 +80,6 @@ QQC2.ApplicationWindow {
 
     function openAndClear() {
         dialog.wasSubmitted = false
-        if (usernameField.text.length === 0) {
-            usernameField.text = kcm.currentUser
-        }
         passwordField.text = ""
         show()
         requestActivate()
@@ -86,7 +87,7 @@ QQC2.ApplicationWindow {
 
     function doAccept() {
         dialog.wasSubmitted = true
-        kcm.submitAuth(usernameField.text, passwordField.text)
+        kcm.submitAuth(kcm.currentUser, passwordField.text)
         close()
     }
 
