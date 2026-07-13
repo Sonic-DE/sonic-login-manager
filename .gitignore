@@ -5,7 +5,6 @@
 .idea/
 .vscode/
 
-.clang-format
 .qmlls.ini
 .ccls-cache
 
