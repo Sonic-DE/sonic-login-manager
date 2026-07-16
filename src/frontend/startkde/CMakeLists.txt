@@ -20,7 +20,7 @@ ecm_qt_declare_logging_category(start-soniclogin_SRCS HEADER debug.h
                                 EXPORT PLASMAWORKSPACE
                             )
 
-add_executable(start-soniclogin-x11 start-soniclogin-x11.cpp start-soniclogin.cpp ${start-soniclogin_SRCS})
+add_executable(start-soniclogin-x11 start-soniclogin.cpp ${start-soniclogin_SRCS})
 
 target_link_libraries(start-soniclogin-x11 PRIVATE
     Qt::Core
