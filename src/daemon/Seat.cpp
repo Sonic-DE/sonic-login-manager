@@ -157,6 +157,12 @@ void Seat::createDisplay()
     // add display to the list
     m_displays << display;
 
+    // Resolve autologin after reloading configuration. Keep SonicDE's existing
+    // first-login/Relogin eligibility policy; Display only executes this choice.
+    if ((mainConfig.Autologin.Relogin.get() || tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
+        display->setAutoLogin(mainConfig.Autologin.User.get(), mainConfig.Autologin.Session.get());
+    }
+
     // start the display
     startDisplay(display);
 }
