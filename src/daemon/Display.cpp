@@ -36,9 +36,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <KConfigGroup>
-#include <KDesktopFile>
-
 #include "VirtualTerminal.h"
 
 static int s_ttyFailures = 0;
@@ -84,19 +81,6 @@ Display::Display(Seat *parent)
         stop();
     });
     connect(m_greeter, &Greeter::displayServerFailed, this, &Display::displayServerFailed);
-
-    // Load autologin configuration (whether to autologin, user, session, session type)
-    if ((mainConfig.Autologin.Relogin.get() || seat()->tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
-        // determine session type
-        QString autologinSession = mainConfig.Autologin.Session.get();
-        m_autologinSession = Session::create(Session::WaylandSession, autologinSession);
-        if (!m_autologinSession.isValid()) {
-            m_autologinSession = Session::create(Session::X11Session, autologinSession);
-        }
-        if (!m_autologinSession.isValid()) {
-            qCritical() << "Unable to find autologin session entry" << autologinSession;
-        }
-    }
 }
 
 Display::~Display()
@@ -120,6 +104,24 @@ Seat *Display::seat() const
     return m_seat;
 }
 
+void Display::setAutoLogin(const QString &user, const QString &session)
+{
+    m_autologinUser = user;
+    m_autologinSession = Session();
+    if (user.isEmpty()) {
+        return;
+    }
+
+    m_autologinSession = Session::create(Session::X11Session, session);
+    if (!m_autologinSession.isValid()) {
+        m_autologinSession = Session::create(Session::WaylandSession, session);
+    }
+    if (!m_autologinSession.isValid()) {
+        qCritical() << "Unable to find autologin session entry" << session << "for user" << user << "on seat" << seat()->name()
+                    << "— falling back to the greeter";
+    }
+}
+
 bool Display::start()
 {
     if (m_started) {
@@ -141,7 +143,7 @@ bool Display::start()
     // (rootful X + X11 autologin session).
     if (m_autologinSession.isValid()) {
         m_auth->setAutologin(true);
-        if (startAuth(mainConfig.Autologin.User.get(), QString(), m_autologinSession)) {
+        if (startAuth(m_autologinUser, QString(), m_autologinSession)) {
             return true;
         } else {
             return handleAutologinFailure();

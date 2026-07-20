@@ -52,6 +52,7 @@ public:
     }
 
     Seat *seat() const;
+    void setAutoLogin(const QString &user, const QString &session);
 
 public slots:
     bool start();
@@ -85,6 +86,7 @@ private:
     QString m_reuseSessionId;
 
     Session m_autologinSession;
+    QString m_autologinUser;
 
     Auth *m_auth{nullptr};
     Seat *m_seat{nullptr};
