@@ -23,6 +23,7 @@ Item {
 
         property var activeWindow: null
         property bool initialized: false
+        property var sessionButtonPopupOwners: []
     }
 
     Binding {
@@ -98,12 +99,24 @@ Item {
 
     // Shared functionality
 
+    readonly property bool greeterHasSessionButtonPopup: internal.sessionButtonPopupOwners.length > 0
+
+    function setSessionButtonPopupVisible(owner, visible) {
+        let owners = internal.sessionButtonPopupOwners.filter(candidate => candidate !== owner);
+        if (visible) {
+            owners.push(owner);
+        }
+        internal.sessionButtonPopupOwners = owners;
+    }
+
     readonly property bool inhibitGreeterTimeout: {
         if (greeterState.loginState === GreeterState.LoginState.UserList && greeterState.userListPassword.length > 0) {
             // We're on the user list and a password is entered
             return true;
         } else if (greeterState.loginState === GreeterState.LoginState.UserPrompt && greeterState.userPromptPassword.length > 0) {
             // We're on the user prompt and a password is entered
+            return true;
+        } else if (greeterState.greeterHasSessionButtonPopup) {
             return true;
         }
 

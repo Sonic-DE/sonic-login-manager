@@ -35,6 +35,21 @@ PlasmaComponents.ComboBox {
     PlasmaComponents.ToolTip.visible: hovered && contentItem.truncated && !popup.visible
     PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
 
+    Connections {
+        target: root.popup
+
+        function onVisibleChanged() {
+            SonicLogin.GreeterState.setSessionButtonPopupVisible(root, root.popup.visible);
+        }
+    }
+
+    Component.onCompleted: SonicLogin.GreeterState.setSessionButtonPopupVisible(root, root.popup.visible)
+    Component.onDestruction: {
+        if (SonicLogin.GreeterState) {
+            SonicLogin.GreeterState.setSessionButtonPopupVisible(root, false);
+        }
+    }
+
     currentIndex: count > 0 ? SonicLogin.GreeterState.sessionIndex : -1
 
     signal sessionChanged()
