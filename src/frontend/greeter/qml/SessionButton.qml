@@ -1,74 +1,50 @@
 /*
-    SPDX-FileCopyrightText: 2016 David Edmundson <davidedmundson@kde.org>
-    SPDX-FileCopyrightText: 2022 Aleix Pol Gonzalez <aleixpol@kde.org>
+    SPDX-FileCopyrightText: 2026 Oliver Beard <olib141@outlook.com>
 
     SPDX-License-Identifier: LGPL-2.0-or-later
 */
 
-import QtQuick 2.15
+import QtQuick
+import QtQuick.Controls as QQC2
 
-import org.kde.plasma.components 3.0 as PlasmaComponents
-import org.kde.kirigami 2.20 as Kirigami
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 
 import org.kde.sonic.login as SonicLogin
 
-PlasmaComponents.ToolButton {
+PlasmaComponents.ComboBox {
     id: root
 
-    property int currentIndex: SonicLogin.GreeterState.sessionIndex
+    model: SonicLogin.SessionModel
+    textRole: "display"
 
-    // Count is used as instantiator may not have made items yet
-    text: i18nd("soniclogin", "Desktop Session: %1", instantiator.count > currentIndex ? instantiator.objectAt(currentIndex).text : "")
-    visible: menu.count > 1
+    visible: count > 1
+    flat: true
+    displayText: i18nd("soniclogin", "Desktop Session: %1", currentText)
 
-    checkable: true
-    checked: menu.opened
-    onToggled: {
-        if (checked) {
-            menu.popup(root, 0, 0)
-        } else {
-            menu.dismiss()
-        }
+    contentItem: QQC2.Label {
+        font: root.font
+        horizontalAlignment: Text.AlignLeft
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+
+        text: root.displayText
     }
+
+    PlasmaComponents.ToolTip.text: currentText
+    PlasmaComponents.ToolTip.visible: hovered && contentItem.truncated && !popup.visible
+    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+
+    currentIndex: count > 0 ? SonicLogin.GreeterState.sessionIndex : -1
 
     signal sessionChanged()
 
-    PlasmaComponents.Menu {
-        Kirigami.Theme.colorSet: Kirigami.Theme.Window
-        Kirigami.Theme.inherit: false
-
-        id: menu
-        currentIndex: root.currentIndex
-        Instantiator {
-            id: instantiator
-            model: SonicLogin.SessionModel
-            onObjectAdded: (index, object) => menu.insertItem(index, object)
-            onObjectRemoved: (index, object) => menu.removeItem(object)
-            delegate: PlasmaComponents.MenuItem {
-                PlasmaComponents.ToolTip.text: model.comment
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
-
-                text: model.display
-                onTriggered: {
-                    root.currentIndex = model.index
-                    sessionChanged()
-                }
-            }
+    // Initialization and model updates can also change currentIndex. Only a
+    // user's activation should change the shared login session or form focus.
+    onActivated: (index) => {
+        if (index >= 0 && index < count) {
+            SonicLogin.GreeterState.sessionIndex = index;
+            sessionChanged();
         }
-    }
-
-    Connections {
-        target: SonicLogin.GreeterState
-
-        function onSessionIndexChanged() {
-            if (root.currentIndex != SonicLogin.GreeterState.sessionIndex) {
-                root.currentIndex = SonicLogin.GreeterState.sessionIndex;
-            }
-        }
-    }
-
-    onCurrentIndexChanged: {
-        SonicLogin.GreeterState.sessionIndex = root.currentIndex;
     }
 }
