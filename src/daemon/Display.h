@@ -25,19 +25,18 @@
 
 #include "Auth.h"
 #include "Session.h"
+#include "VirtualTerminal.h"
 
 class QLocalSocket;
 
-namespace SONICLOGIN
-{
+namespace SONICLOGIN {
 class Authenticator;
 class DisplayServer;
 class Seat;
 class SocketServer;
 class Greeter;
 
-class Display : public QObject
-{
+class Display : public QObject {
     Q_OBJECT
     Q_DISABLE_COPY(Display)
 public:
@@ -76,8 +75,8 @@ private:
 
     bool m_started{false};
 
-    int m_terminalId = -1;
-    int m_sessionTerminalId = 0;
+    VirtualTerminal::Terminal m_terminalId;
+    VirtualTerminal::Terminal m_sessionTerminalId;
 
     bool m_greeterWasStarted{false};
 

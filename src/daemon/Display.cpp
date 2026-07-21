@@ -54,7 +54,7 @@ Display::Display(Seat *parent)
     if (seat()->canTTY()) {
         m_terminalId = seat()->availableVt();
     }
-    qDebug("Using VT %d", m_terminalId);
+    qDebug("Using VT %d", m_terminalId.tty());
 
     // respond to authentication requests
     m_auth->setVerbose(true);
@@ -107,7 +107,7 @@ Display::~Display()
 
 int Display::terminalId() const
 {
-    return m_auth->isActive() ? m_sessionTerminalId : m_terminalId;
+    return (m_auth->isActive() ? m_sessionTerminalId : m_terminalId).tty();
 }
 
 QString Display::sessionType() const
@@ -124,6 +124,15 @@ bool Display::start()
 {
     if (m_started) {
         return true;
+    }
+
+    if (seat()->canTTY() && !m_terminalId.isValid()) {
+        // A device may have appeared since construction or an earlier retry.
+        m_terminalId = seat()->availableVt();
+        if (!m_terminalId.isValid()) {
+            qWarning() << "Display::start: cannot reserve a VT for the greeter";
+            return false;
+        }
     }
 
     m_started = true;
@@ -277,29 +286,37 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     // last session later, in slotAuthenticationFinished()
     m_sessionName = session.fileName();
 
-    m_sessionTerminalId = m_terminalId;
+    // Release any reservation from an earlier failed attempt before querying.
+    m_sessionTerminalId = {};
+    const bool canTTY = seat()->canTTY();
 
     qDebug() << "Display::startAuth: VT allocation check:"
-             << "m_greeter->isRunning()" << m_greeter->isRunning() << "m_greeterWasStarted" << m_greeterWasStarted << "seat()->canTTY()" << seat()->canTTY()
-             << "m_terminalId" << m_terminalId;
+             << "m_greeter->isRunning()" << m_greeter->isRunning() << "m_greeterWasStarted" << m_greeterWasStarted << "seat()->canTTY()" << canTTY
+             << "m_terminalId" << m_terminalId.tty();
 
-    if (m_greeter->isRunning() || m_greeterWasStarted) {
+    if (canTTY && (m_greeter->isRunning() || m_greeterWasStarted)) {
         // Create a new VT when we need to have another compositor running.
         // Also allocate a new VT if the greeter was previously started but is
         // no longer running (e.g. it was killed by the OOM killer). In that case
         // the greeter's VT may still be locked and cannot be reused.
-        if (seat()->canTTY()) {
-            m_sessionTerminalId = VirtualTerminal::setUpNewVt();
-            qDebug() << "Display::startAuth: setUpNewVt() returned VT" << m_sessionTerminalId;
-        } else {
-            qWarning() << "Display::startAuth: seat()->canTTY() is false, cannot allocate new VT";
-        }
+        m_sessionTerminalId = VirtualTerminal::setUpNewVt();
+        qDebug() << "Display::startAuth: setUpNewVt() returned VT" << m_sessionTerminalId.tty();
     } else {
-        qDebug() << "Display::startAuth: greeter not running and was never started, reusing VT" << m_terminalId;
+        m_sessionTerminalId = {m_terminalId.tty(), m_terminalId.ttyFd().duplicate()};
+        if (m_greeter->isRunning() || m_greeterWasStarted) {
+            qWarning() << "Display::startAuth: seat()->canTTY() is false, cannot allocate new VT";
+        } else {
+            qDebug() << "Display::startAuth: greeter not running and was never started, reusing VT" << m_terminalId.tty();
+        }
+    }
+
+    if (canTTY && !m_sessionTerminalId.isValid()) {
+        qCritical() << "Display::startAuth: cannot reserve a VT for the session";
+        return false;
     }
 
     // some information
-    qDebug() << "Display::startAuth: Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId
+    qDebug() << "Display::startAuth: Session" << m_sessionName << "selected, command:" << session.exec() << "for VT" << m_sessionTerminalId.tty()
              << "type=" << session.xdgSessionType() << "reuseSessionId=" << m_reuseSessionId;
 
     QProcessEnvironment env;
@@ -313,8 +330,8 @@ bool Display::startAuth(const QString &user, const QString &password, const Sess
     env.insert(QStringLiteral("XDG_SESSION_CLASS"), QStringLiteral("user"));
     env.insert(QStringLiteral("XDG_SESSION_TYPE"), session.xdgSessionType());
     env.insert(QStringLiteral("XDG_SEAT"), seat()->name());
-    if (m_sessionTerminalId > 0) {
-        env.insert(QStringLiteral("XDG_VTNR"), QString::number(m_sessionTerminalId));
+    if (m_sessionTerminalId.isValid()) {
+        env.insert(QStringLiteral("XDG_VTNR"), QString::number(m_sessionTerminalId.tty()));
     }
     env.insert(QStringLiteral("XDG_SESSION_DESKTOP"), session.desktopNames());
 

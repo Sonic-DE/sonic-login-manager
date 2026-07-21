@@ -12,6 +12,14 @@ set_tests_properties(Configuration PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT
 
 target_link_libraries(ConfigurationTest Qt6::Core Qt6::Test)
 
+add_executable(FileDescriptorTest
+    FileDescriptorTest.cpp
+    ../src/common/filedescriptor.cpp
+    ../src/common/VirtualTerminal.cpp
+)
+target_link_libraries(FileDescriptorTest PRIVATE Qt6::Core Qt6::Test)
+add_test(NAME FileDescriptor COMMAND FileDescriptorTest)
+
 add_executable(GreeterEventFilterTest
     GreeterEventFilterTest.cpp
     ../src/frontend/greeter/greetereventfilter.cpp
