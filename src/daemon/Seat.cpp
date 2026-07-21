@@ -24,14 +24,12 @@
 #include "VirtualTerminal.h"
 
 #include <QDebug>
-#include <QFile>
 #include <QTimer>
 
 #include <Login1Manager.h>
 #include <Login1Seat.h>
 #include <Login1Session.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <functional>
 #include <optional>
 #include <string.h>
@@ -51,7 +49,7 @@ const QString &Seat::name() const
     return m_name;
 }
 
-int Seat::availableVt() const
+VirtualTerminal::Terminal Seat::availableVt() const
 {
     const int initialVt = getInitialVt();
     // Use the correct TTY device path for the platform.
@@ -66,37 +64,17 @@ int Seat::availableVt() const
         qWarning() << "Seat::availableVt: cannot stat" << ttyPath << ":" << strerror(errno);
     }
 
-    // Preserve SonicDE's device-access fallback when no session manager is available.
-    QFile ttyFile(ttyPath);
-    bool ttyInUse = false;
-    if (ttyFile.exists()) {
-        int fd = ::open(qPrintable(ttyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
-        if (fd >= 0) {
-            ::close(fd);
-        } else {
-            ttyInUse = true;
-            qWarning() << "Seat::availableVt: initial VT" << initialVt << "might be in use:" << strerror(errno);
-        }
-    } else {
-        qWarning() << "Seat::availableVt: initial VT" << initialVt << "device" << ttyPath << "does not exist";
-    }
-
-    if (!ttyInUse) {
-        return initialVt;
+    // Keep the opened device as the reservation instead of closing an access probe.
+    auto terminal = VirtualTerminal::openVt(initialVt);
+    if (terminal.isValid()) {
+        return terminal;
     }
 
     const auto vt = VirtualTerminal::currentVt();
     if (vt > 0) {
-        const QString currentTtyPath = VirtualTerminal::path(vt);
-        QFile currentTtyFile(currentTtyPath);
-        if (currentTtyFile.exists()) {
-            int fd = ::open(qPrintable(currentTtyPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
-            if (fd >= 0) {
-                ::close(fd);
-                return vt;
-            } else {
-                qWarning() << "Seat::availableVt: current VT" << vt << "might be in use:" << strerror(errno);
-            }
+        terminal = VirtualTerminal::openVt(vt);
+        if (terminal.isValid()) {
+            return terminal;
         }
     }
 
@@ -196,6 +174,8 @@ void Seat::startDisplay(Display *display, int tryNr)
 
     if (tryNr >= 3) {
         qCritical() << "Could not start Display server on vt" << display->terminalId();
+        // Use the same cleanup and daemon-exit path as an X11 helper failure.
+        Q_EMIT display->displayServerFailed();
         return;
     }
 
