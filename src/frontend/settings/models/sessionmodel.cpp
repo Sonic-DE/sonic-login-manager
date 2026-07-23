@@ -155,13 +155,25 @@ void SessionModel::populate(const QStringList &xSessionsPaths, const QStringList
     }
 
     std::sort(m_sessions.begin(), m_sessions.end(), [](const Session &a, const Session &b) {
-        // Plasma first
-        const bool aIsPlasma = QFileInfo(a.path).fileName().startsWith(QStringLiteral("plasma"));
-        const bool bIsPlasma = QFileInfo(b.path).fileName().startsWith(QStringLiteral("plasma"));
-        if (aIsPlasma && !bIsPlasma) {
-            return true;
-        } else if (!aIsPlasma && bIsPlasma) {
-            return false;
+        // SonicDE X11, Plasma Wayland, other X11, then other Wayland.
+        const auto priority = [](const Session &session) {
+            const QString fileName = QFileInfo(session.path).fileName();
+            const bool isSonicDE = fileName.startsWith(QStringLiteral("sonicde"), Qt::CaseInsensitive)
+                || session.displayName.startsWith(QStringLiteral("SonicDE"), Qt::CaseInsensitive);
+            const bool isPlasma = fileName.startsWith(QStringLiteral("plasma"), Qt::CaseInsensitive)
+                || session.displayName.startsWith(QStringLiteral("Plasma"), Qt::CaseInsensitive);
+            if (isSonicDE && session.type == Session::Type::X11) {
+                return 0;
+            }
+            if (isPlasma && session.type == Session::Type::Wayland) {
+                return 1;
+            }
+            return session.type == Session::Type::X11 ? 2 : 3;
+        };
+        const int aPriority = priority(a);
+        const int bPriority = priority(b);
+        if (aPriority != bPriority) {
+            return aPriority < bPriority;
         }
 
         // then alphabetical
@@ -172,14 +184,8 @@ void SessionModel::populate(const QStringList &xSessionsPaths, const QStringList
             return false;
         }
 
-        // then X11 first
-        const bool aIsX11 = (a.type == Session::Type::X11);
-        const bool bIsX11 = (b.type == Session::Type::X11);
-        if (aIsX11 && !bIsX11) {
-            return true;
-        } else {
-            return false;
-        }
+        // Keep equal display names stable across reloads.
+        return a.path < b.path;
     });
 
     endResetModel();
