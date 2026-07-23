@@ -20,6 +20,21 @@ import org.kde.private.kcms.soniclogin
 KCM.SimpleKCM {
     id: root
 
+    function defaultUserValue(comboBox) {
+        const currentUserIndex = comboBox.indexOfValue(kcm.currentUser);
+        return currentUserIndex !== -1 ? comboBox.valueAt(currentUserIndex) : (comboBox.valueAt(0) ?? "");
+    }
+
+    function defaultSessionValue(comboBox) {
+        return comboBox.valueAt(0) ?? "";
+    }
+
+    function sessionIndexForValue(comboBox, value) {
+        const index = comboBox.indexOfValue(value);
+        // The daemon also accepts session names without the .desktop suffix.
+        return index !== -1 || value === "" || value.endsWith(".desktop") ? index : comboBox.indexOfValue(value + ".desktop");
+    }
+
     implicitHeight: Kirigami.Units.gridUnit * 45
     implicitWidth: Kirigami.Units.gridUnit * 45
 
@@ -142,19 +157,17 @@ KCM.SimpleKCM {
 
                 QQC2.CheckBox {
                     id: autologinBox
+
                     text: i18nc("@label:listbox, the following combobox selects the user to log in automatically", "as user:")
                     checked: kcm.settings.user != ""
-                    KCM.SettingHighlighter {
-                        highlight: (kcm.settings.user != "" && kcm.settings.defaultUser == "") ||
-                                    (kcm.settings.user == "" && kcm.settings.defaultUser != "")
-                    }
+                    enabled: checked || (autologinUser.count > 0 && autologinSession.count > 0)
                     onToggled: {
                         if (checked) {
-                            kcm.settings.user = autologinUser.currentText
-                            kcm.settings.session = autologinSession.valueAt(0)
+                            kcm.settings.user = root.defaultUserValue(autologinUser);
+                            kcm.settings.session = root.defaultSessionValue(autologinSession);
                         } else {
-                            kcm.settings.user = ""
-                            kcm.settings.session = ""
+                            kcm.settings.user = "";
+                            kcm.settings.session = "";
                         }
 
                         // Deliberately imperative because we only want the message
@@ -164,30 +177,29 @@ KCM.SimpleKCM {
                             autologinMessage.visible = true;
                         }
                     }
+
+                    KCM.SettingHighlighter {
+                        highlight: (kcm.settings.user != "" && kcm.settings.defaultUser == "") ||
+                                    (kcm.settings.user == "" && kcm.settings.defaultUser != "")
+                    }
                 }
                 QQC2.ComboBox {
                     id: autologinUser
+
                     implicitWidth: Kirigami.Units.gridUnit * 12
+
                     model: kcm.userModel
                     textRole: "display"
                     valueRole: "name"
+
+                    currentIndex: count > 0 ? indexOfValue(kcm.settings.user) : -1
                     onActivated: kcm.settings.user = currentValue
+
                     KCM.SettingStateBinding {
                         visible: autologinBox.checked
                         configObject: kcm.settings
                         settingName: "User"
                         extraEnabledConditions: autologinBox.checked
-                    }
-                    Component.onCompleted: updateSelectedUser()
-                    function setUserFromEditText() {
-                        kcm.settings.user = editText;
-                    }
-                    function updateSelectedUser() {
-                        currentIndex = indexOfValue(kcm.settings.user);
-                    }
-                    Connections { // Needed for "Reset" and "Default" buttons to work
-                        target: kcm.settings
-                        function onUserChanged() { autologinUser.updateSelectedUser(); }
                     }
                 }
             }
@@ -201,24 +213,21 @@ KCM.SimpleKCM {
                 }
                 QQC2.ComboBox {
                     id: autologinSession
+
                     implicitWidth: Kirigami.Units.gridUnit * 12
+
                     model: kcm.sessionModel
                     textRole: "display"
                     valueRole: "fileName"
+
+                    currentIndex: count > 0 ? root.sessionIndexForValue(autologinSession, kcm.settings.session) : -1
                     onActivated: kcm.settings.session = currentValue
+
                     KCM.SettingStateBinding {
                         visible: autologinBox.checked
                         configObject: kcm.settings
                         settingName: "Session"
                         extraEnabledConditions: autologinBox.checked
-                    }
-                    Component.onCompleted: updateCurrentIndex()
-                    function updateCurrentIndex() {
-                        currentIndex = indexOfValue(kcm.settings.session);
-                    }
-                    Connections { // Needed for "Reset" and "Default" buttons to work
-                        target: kcm.settings
-                        function onSessionChanged() { autologinSession.updateCurrentIndex(); }
                     }
                 }
             }
@@ -269,6 +278,8 @@ KCM.SimpleKCM {
                 onToggled: {
                     if (checked) {
                         kcm.settings.preselectedUser = "";
+                    } else {
+                        kcm.settings.preselectedUser = root.defaultUserValue(customPreselectedUserComboBox);
                     }
                 }
 
@@ -282,13 +293,16 @@ KCM.SimpleKCM {
 
                 QQC2.RadioButton {
                     id: customPreselectedUserRadioButton
+                    enabled: customPreselectedUserComboBox.count > 0
                     QQC2.ButtonGroup.group: preselectedUserGroup
 
                     autoExclusive: false
                     checked: kcm.settings.preselectedUser != ""
                     onToggled: {
                         if (checked) {
-                            kcm.settings.preselectedUser = customPreselectedUserComboBox.currentText
+                            kcm.settings.preselectedUser = root.defaultUserValue(customPreselectedUserComboBox);
+                        } else {
+                            kcm.settings.preselectedUser = "";
                         }
                     }
 
@@ -301,26 +315,13 @@ KCM.SimpleKCM {
                     id: customPreselectedUserComboBox
 
                     implicitWidth: Kirigami.Units.gridUnit * 12
+
                     model: kcm.userModel
                     textRole: "display"
                     valueRole: "name"
-                    editable: true
-                    onActivated: kcm.settings.preselectedUser = currentText
-                    onEditTextChanged: kcm.settings.preselectedUser = editText;
 
-                    Component.onCompleted: updateSelectedUser()
-                    Connections {
-                        target: kcm.settings
-                        function onPreselectedUserChanged() { customPreselectedUserComboBox.updateSelectedUser(); }
-                    }
-
-                    function updateSelectedUser() {
-                        const index = find(kcm.settings.preselectedUser);
-                        if (index != -1) {
-                            currentIndex = index;
-                        }
-                        editText = kcm.settings.preselectedUser;
-                    }
+                    currentIndex: count > 0 ? indexOfValue(kcm.settings.preselectedUser) : -1
+                    onActivated: kcm.settings.preselectedUser = currentValue
 
                     KCM.SettingStateBinding {
                         visible: customPreselectedUserRadioButton.checked
@@ -347,6 +348,8 @@ KCM.SimpleKCM {
                 onToggled: {
                     if (checked) {
                         kcm.settings.preselectedSession = "";
+                    } else {
+                        kcm.settings.preselectedSession = root.defaultSessionValue(customPreselectedSessionComboBox);
                     }
                 }
 
@@ -360,13 +363,16 @@ KCM.SimpleKCM {
 
                 QQC2.RadioButton {
                     id: customPreselectedSessionRadioButton
+                    enabled: customPreselectedSessionComboBox.count > 0
                     QQC2.ButtonGroup.group: preselectedSessionGroup
 
                     autoExclusive: false
                     checked: kcm.settings.preselectedSession != ""
                     onToggled: {
                         if (checked) {
-                            kcm.settings.preselectedSession = customPreselectedSessionComboBox.valueAt(0);
+                            kcm.settings.preselectedSession = root.defaultSessionValue(customPreselectedSessionComboBox);
+                        } else {
+                            kcm.settings.preselectedSession = "";
                         }
                     }
 
@@ -379,20 +385,13 @@ KCM.SimpleKCM {
                     id: customPreselectedSessionComboBox
 
                     implicitWidth: Kirigami.Units.gridUnit * 12
+
                     model: kcm.sessionModel
                     textRole: "display"
                     valueRole: "fileName"
+
+                    currentIndex: count > 0 ? root.sessionIndexForValue(customPreselectedSessionComboBox, kcm.settings.preselectedSession) : -1
                     onActivated: kcm.settings.preselectedSession = currentValue
-
-                    Component.onCompleted: updateCurrentIndex()
-                    Connections {
-                        target: kcm.settings
-                        function onPreselectedSessionChanged() { customPreselectedSessionComboBox.updateCurrentIndex(); }
-                    }
-
-                    function updateCurrentIndex() {
-                        currentIndex = indexOfValue(kcm.settings.preselectedSession);
-                    }
 
                     KCM.SettingStateBinding {
                         visible: customPreselectedSessionRadioButton.checked

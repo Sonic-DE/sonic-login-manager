@@ -20,6 +20,13 @@ add_executable(FileDescriptorTest
 target_link_libraries(FileDescriptorTest PRIVATE Qt6::Core Qt6::Test)
 add_test(NAME FileDescriptor COMMAND FileDescriptorTest)
 
+add_executable(SessionModelTest
+    SessionModelTest.cpp
+    ../src/frontend/settings/models/sessionmodel.cpp
+)
+target_link_libraries(SessionModelTest PRIVATE Qt6::Core Qt6::Test KF6::ConfigCore KF6::I18n)
+add_test(NAME SessionModel COMMAND SessionModelTest)
+
 add_executable(GreeterEventFilterTest
     GreeterEventFilterTest.cpp
     ../src/frontend/greeter/greetereventfilter.cpp
