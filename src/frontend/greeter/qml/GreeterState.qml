@@ -246,5 +246,9 @@ Item {
             SonicLogin.StateConfig.lastLoggedInUser = greeterState.lastLoggedInUser;
             SonicLogin.StateConfig.save();
         }
+
+        function onLoginFailed() {
+            clearPasswords();
+        }
     }
 }
