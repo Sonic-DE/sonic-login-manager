@@ -23,11 +23,35 @@
 
 #include "Constants.h"
 
+#include <QFile>
+#include <QFileInfo>
+
 #include <pwd.h>
 #include <unistd.h>
 
 namespace SONICLOGIN
 {
+
+static QString nativeXServerPath(const QString &configuredPath)
+{
+    const QFileInfo serverInfo(configuredPath);
+    const QString canonicalPath = serverInfo.canonicalFilePath();
+    if (canonicalPath.isEmpty() || !QFileInfo(canonicalPath).isExecutable()) {
+        qCritical() << "XorgUserDisplayServer: X server is missing or not executable:" << configuredPath;
+        return QString();
+    }
+
+    QFile server(canonicalPath);
+    if (!server.open(QIODevice::ReadOnly)
+        || server.read(4)
+            != QByteArrayLiteral("\x7f"
+                                 "ELF")) {
+        qCritical() << "XorgUserDisplayServer: refusing non-native X server wrapper:" << configuredPath << "resolved to" << canonicalPath;
+        return QString();
+    }
+
+    return canonicalPath;
+}
 
 QString XorgUserDisplayServer::command(Display *display, const QString &userName)
 {
@@ -49,7 +73,17 @@ QString XorgUserDisplayServer::command(Display *display, const QString &userName
         xorgLogFile = userHome + QStringLiteral("/.local/state/Xorg.0.log");
     }
 
-    args << mainConfig.X11.ServerPath.get() << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
+    QString serverPath = nativeXServerPath(mainConfig.X11.ServerPath.get());
+    if (serverPath.isEmpty()) {
+        serverPath = nativeXServerPath(QStringLiteral(X_SERVER_EXECUTABLE));
+    }
+    if (serverPath.isEmpty()) {
+        // Keep the display-server helper path active so an invalid override
+        // cannot bypass Xorg startup and launch the greeter directly.
+        serverPath = QStringLiteral("/nonexistent/soniclogin-invalid-xorg");
+    }
+
+    args << serverPath << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")
          << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3") << QStringLiteral("-logfile") << xorgLogFile;
 
