@@ -121,6 +121,37 @@ add_feature_info("utmps" UTMPS_FOUND "utmps support for non-systemd session trac
 # Extra default install directories
 set(PAM_CONFIG_DIR "${CMAKE_INSTALL_SYSCONFDIR}/pam.d" CACHE PATH "Install directory for PAM configuration")
 
+# Discover the X server's binary location.
+find_program(X_SERVER_EXECUTABLE NAMES Xorg
+    HINTS
+        "${CMAKE_INSTALL_FULL_BINDIR}"
+        "/usr/bin"
+        "/usr/lib"
+        "/usr/local/bin"
+        "/usr/local/libexec"
+)
+if(NOT X_SERVER_EXECUTABLE)
+    message(FATAL_ERROR "Xorg executable not found; set X_SERVER_EXECUTABLE to its absolute path")
+endif()
+
+# Xorg is executed with ambient capabilities. An interpreter would consume
+# those capabilities before the actual server starts, so wrappers and scripts
+# are not valid here. Resolve symlinks and require a native ELF executable.
+file(REAL_PATH "${X_SERVER_EXECUTABLE}" X_SERVER_EXECUTABLE_REAL)
+if(NOT EXISTS "${X_SERVER_EXECUTABLE_REAL}")
+    message(FATAL_ERROR "Xorg executable '${X_SERVER_EXECUTABLE}' resolves to a missing file")
+endif()
+file(READ "${X_SERVER_EXECUTABLE_REAL}" X_SERVER_MAGIC LIMIT 4 HEX)
+string(TOLOWER "${X_SERVER_MAGIC}" X_SERVER_MAGIC)
+if(NOT X_SERVER_MAGIC STREQUAL "7f454c46")
+    message(FATAL_ERROR
+        "Xorg path '${X_SERVER_EXECUTABLE}' resolves to '${X_SERVER_EXECUTABLE_REAL}', "
+        "which is not a native ELF executable. Wrapper scripts are incompatible "
+        "with the ambient capability setup."
+    )
+endif()
+set(X_SERVER_EXECUTABLE "${X_SERVER_EXECUTABLE_REAL}" CACHE FILEPATH "Path to the native Xorg executable" FORCE)
+
 # Set constants
 set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/soniclogin"                     CACHE PATH      "System application data install directory")
 set(DBUS_CONFIG_DIR             "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d"                 CACHE PATH      "DBus config files directory")

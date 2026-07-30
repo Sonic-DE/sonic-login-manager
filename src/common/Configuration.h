@@ -28,11 +28,7 @@ namespace SONICLOGIN
         Entry(Namespaces,          QStringList, QStringList(),                                  _S("Comma-separated list of Linux namespaces for user session to enter"));
         // TODO: Not absolutely sure if everything belongs here. Xsessions, VT and probably some more seem universal
         Section(X11,
-#if defined(Q_OS_FREEBSD) || defined(Q_OS_NETBSD) || defined(Q_OS_OPENBSD) || defined(Q_OS_BSD4)
-            Entry(ServerPath,          QString,     _S("/usr/local/libexec/Xorg"),              _S("Path to X server binary"));
-#else
-            Entry(ServerPath,          QString,     _S("/usr/lib/Xorg"),                        _S("Path to X server binary"));
-#endif
+            Entry(ServerPath,          QString,     _S(X_SERVER_EXECUTABLE),                    _S("Path to X server binary"));
             Entry(ServerArguments,     QString,     _S("-nolisten tcp"),                        _S("Arguments passed to the X server invocation"));
             Entry(SessionLogFile,      QString,     _S(".local/share/soniclogin/xorg-session.log"),   _S("Path to the user session log file"));
         );
