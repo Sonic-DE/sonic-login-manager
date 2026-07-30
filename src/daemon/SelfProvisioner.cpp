@@ -504,19 +504,6 @@ bool SelfProvisioner::setupLogging()
 {
     qDebug() << "SelfProvisioner: Setting up logging...";
 
-    // Create log directory and file
-    qDebug() << "SelfProvisioner: No journalctl - creating log directory and file.";
-
-    // Create log directory
-    QFileInfo logFileInfo(QStringLiteral(LOG_FILE));
-    QDir logDirectory = logFileInfo.absoluteDir();
-    if (!logDirectory.exists()) {
-        if (!logDirectory.mkpath(logDirectory.absolutePath())) {
-            qCritical() << "SelfProvisioner: Failed to create log directory:" << logDirectory.absolutePath();
-            return false;
-        }
-    }
-
     // Rotate log file
     QString oldLog = QStringLiteral(LOG_FILE) + QStringLiteral(".last");
     if (QFile::exists(oldLog)) {
@@ -524,12 +511,6 @@ bool SelfProvisioner::setupLogging()
     }
     if (QFile::exists(QStringLiteral(LOG_FILE))) {
         QFile::rename(QStringLiteral(LOG_FILE), oldLog);
-    }
-
-    // Set directory permissions (777 so soniclogin helper can write)
-    if (!setPermissions(logDirectory.absolutePath(), 0777)) {
-        qCritical() << "SelfProvisioner: Failed to set permissions for log directory:" << logDirectory.absolutePath();
-        return false;
     }
 
     // Create log file
@@ -542,22 +523,30 @@ bool SelfProvisioner::setupLogging()
         file.close();
     }
 
-    // Set log file ownership (soniclogin:soniclogin) and permissions (666 so helper can write)
-    uid_t uid;
-    gid_t gid;
-    if (!getUserIds(&uid, &gid)) {
+    // The daemon downgrades to the soniclogin user before opening this file
+    // for write, so it must be owned by soniclogin:soniclogin. Mode 0644 keeps
+    // the file non-executable and prevents other users from tampering.
+    uid_t logUid;
+    gid_t logGid;
+    if (!getUserIds(&logUid, &logGid)) {
         qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
         return false;
     }
 
-    if (!setOwnership(QStringLiteral(LOG_FILE), uid, gid)) {
+    if (!setOwnership(QStringLiteral(LOG_FILE), logUid, logGid)) {
         qCritical() << "SelfProvisioner: Failed to set ownership for log file";
         return false;
     }
 
-    if (!setPermissions(QStringLiteral(LOG_FILE), 0666)) {
+    if (!setPermissions(QStringLiteral(LOG_FILE), 0644)) {
         qCritical() << "SelfProvisioner: Failed to set permissions for log file";
         return false;
+    }
+
+    // Remove the insecure shared logging directory left by older versions.
+    QDir legacyLogDirectory(QStringLiteral("/var/log/sonic"));
+    if (legacyLogDirectory.exists() && !legacyLogDirectory.removeRecursively()) {
+        qWarning() << "SelfProvisioner: Failed to remove legacy log directory:" << legacyLogDirectory.absolutePath();
     }
 
     qDebug() << "SelfProvisioner: Log file setup complete.";

@@ -9,8 +9,8 @@ command="@CMAKE_INSTALL_FULL_BINDIR@/soniclogin"
 command_args="--foreground"
 pidfile="/run/soniclogin.pid"
 
-output_log="/var/log/sonic/loginmanager.log"
-error_log="/var/log/sonic/loginmanager.err"
+output_log="/var/log/sonic-login-manager.log"
+error_log="/var/log/sonic-login-manager.err"
 
 depend() {
     need localmount
@@ -25,7 +25,7 @@ depend() {
 }
 
 start_pre() {
-    # Ensure the log files exist with the correct user permissions
-    # if running the daemon under a non-root command_user
-    checkpath -f -m 0666 -o root:root "${output_log}" "${error_log}"
+    # The daemon downgrades to soniclogin before writing, so the log files
+    # must be owned by soniclogin and be non-executable.
+    checkpath -f -m 0644 -o soniclogin:soniclogin "${output_log}" "${error_log}"
 }

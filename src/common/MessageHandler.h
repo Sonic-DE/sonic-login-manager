@@ -36,13 +36,13 @@ namespace SONICLOGIN
 {
 inline void ensureLogFileExists(const QString &s_logFilePath)
 {
-    // Only check/create the file, not the directory (directory is created at install time)
+    // The daemon runs as root and writes a root-owned system log.
     QFile logFile(s_logFilePath);
     if (!logFile.exists()) {
         if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
             logFile.close();
         }
-        chmod(s_logFilePath.toUtf8().constData(), 0666);
+        chmod(s_logFilePath.toUtf8().constData(), 0644);
     }
 }
 
