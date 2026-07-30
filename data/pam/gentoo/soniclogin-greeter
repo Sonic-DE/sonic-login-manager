@@ -1,0 +1,20 @@
+#%PAM-1.0
+
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# Load environment from /etc/environment and ~/.pam_environment.
+auth        required    pam_env.so
+
+# Always let the greeter start without authentication.
+auth        required    pam_permit.so
+
+# No action required for account management.
+account     required    pam_permit.so
+
+# The greeter cannot change passwords.
+password    required    pam_deny.so
+
+# Establish the local account and elogind session used on this machine.
+session     required    pam_unix.so
+session     required    pam_elogind.so

@@ -1,0 +1,23 @@
+#%PAM-1.0
+
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: none
+
+# Match Gentoo's display-manager stack from sys-auth/pambase. system-login
+# provides nologin, access/time policy, loginuid, profile.env, limits,
+# elogind/OpenRC session registration, and the system-auth password stack.
+auth        substack    system-login
+-auth       optional    pam_gnome_keyring.so
+-auth       optional    pam_kwallet5.so
+-auth       optional    pam_kwallet.so
+
+account     substack    system-login
+
+password    substack    system-login
+-password   optional    pam_gnome_keyring.so    use_authtok
+
+session     optional    pam_keyinit.so          force revoke
+session     substack    system-login
+-session    optional    pam_gnome_keyring.so    auto_start
+-session    optional    pam_kwallet5.so         auto_start
+-session    optional    pam_kwallet.so          auto_start
