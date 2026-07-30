@@ -133,7 +133,7 @@ set(WAYLAND_SESSION_COMMAND     "${DATA_INSTALL_DIR}/scripts/wayland-session"   
 set(CONFIG_FILE                 "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf"             CACHE PATH      "Path of the soniclogin config file")
 set(CONFIG_DIR                  "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf.d"           CACHE PATH      "Path of the soniclogin config directory")
 set(SYSTEM_CONFIG_DIR           "${CMAKE_INSTALL_PREFIX}/lib/soniclogin/soniclogin.conf.d"    CACHE PATH      "Path of the system soniclogin config directory")
-set(LOG_FILE                    "/var/log/sonic/loginmanager.log"                               CACHE PATH      "Path of the soniclogin log file")
+set(LOG_FILE                    "/var/log/sonic-login-manager.log"                              CACHE PATH      "Path of the soniclogin log file")
 set(DBUS_CONFIG_FILENAME        "org.freedesktop.DisplayManager.conf"                           CACHE STRING    "Name of the soniclogin config file")
 set(SONICLOGIN_INITIAL_VT       "1"                                                             CACHE STRING    "Initial tty to use")
 
@@ -165,5 +165,4 @@ file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 list(FILTER ALL_CLANG_FORMAT_SOURCE_FILES EXCLUDE REGEX ".*\\.ccls-cache/.*")
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
 kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)
-
 

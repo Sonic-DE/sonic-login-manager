@@ -1,6 +1,6 @@
 # /etc/logrotate.d/soniclogin
 
-/var/log/sonic/loginmanager.log {
+/var/log/sonic-login-manager.log {
     daily
     rotate 7
     compress

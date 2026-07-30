@@ -6,10 +6,13 @@
 
 #include <QAtomicInt>
 #include <QDateTime>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLatin1StringView>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QtGlobal>
 #include <QtLogging>
@@ -32,8 +35,23 @@ static void kcmMessageHandler(QtMsgType type, const QMessageLogContext &context,
     const QString formatted = qFormatLogMessage(type, context, msg);
     const QString line = QDateTime::currentDateTime().toString(Qt::ISODateWithMs) + QLatin1Char(' ') + formatted + QLatin1Char('\n');
 
-    QFile file(QStringLiteral("/var/log/sonic/desktop-interface.log"));
+    static const QString logPath = QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + QStringLiteral("/sonic/desktop-interface.log");
+    static const QString logDirectory = QFileInfo(logPath).absolutePath();
+    static const bool logDirectoryReady = QDir().mkpath(logDirectory);
+    if (!logDirectoryReady) {
+        if (s_previousHandler) {
+            s_previousHandler(type, context, msg);
+        }
+        return;
+    }
+
+    // Directory traversal requires the execute bit; logs themselves do not.
+    QFile::setPermissions(logDirectory, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+
+    QFile file(logPath);
     if (file.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
+        // Owner read/write only (mode 0600): no group or other access, no execute bit.
+        file.setPermissions(QFileDevice::Permission(0x600));
         file.write(line.toLocal8Bit());
         file.flush();
         file.close();

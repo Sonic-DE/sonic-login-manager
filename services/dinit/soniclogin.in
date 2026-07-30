@@ -7,6 +7,6 @@
 type = process
 command = @CMAKE_INSTALL_FULL_BINDIR@/soniclogin
 smooth-recovery = true
-logfile         = /var/log/sonic/loginmanager.log
+logfile         = /var/log/sonic-login-manager.log
 depends-on      = logind
 depends-on      = login.target
