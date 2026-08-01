@@ -509,7 +509,7 @@ int main(int argc, char **argv)
 
         KConfig cursorCfg(QStringLiteral("kcminputrc"));
         KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
-        const QString themeName = cursorInputCfg.readEntry("cursorTheme", QStringLiteral("breeze_cursors"));
+        const QString themeName = cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_light"));
         const int themeSize = cursorInputCfg.readEntry("cursorSize", 24);
         applyCursorTheme(themeName, themeSize);
 
