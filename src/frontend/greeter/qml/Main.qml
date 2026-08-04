@@ -166,7 +166,7 @@ Item {
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
+                        parts.push(i18nd("sonic_login", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -178,7 +178,7 @@ Item {
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        text: i18ndc("sonic_login", "Suspend to disk", "Hibernate")
                         visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -187,7 +187,7 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        text: i18ndc("sonic_login", "Suspend to RAM", "Sleep")
                         visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -196,19 +196,19 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("soniclogin", "Restart")
+                        text: i18nd("sonic_login", "Restart")
                         visible: SonicLogin.Authenticator.canReboot
                         onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("soniclogin", "Shut Down")
+                        text: i18nd("sonic_login", "Shut Down")
                         visible: SonicLogin.Authenticator.canShutdown
                         onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-prompt"
-                        text: i18ndc("soniclogin", "For switching to a username and password prompt", "Other…")
+                        text: i18ndc("sonic_login", "For switching to a username and password prompt", "Other…")
                         onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserPrompt
                         visible: !userListComponent.showUsernamePrompt
                     }]
@@ -290,7 +290,7 @@ Item {
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
+                        parts.push(i18nd("sonic_login", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -306,7 +306,7 @@ Item {
                     }
                     Component.onCompleted: {
                         // as we can't bind inside ListElement
-                        setProperty(0, "realName", i18nd("soniclogin", "Type in Username and Password"));
+                        setProperty(0, "realName", i18nd("sonic_login", "Type in Username and Password"));
                         setProperty(0, "icon", Qt.resolvedUrl(".face.icon").toString());
                     }
                 }
@@ -317,7 +317,7 @@ Item {
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        text: i18ndc("sonic_login", "Suspend to disk", "Hibernate")
                         visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -326,7 +326,7 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        text: i18ndc("sonic_login", "Suspend to RAM", "Sleep")
                         visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -335,19 +335,19 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("soniclogin", "Restart")
+                        text: i18nd("sonic_login", "Restart")
                         visible: SonicLogin.Authenticator.canReboot
                         onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("soniclogin", "Shut Down")
+                        text: i18nd("sonic_login", "Shut Down")
                         visible: SonicLogin.Authenticator.canShutdown
                         onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-list"
-                        text: i18nd("soniclogin", "List Users")
+                        text: i18nd("sonic_login", "List Users")
                         onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserList
                     }
                 ]
@@ -393,7 +393,7 @@ Item {
         target: SonicLogin.Authenticator
 
         function onLoginFailed() {
-            notificationMessage = i18nd("soniclogin", "Login Failed");
+            notificationMessage = i18nd("sonic_login", "Login Failed");
 
             footer.enabled = true;
             mainStack.enabled = true;
@@ -403,7 +403,7 @@ Item {
         }
 
         function onSocketDisconnected() {
-            notificationMessage = i18nd("soniclogin", "Connection to login service lost");
+            notificationMessage = i18nd("sonic_login", "Connection to login service lost");
 
             footer.enabled = true;
             mainStack.enabled = true;

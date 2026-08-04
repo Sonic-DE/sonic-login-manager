@@ -20,7 +20,7 @@ PlasmaComponents.ComboBox {
 
     visible: count > 1
     flat: true
-    displayText: i18nd("soniclogin", "Desktop Session: %1", currentText)
+    displayText: i18nd("sonic_login", "Desktop Session: %1", currentText)
 
     contentItem: QQC2.Label {
         font: root.font

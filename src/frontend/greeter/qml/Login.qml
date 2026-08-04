@@ -85,7 +85,7 @@ SessionManagementScreen {
         text: ""
         visible: showUsernamePrompt
         focus: showUsernamePrompt
-        placeholderText: i18nd("soniclogin", "Username")
+        placeholderText: i18nd("sonic_login", "Username")
 
         onAccepted: {
             if (root.loginScreenUiVisible) {
@@ -102,7 +102,7 @@ SessionManagementScreen {
             font.pointSize: fontSize + 1
             Layout.fillWidth: true
 
-            placeholderText: i18nd("soniclogin", "Password")
+            placeholderText: i18nd("sonic_login", "Password")
             focus: !showUsernamePrompt
 
             onAccepted: {
@@ -142,7 +142,7 @@ SessionManagementScreen {
 
         PlasmaComponents3.Button {
             id: loginButton
-            Accessible.name: i18nd("soniclogin", "Log In")
+            Accessible.name: i18nd("sonic_login", "Log In")
             Layout.preferredHeight: passwordBox.implicitHeight
             Layout.preferredWidth: text.length === 0 ? loginButton.Layout.preferredHeight : -1
 

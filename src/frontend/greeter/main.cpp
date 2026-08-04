@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(GreeterMessageHandler);
     qDebug() << "Greeter main: Starting...";
 
-    KLocalizedString::setApplicationDomain(QByteArrayLiteral("sonic-login"));
+    KLocalizedString::setApplicationDomain(QByteArrayLiteral("sonic_login"));
 
     QCommandLineParser parser;
     parser.addOption(QCommandLineOption(QStringLiteral("test"), QStringLiteral("Run in test mode")));
