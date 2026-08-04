@@ -499,6 +499,7 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
 
     createConfigFile(QStringLiteral("kdeglobals"));
     createConfigFile(QStringLiteral("plasmarc"));
+    createConfigFile(QStringLiteral("plasma-localerc"));
     createConfigFile(QStringLiteral("kcminputrc"));
     createConfigFile(QStringLiteral("kwinoutputconfig.json"));
     createConfigFile(QStringLiteral("fontconfig/fonts.conf"));
@@ -594,6 +595,7 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
     }
     QFile(homeDir + QStringLiteral("/.config/kdeglobals")).remove();
     QFile(homeDir + QStringLiteral("/.config/plasmarc")).remove();
+    QFile(homeDir + QStringLiteral("/.config/plasma-localerc")).remove();
     QFile(homeDir + QStringLiteral("/.config/kcminputrc")).remove();
     QFile(homeDir + QStringLiteral("/.config/kwinoutputconfig.json")).remove();
     QFile(homeDir + QStringLiteral("/.config/kxkbrc")).remove();

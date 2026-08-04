@@ -23,7 +23,7 @@ set(LOGIN_GREETER_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
 )
 
-add_definitions(-DTRANSLATION_DOMAIN="soniclogin")
+add_definitions(-DTRANSLATION_DOMAIN="sonic_login")
 
 ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
                                 IDENTIFIER LOGOUT_GREETER
