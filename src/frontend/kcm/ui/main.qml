@@ -70,7 +70,8 @@ KCM.SimpleKCM {
 
         title: i18nc("@title:window", "Apply Desktop Settings")
         subtitle: i18n("This will make the SonicDE login screen reflect your customizations to the following desktop settings:") +
-                xi18nc("@info", "<para><list><item>Language and locale settings</item><item>Color scheme</item><item>Cursor theme and size</item><item>Font and font rendering</item><item>NumLock preference</item><item>Desktop theme</item><item>Scaling DPI</item><item>Screen configuration</item><item>Keyboard layouts</item></list></para>")
+                xi18nc("@info", "<para><list><item>Language and locale settings</item><item>Keyboard layouts</item><item>Screen arrangement, scale, and orientation settings</item><item>NumLock preference</item><item>Font and font rendering settings</item><item>Color scheme</item><item>Cursor theme and size</item><item>Desktop theme</item></list></para>") +
+                i18n("Please note that desktop theme and font files must be installed globally to be reflected on the SonicDE login screen.")
 
         customFooterActions: [
             Kirigami.Action {
