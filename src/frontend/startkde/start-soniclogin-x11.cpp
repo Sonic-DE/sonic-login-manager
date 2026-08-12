@@ -481,7 +481,7 @@ int main(int argc, char **argv)
         }
 
         // Start KWin X11 first (required for the greeter)
-        QString kwinPath = QStringLiteral(BIN_INSTALL_DIR "/kwin_x11");
+        QString kwinPath = QStringLiteral(BIN_INSTALL_DIR "/sonic-win");
         QProcess *kwinProcess = new QProcess();
         kwinProcess->setProcessChannelMode(QProcess::ForwardedChannels);
         kwinProcess->setProcessEnvironment(greeterEnv);
@@ -490,7 +490,7 @@ int main(int argc, char **argv)
             qWarning() << "StartSonicLoginX11: Failed to start " << kwinPath << "with error:" << kwinProcess->errorString();
         }
         if (kwinProcess->state() != QProcess::Running) {
-            qWarning() << "StartSonicLoginX11: kwin_x11 not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
+            qWarning() << "StartSonicLoginX11: sonic-win not running after start, state=" << kwinProcess->state() << "error=" << kwinProcess->errorString();
         }
 
         // Bounded wait for kwin DBus name to ensure RandR state is populated
@@ -571,7 +571,7 @@ int main(int argc, char **argv)
                                                       QStringLiteral("/org/freedesktop/systemd1"),
                                                       QStringLiteral("org.freedesktop.systemd1.Manager"),
                                                       QStringLiteral("StopUnit"));
-            msg << QStringLiteral("soniclogin-kwin_x11.service") << QStringLiteral("fail");
+            msg << QStringLiteral("soniclogin-sonic-win.service") << QStringLiteral("fail");
             QDBusReply<QDBusObjectPath> reply = QDBusConnection::sessionBus().call(msg);
             if (!reply.isValid()) {
                 qWarning() << "StartSonicLoginX11: Could not close up systemd managed Plasma session:" << reply.error().name() << reply.error().message();

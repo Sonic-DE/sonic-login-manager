@@ -3,5 +3,5 @@ Description=KDE Window Manager (Login Manager Version)
 PartOf=graphical-session.target
 
 [Service]
-ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/kwin_x11 --replace
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/sonic-win --replace
 Slice=session.slice
