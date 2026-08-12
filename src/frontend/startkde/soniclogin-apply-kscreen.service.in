@@ -1,8 +1,8 @@
 [Unit]
 Description=Apply synced KScreen config (Login Manager Version)
 PartOf=soniclogin-x11.target
-After=soniclogin-kwin_x11.service
-Requires=soniclogin-kwin_x11.service
+After=soniclogin-sonic-win.service
+Requires=soniclogin-sonic-win.service
 
 [Service]
 Type=oneshot

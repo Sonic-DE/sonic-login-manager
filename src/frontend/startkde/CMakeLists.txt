@@ -1,6 +1,6 @@
 if(SYSTEMD_FOUND)
     install(FILES soniclogin-x11.target DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
-    ecm_install_configured_files(INPUT soniclogin-kwin_x11.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
+    ecm_install_configured_files(INPUT soniclogin-sonic-win.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
     ecm_install_configured_files(INPUT soniclogin-apply-kscreen.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
 endif()
 
