@@ -1,6 +1,6 @@
 [Unit]
-Requires=soniclogin-kwin_x11.service
-BindsTo=soniclogin-kwin_x11.service
+Requires=soniclogin-sonic-win.service
+BindsTo=soniclogin-sonic-win.service
 Requires=soniclogin.service
 BindsTo=soniclogin.service
 
