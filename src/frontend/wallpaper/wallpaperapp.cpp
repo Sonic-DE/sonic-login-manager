@@ -7,10 +7,13 @@
 */
 
 #include <QFile>
-#include <QLoggingCategory>
+#include <QFileInfo>
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QUrl>
+
+#include <memory>
 
 #include <QDBusConnection>
 #include <QDBusError>
@@ -41,8 +44,34 @@ WallpaperApp::WallpaperApp(int &argc, char **argv)
     // Install message handler to log to soniclogin.log
     qInstallMessageHandler(WallpaperAppMessageHandler);
 
+    qInfo() << "WallpaperApp: initialized"
+            << "platform=" << platformName() << "screens=" << screens().size();
+
     m_wallpaperPackage = KPackage::PackageLoader::self()->loadPackage(QStringLiteral("Plasma/Wallpaper"));
     m_wallpaperPackage.setPath(SonicLoginSettings::getInstance().wallpaperPluginId());
+
+    qInfo() << "WallpaperApp: wallpaper plugin package"
+            << "path=" << m_wallpaperPackage.path() << "valid=" << m_wallpaperPackage.isValid() << "pluginId=" << m_wallpaperPackage.metadata().pluginId();
+}
+
+WallpaperApp::~WallpaperApp()
+{
+    qDeleteAll(m_windows);
+}
+
+void WallpaperApp::start(bool testMode)
+{
+    m_testMode = testMode;
+
+    if (m_testMode) {
+        qInfo() << "WallpaperApp: starting standalone test window";
+        if (QScreen *screen = primaryScreen()) {
+            adoptScreen(screen);
+        } else {
+            qWarning() << "WallpaperApp: no primary screen available for test window";
+        }
+        return;
+    }
 
     for (const auto screenList{screens()}; QScreen *screen : screenList) {
         adoptScreen(screen);
@@ -58,13 +87,11 @@ WallpaperApp::WallpaperApp(int &argc, char **argv)
     }
 }
 
-WallpaperApp::~WallpaperApp()
-{
-    qDeleteAll(m_windows);
-}
-
 void WallpaperApp::adoptScreen(QScreen *screen)
 {
+    qInfo() << "WallpaperApp::adoptScreen:"
+            << "name=" << screen->name() << "geometry=" << screen->geometry() << "devicePixelRatio=" << screen->devicePixelRatio();
+
     if (screen->geometry().isNull()) {
         qWarning() << "adoptScreen: Screen" << screen->name() << "has null geometry, deferring.";
         connect(screen, &QScreen::geometryChanged, this, [this, screen]() {
@@ -87,9 +114,16 @@ void WallpaperApp::adoptScreen(QScreen *screen)
         }
     }
 
-    WallpaperWindow *window = new WallpaperWindow(screen);
-    window->setGeometry(screen->geometry());
-    window->setVisible(true);
+    WallpaperWindow *window = new WallpaperWindow(screen, m_testMode);
+    if (m_testMode) {
+        const QRect availableGeometry = screen->availableGeometry();
+        const QSize windowSize = QSize(1280, 720).boundedTo(availableGeometry.size());
+        QRect windowGeometry(QPoint(), windowSize);
+        windowGeometry.moveCenter(availableGeometry.center());
+        window->setGeometry(windowGeometry);
+    } else {
+        window->setGeometry(screen->geometry());
+    }
     m_windows << window;
 
     connect(screen, &QObject::destroyed, window, [this, window]() {
@@ -97,7 +131,31 @@ void WallpaperApp::adoptScreen(QScreen *screen)
         window->deleteLater();
     });
 
-    setupWallpaperPlugin(window);
+    window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/sonic/login/wallpaper/main.qml")));
+    if (window->status() == QQmlComponent::Error) {
+        qWarning() << "Failed to load wallpaper host QML:" << window->errors();
+        return;
+    }
+
+    QQuickItem *wallpaperContainer = window->rootObject()->property("wallpaperContainer").value<QQuickItem *>();
+    if (!wallpaperContainer) {
+        qWarning() << "Failed to find wallpaper container in wallpaper host QML";
+        return;
+    }
+
+    auto initialized = std::make_shared<bool>(false);
+    auto setupWhenLaidOut = [this, window, wallpaperContainer, initialized]() {
+        if (*initialized || wallpaperContainer->width() <= 0 || wallpaperContainer->height() <= 0) {
+            return;
+        }
+        *initialized = true;
+        setupWallpaperPlugin(window, wallpaperContainer);
+    };
+    connect(wallpaperContainer, &QQuickItem::widthChanged, window, setupWhenLaidOut);
+    connect(wallpaperContainer, &QQuickItem::heightChanged, window, setupWhenLaidOut);
+
+    window->setVisible(true);
+    setupWhenLaidOut();
 }
 
 void WallpaperApp::removeScreen(QScreen *screen)
@@ -111,7 +169,7 @@ void WallpaperApp::removeScreen(QScreen *screen)
     }
 }
 
-void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
+void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window, QQuickItem *wallpaperContainer)
 {
     if (!m_wallpaperPackage.isValid()) {
         qWarning() << "Error loading the wallpaper, not a valid package";
@@ -128,6 +186,9 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     const QString pluginId = SonicLoginSettings::getInstance().wallpaperPluginId();
     KConfigGroup cfg = wallpaperGroup.group(pluginId);
+
+    qInfo() << "setupWallpaperPlugin: pluginId=" << pluginId << "hasWallpaperConfig=" << hasWallpaperConfig << "configFile=" << sharedConfig->name()
+            << "cfg group=" << cfg.name() << "cfg keys=" << cfg.keyList() << "cfg groupList=" << cfg.groupList();
 
     // Fall back to POTD if the current wallpaper plugin has no images configured
     if (!hasWallpaperConfig) {
@@ -158,13 +219,18 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
 
     const QUrl sourceUrl = QUrl::fromLocalFile(m_wallpaperPackage.filePath("mainscript"));
 
+    const QString configuredImage = cfg.group(QStringLiteral("General")).readEntry("Image", QString());
+    const QUrl configuredImageUrl(configuredImage);
+    const QFileInfo configuredImageInfo(configuredImageUrl.toLocalFile());
+    qInfo() << "setupWallpaperPlugin: mainscript=" << sourceUrl << "xmlPath=" << xmlPath << "Image entry=" << configuredImage
+            << "localPath=" << configuredImageUrl.toLocalFile() << "exists=" << configuredImageInfo.exists() << "isFile=" << configuredImageInfo.isFile()
+            << "isDir=" << configuredImageInfo.isDir() << "readable=" << configuredImageInfo.isReadable();
+
     auto *component = new QQmlComponent(window->engine().get(), sourceUrl, window);
     if (component->isError()) {
         qWarning() << "Failed to load wallpaper component:" << component->errors();
         return;
     }
-
-    window->setSource(QUrl(QStringLiteral("qrc:/qt/qml/org/kde/sonic/login/wallpaper/main.qml")));
 
     const QVariantMap properties = {{QStringLiteral("configuration"), QVariant::fromValue(config)},
                                     {QStringLiteral("pluginName"), m_wallpaperPackage.metadata().pluginId()}};
@@ -174,11 +240,14 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window)
         qWarning() << "Failed to create wallpaper root object:" << component->errors();
         return;
     }
-    auto wallpaperContainer = window->rootObject()->property("wallpaperContainer").value<QQuickItem *>();
+    qInfo() << "setupWallpaperPlugin: wallpaper object created successfully"
+            << "class=" << wallpaperObject->metaObject()->className();
 
     wallpaperItem->setParentItem(wallpaperContainer);
     wallpaperItem->setWidth(wallpaperContainer->width());
     wallpaperItem->setHeight(wallpaperContainer->height());
+    qInfo() << "setupWallpaperPlugin: wallpaper item attached"
+            << "containerSize=" << wallpaperContainer->size() << "itemSize=" << wallpaperItem->size() << "visible=" << wallpaperItem->isVisible();
     connect(wallpaperContainer, &QQuickItem::widthChanged, wallpaperItem, [wallpaperContainer, wallpaperItem]() {
         wallpaperItem->setWidth(wallpaperContainer->width());
     });

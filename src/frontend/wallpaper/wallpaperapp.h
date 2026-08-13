@@ -20,6 +20,7 @@ class QuickViewSharedEngine;
 }
 
 class WallpaperWindow;
+class QQuickItem;
 
 class WallpaperApp : public QGuiApplication
 {
@@ -30,15 +31,18 @@ public:
     explicit WallpaperApp(int &argc, char **argv);
     ~WallpaperApp() override;
 
+    void start(bool testMode = false);
+
     // DBus interface
 public Q_SLOTS:
     Q_SCRIPTABLE void blurScreen(const QString &screenName);
 
 private:
-    void setupWallpaperPlugin(WallpaperWindow *window);
+    void setupWallpaperPlugin(WallpaperWindow *window, QQuickItem *wallpaperContainer);
 
     KPackage::Package m_wallpaperPackage;
     QList<WallpaperWindow *> m_windows;
+    bool m_testMode = false;
 
 private Q_SLOTS:
     void adoptScreen(QScreen *);
