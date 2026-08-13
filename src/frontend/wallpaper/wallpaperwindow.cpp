@@ -12,21 +12,28 @@
 
 #include "wallpaperwindow.h"
 
-WallpaperWindow::WallpaperWindow(QScreen *screen)
+WallpaperWindow::WallpaperWindow(QScreen *screen, bool testMode)
     : PlasmaQuick::QuickViewSharedEngine()
     , m_screen(screen)
 {
     setColor(Qt::black);
     setScreen(m_screen);
 
-    setGeometry(m_screen->geometry());
-    connect(m_screen, &QScreen::geometryChanged, this, [this]() {
+    if (!testMode) {
         setGeometry(m_screen->geometry());
-    });
+        connect(m_screen, &QScreen::geometryChanged, this, [this]() {
+            setGeometry(m_screen->geometry());
+        });
+    }
 
     setResizeMode(PlasmaQuick::QuickViewSharedEngine::SizeRootObjectToView);
 
-    setFlags(Qt::BypassWindowManagerHint);
+    if (testMode) {
+        setTitle(QStringLiteral("SonicLogin Wallpaper Test"));
+        setFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+    } else {
+        setFlags(Qt::BypassWindowManagerHint);
+    }
 }
 
 bool WallpaperWindow::blur() const
