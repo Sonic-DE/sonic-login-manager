@@ -6,6 +6,10 @@ set(ConfigurationTest_SRCS ConfigurationTest.cpp ../src/common/ConfigReader.cpp)
 add_executable(ConfigurationTest ${ConfigurationTest_SRCS})
 add_test(NAME Configuration COMMAND ConfigurationTest)
 
+configure_file(ConfigurationTest.conf ConfigurationTest.conf COPYONLY)
+target_compile_definitions(ConfigurationTest PRIVATE TEST_CONF_FILE="${CMAKE_CURRENT_BINARY_DIR}/ConfigurationTest.conf")
+set_tests_properties(Configuration PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+
 target_link_libraries(ConfigurationTest Qt6::Core Qt6::Test)
 
 # set(SessionTest_SRCS SessionTest.cpp ../src/common/Configuration.cpp ../src/common/ConfigReader.cpp ../src/common/Session.cpp)
