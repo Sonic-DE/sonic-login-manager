@@ -668,12 +668,20 @@ QPair<bool, QString> KcmIpcServer::handleSaveWrite(const SavePayload &payload)
     QDir homeDir(homeDirPath);
     QDir wallpaperDir(homeDir.absoluteFilePath(QStringLiteral("wallpapers")));
     if (wallpaperDir.exists()) {
-        chownRecursive(wallpaperDir.path());
         if (!wallpaperDir.removeRecursively()) {
             qWarning() << "Could not clean old wallpaper directory";
         }
     }
     homeDir.mkdir(QStringLiteral("wallpapers"));
+    QFile::setPermissions(wallpaperDir.path(), standardDirectoryPermissions);
+
+    // Ensure the wallpaper tree is always chowned to soniclogin, even if
+    // the write loop below fails partway through. The daemon runs as root,
+    // so all directories and files created above are owned by root until
+    // we explicitly chown them.
+    auto chownGuard = qScopeGuard([&wallpaperDir]() {
+        chownRecursive(wallpaperDir.path());
+    });
 
     int rootWallpaperFd = open(wallpaperDir.path().toUtf8().constData(), O_RDONLY | O_DIRECTORY);
     if (rootWallpaperFd < 0) {
