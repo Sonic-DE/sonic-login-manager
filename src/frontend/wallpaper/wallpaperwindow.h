@@ -17,7 +17,7 @@ class WallpaperWindow : public PlasmaQuick::QuickViewSharedEngine
     Q_OBJECT
     Q_PROPERTY(bool blur READ blur NOTIFY blurChanged)
 public:
-    WallpaperWindow(QScreen *screen);
+    WallpaperWindow(QScreen *screen, bool testMode = false);
     bool blur() const;
     void setBlur(bool enable);
 Q_SIGNALS:
