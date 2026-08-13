@@ -31,6 +31,7 @@ void ConfigurationTest::init()
     QDir(SYS_CONF_DIR).removeRecursively();
     QDir().mkdir(SYS_CONF_DIR);
     QFile::remove(CONF_FILE_COPY);
+    QVERIFY2(QFile::copy(QStringLiteral(TEST_CONF_FILE), CONF_FILE), "Failed to copy the configuration test fixture");
     config = new TestConfig;
 }
 
@@ -52,8 +53,14 @@ void ConfigurationTest::Basic()
     QVERIFY(config->Int.get() == TEST_INT_1);
     QVERIFY(config->StringList.get() == QStringList(TEST_STRINGLIST_1));
     QVERIFY(config->Boolean.get() == TEST_BOOL_1);
+    QFile confFile(CONF_FILE);
+    QVERIFY(confFile.open(QIODevice::ReadOnly));
+    const QByteArray originalContents = confFile.readAll();
+    confFile.close();
     config->save();
-    QVERIFY(!QFile::exists(CONF_FILE));
+    QVERIFY(confFile.open(QIODevice::ReadOnly));
+    QCOMPARE(confFile.readAll(), originalContents);
+    confFile.close();
     config->String.set(config->String.get().append(QStringLiteral(" Appended")));
     config->save();
     QVERIFY(QFile::exists(CONF_FILE));
@@ -68,8 +75,14 @@ void ConfigurationTest::Sections()
     QVERIFY(config->Section.Int.get() == TEST_INT_1);
     QVERIFY(config->Section.StringList.get() == QStringList(TEST_STRINGLIST_1));
     QVERIFY(config->Section.Boolean.get() == TEST_BOOL_1);
+    QFile confFile(CONF_FILE);
+    QVERIFY(confFile.open(QIODevice::ReadOnly));
+    const QByteArray originalContents = confFile.readAll();
+    confFile.close();
     config->save();
-    QVERIFY(!QFile::exists(CONF_FILE));
+    QVERIFY(confFile.open(QIODevice::ReadOnly));
+    QCOMPARE(confFile.readAll(), originalContents);
+    confFile.close();
     config->Section.String.set(config->Section.String.get().append(QStringLiteral(" Appended")));
     config->save();
     QVERIFY(QFile::exists(CONF_FILE));
