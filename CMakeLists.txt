@@ -37,6 +37,7 @@ include(ECMDeprecationSettings)
 include(ECMQtDeclareLoggingCategory)
 include(ECMConfiguredInstall)
 include(ECMQmlModule)
+include(FindNativeXServer)
 
 find_package(Qt6 CONFIG REQUIRED Core DBus Gui Qml Quick LinguistTools Test QuickTest ShaderTools)
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS Config Package WindowSystem I18n DBusAddons KCMUtils Auth KIO)
@@ -121,33 +122,33 @@ add_feature_info("utmps" UTMPS_FOUND "utmps support for non-systemd session trac
 # Extra default install directories
 set(PAM_CONFIG_DIR "${CMAKE_INSTALL_SYSCONFDIR}/pam.d" CACHE PATH "Install directory for PAM configuration")
 
-# Discover the X server's binary location.
-find_program(X_SERVER_EXECUTABLE NAMES Xorg
-    HINTS
-        "${CMAKE_INSTALL_FULL_BINDIR}"
-        "/usr/bin"
-        "/usr/lib"
-        "/usr/local/bin"
-        "/usr/local/libexec"
-)
-if(NOT X_SERVER_EXECUTABLE)
-    message(FATAL_ERROR "Xorg executable not found; set X_SERVER_EXECUTABLE to its absolute path")
-endif()
-
 # Xorg is executed with ambient capabilities. An interpreter would consume
 # those capabilities before the actual server starts, so wrappers and scripts
-# are not valid here. Resolve symlinks and require a native ELF executable.
-file(REAL_PATH "${X_SERVER_EXECUTABLE}" X_SERVER_EXECUTABLE_REAL)
-if(NOT EXISTS "${X_SERVER_EXECUTABLE_REAL}")
-    message(FATAL_ERROR "Xorg executable '${X_SERVER_EXECUTABLE}' resolves to a missing file")
+# are not valid here. Check every Xorg found in the configured search paths and
+# select the first candidate that resolves to a native ELF executable.
+cmake_path(CONVERT "$ENV{PATH}" TO_CMAKE_PATH_LIST X_SERVER_PATH_HINTS NORMALIZE)
+list(PREPEND X_SERVER_PATH_HINTS
+    "${CMAKE_INSTALL_FULL_BINDIR}"
+    "/usr/bin"
+    "/usr/lib"
+    "/usr/libexec"
+    "/usr/local/bin"
+    "/usr/local/libexec"
+)
+
+set(X_SERVER_EXPLICIT_CANDIDATE)
+if(X_SERVER_EXECUTABLE)
+    list(APPEND X_SERVER_EXPLICIT_CANDIDATE "${X_SERVER_EXECUTABLE}")
 endif()
-file(READ "${X_SERVER_EXECUTABLE_REAL}" X_SERVER_MAGIC LIMIT 4 HEX)
-string(TOLOWER "${X_SERVER_MAGIC}" X_SERVER_MAGIC)
-if(NOT X_SERVER_MAGIC STREQUAL "7f454c46")
+
+find_native_x_server(X_SERVER_EXECUTABLE_REAL
+    CANDIDATES ${X_SERVER_EXPLICIT_CANDIDATE}
+    HINTS ${X_SERVER_PATH_HINTS}
+)
+if(NOT X_SERVER_EXECUTABLE_REAL)
     message(FATAL_ERROR
-        "Xorg path '${X_SERVER_EXECUTABLE}' resolves to '${X_SERVER_EXECUTABLE_REAL}', "
-        "which is not a native ELF executable. Wrapper scripts are incompatible "
-        "with the ambient capability setup."
+        "No native ELF Xorg executable was found; set X_SERVER_EXECUTABLE "
+        "to its absolute path"
     )
 endif()
 set(X_SERVER_EXECUTABLE "${X_SERVER_EXECUTABLE_REAL}" CACHE FILEPATH "Path to the native Xorg executable" FORCE)
@@ -196,4 +197,3 @@ file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 list(FILTER ALL_CLANG_FORMAT_SOURCE_FILES EXCLUDE REGEX ".*\\.ccls-cache/.*")
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
 kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)
-
