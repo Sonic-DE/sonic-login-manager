@@ -12,6 +12,13 @@ set_tests_properties(Configuration PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT
 
 target_link_libraries(ConfigurationTest Qt6::Core Qt6::Test)
 
+add_test(
+    NAME FindNativeXServer
+    COMMAND ${CMAKE_COMMAND}
+        -DMODULE_DIR=${CMAKE_SOURCE_DIR}/cmake
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/FindNativeXServerTest.cmake
+)
+
 # set(SessionTest_SRCS SessionTest.cpp ../src/common/Configuration.cpp ../src/common/ConfigReader.cpp ../src/common/Session.cpp)
 # add_executable(SessionTest ${SessionTest_SRCS})
 # target_include_directories(SessionTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../src/common)
