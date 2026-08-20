@@ -6,6 +6,7 @@ project(SONICLOGIN VERSION ${PROJECT_VERSION})
 
 # Options
 option(INSTALL_PAM_CONFIGURATION "Install PAM configuration files" ON)
+option(MANUAL_INITS "Disable init-system detection and service installation" OFF)
 
 # Version settings
 set(PROJECT_DEP_VERSION "6.7.0")
@@ -55,58 +56,55 @@ find_package(PkgConfig)
 # XAU
 pkg_check_modules(LIBXAU REQUIRED "xau" IMPORTED_TARGET)
 
-# Check for systemd to get unit file install directories (runtime detection is used in code)
-pkg_check_modules(SYSTEMD "systemd")
-if(SYSTEMD_FOUND)
-    if (NOT DEFINED SYSTEMD_SYSTEM_UNIT_DIR)
-        pkg_get_variable(SYSTEMD_SYSTEM_UNIT_DIR systemd systemdsystemunitdir)
+if(NOT MANUAL_INITS)
+    # Check for systemd for automatic service installation
+    pkg_check_modules(SYSTEMD "systemd")
+
+    # Auto-detect init systems for automatic installation
+    # OpenRC detection
+    find_program(OPENRC_OPENRC_EXECUTABLE NAMES openrc)
+    find_program(OPENRC_RC_EXECUTABLE NAMES rc)
+    if(OPENRC_OPENRC_EXECUTABLE OR OPENRC_RC_EXECUTABLE)
+        set(OPENRC_FOUND TRUE)
+    else()
+        set(OPENRC_FOUND FALSE)
     endif()
-endif()
 
-# Auto-detect init systems for automatic installation
-# OpenRC detection
-find_program(OPENRC_OPENRC_EXECUTABLE NAMES openrc)
-find_program(OPENRC_RC_EXECUTABLE NAMES rc)
-if(OPENRC_OPENRC_EXECUTABLE OR OPENRC_RC_EXECUTABLE)
-    set(OPENRC_FOUND TRUE)
-else()
-    set(OPENRC_FOUND FALSE)
-endif()
+    # runit detection
+    find_program(RUNIT_RUNSVDIR_EXECUTABLE NAMES runsvdir)
+    if(RUNIT_RUNSVDIR_EXECUTABLE)
+        set(RUNIT_FOUND TRUE)
+    else()
+        set(RUNIT_FOUND FALSE)
+    endif()
 
-# runit detection
-find_program(RUNIT_RUNSVDIR_EXECUTABLE NAMES runsvdir)
-if(RUNIT_RUNSVDIR_EXECUTABLE)
-    set(RUNIT_FOUND TRUE)
-else()
-    set(RUNIT_FOUND FALSE)
-endif()
+    # dinit detection
+    find_program(DINIT_DAEMON_EXECUTABLE NAMES dinit)
+    if(DINIT_DAEMON_EXECUTABLE)
+        set(DINIT_FOUND TRUE)
+    else()
+        set(DINIT_FOUND FALSE)
+    endif()
 
-# dinit detection
-find_program(DINIT_DAEMON_EXECUTABLE NAMES dinit)
-if(DINIT_DAEMON_EXECUTABLE)
-    set(DINIT_FOUND TRUE)
-else()
-    set(DINIT_FOUND FALSE)
-endif()
+    # s6 detection
+    find_program(S6_SVSCAN_EXECUTABLE NAMES s6-svscan)
+    if(S6_SVSCAN_EXECUTABLE)
+        set(S6_FOUND TRUE)
+    else()
+        set(S6_FOUND FALSE)
+    endif()
 
-# s6 detection
-find_program(S6_SVSCAN_EXECUTABLE NAMES s6-svscan)
-if(S6_SVSCAN_EXECUTABLE)
-    set(S6_FOUND TRUE)
-else()
-    set(S6_FOUND FALSE)
-endif()
-
-# sysvinit detection - check for /etc/inittab and telinit command
-if(EXISTS "/etc/inittab")
-    find_program(SYSVINIT_TELINIT_EXECUTABLE NAMES telinit)
-    if(SYSVINIT_TELINIT_EXECUTABLE)
-        set(SYSVINIT_FOUND TRUE)
+    # sysvinit detection - check for /etc/inittab and telinit command
+    if(EXISTS "/etc/inittab")
+        find_program(SYSVINIT_TELINIT_EXECUTABLE NAMES telinit)
+        if(SYSVINIT_TELINIT_EXECUTABLE)
+            set(SYSVINIT_FOUND TRUE)
+        else()
+            set(SYSVINIT_FOUND FALSE)
+        endif()
     else()
         set(SYSVINIT_FOUND FALSE)
     endif()
-else()
-    set(SYSVINIT_FOUND FALSE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "GNU/kFreeBSD" OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD" OR CMAKE_SYSTEM_NAME STREQUAL "NetBSD" OR CMAKE_SYSTEM_NAME STREQUAL "DragonFly" OR CMAKE_SYSTEM_NAME STREQUAL "GhostBSD")
@@ -175,7 +173,9 @@ endif()
 
 # Add subdirectories
 add_subdirectory(data)
-add_subdirectory(services)
+if(NOT MANUAL_INITS)
+    add_subdirectory(services)
+endif()
 add_subdirectory(src)
 
 add_subdirectory(test)
