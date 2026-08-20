@@ -16,11 +16,12 @@ set(LOGIN_GREETER_SRCS
     main.cpp
     stateconfig.cpp
     backend/GreeterProxy.cpp
-    backend/SocketWriter.cpp
     mockbackend/MockGreeterProxy.cpp
     blurscreenbridge.cpp
     greetereventfilter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/SocketWriter.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/Session.cpp
 )
 
 add_definitions(-DTRANSLATION_DOMAIN="sonic_login")
