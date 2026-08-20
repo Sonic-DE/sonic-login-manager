@@ -27,6 +27,16 @@ add_executable(SessionModelTest
 target_link_libraries(SessionModelTest PRIVATE Qt6::Core Qt6::Test KF6::ConfigCore KF6::I18n)
 add_test(NAME SessionModel COMMAND SessionModelTest)
 
+add_executable(GreeterProtocolTest
+    GreeterProtocolTest.cpp
+    ../src/frontend/greeter/backend/GreeterProxy.cpp
+    ../src/common/SocketWriter.cpp
+    ../src/common/Session.cpp
+)
+target_include_directories(GreeterProtocolTest PRIVATE ../src/frontend/greeter/backend)
+target_link_libraries(GreeterProtocolTest PRIVATE Qt6::Core Qt6::Network Qt6::Test KF6::ConfigCore)
+add_test(NAME GreeterProtocol COMMAND GreeterProtocolTest)
+
 add_executable(GreeterEventFilterTest
     GreeterEventFilterTest.cpp
     ../src/frontend/greeter/greetereventfilter.cpp
