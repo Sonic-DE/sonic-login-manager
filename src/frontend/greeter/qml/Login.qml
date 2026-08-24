@@ -83,7 +83,7 @@ SessionManagementScreen {
         Layout.fillWidth: true
 
         text: ""
-        visible: showUsernamePrompt
+        visible: showUsernamePrompt && (!root.keyboardActive || !text || activeFocus)
         focus: showUsernamePrompt
         placeholderText: i18nd("sonic_login", "Username")
 
@@ -162,8 +162,16 @@ SessionManagementScreen {
     }
 
     SessionButton {
+        id: sessionButton
+        visible: !root.keyboardActive && count > 1
         Layout.fillWidth: true
         onSessionChanged: root.focusFirstVisibleFormControl()
+    }
+
+    onKeyboardActiveChanged: {
+        if (keyboardActive) {
+            sessionButton.popup.close();
+        }
     }
 
     // Synchronise state

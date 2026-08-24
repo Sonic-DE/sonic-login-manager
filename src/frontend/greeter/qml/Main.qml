@@ -12,13 +12,14 @@ import QtQuick.Effects
 
 import org.kde.kirigami as Kirigami
 import org.kde.breeze.components as BreezeComponents
-import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
+import org.kde.plasma.workspace.loginlockscreen as LoginLockScreen
 
 import org.kde.sonic.login as SonicLogin
 
 Item {
     id: root
+    readonly property bool keyboardActive: footer.virtualKeyboardVisible
     anchors.fill: parent
 
     // If we're using software rendering, draw outlines instead of shadows
@@ -54,11 +55,9 @@ Item {
 
         onEscapeKeyPressed: {
             SonicLogin.GreeterState.timeoutWindow(loginScreenRoot.Window.window);
-            /*
--            if (inputPanel.keyboardActive) {
--                inputPanel.showHide();
--            }
--            */
+            if (footer) {
+                footer.hideVirtualKeyboard();
+            }
             SonicLogin.GreeterState.clearPasswords();
         }
     }
@@ -100,7 +99,7 @@ Item {
         BreezeComponents.Clock {
             id: clock
             property Item shadow: clockShadow
-            visible: y > 0 && Settings.showClock
+            visible: !root.keyboardActive && y > 0 && Settings.showClock
             anchors.horizontalCenter: parent.horizontalCenter
             y: (userListComponent.userList.y + mainStack.y)/2 - height/2
             Layout.alignment: Qt.AlignBaseline
@@ -145,6 +144,7 @@ Item {
 
             initialItem: Login {
                 id: userListComponent
+                keyboardActive: root.keyboardActive
                 userListModel: SonicLogin.UserModel
                 loginScreenUiVisible: loginScreenRoot.uiVisible
                 userListCurrentIndex: {
@@ -283,6 +283,7 @@ Item {
             id: userPromptComponent
 
             Login {
+                keyboardActive: root.keyboardActive
                 showUsernamePrompt: true
                 loginScreenUiVisible: loginScreenRoot.uiVisible
                 fontSize: Kirigami.Theme.defaultFont.pointSize + 2
@@ -354,32 +355,29 @@ Item {
             }
         }
 
-        RowLayout {
+        LoginLockScreen.Footer {
             id: footer
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: Kirigami.Units.smallSpacing
+            visible: !root.keyboardActive
 
-            spacing: Kirigami.Units.smallSpacing
+            onVirtualKeyboardVisibleChanged: SonicLogin.GreeterState.setTimeoutInhibited(footer, virtualKeyboardVisible)
+            Component.onDestruction: {
+                if (SonicLogin.GreeterState) {
+                    SonicLogin.GreeterState.setTimeoutInhibited(footer, false);
+                }
+            }
+
+            onOskActivated: {
+                SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window);
+                if (mainStack.currentItem) {
+                    mainStack.currentItem.focusFirstVisibleFormControl();
+                }
+            }
 
             Behavior on opacity {
                 OpacityAnimator {
                     duration: Kirigami.Units.longDuration
                 }
             }
-
-            /* Virtual keyboard btn */
-
-            KeyboardButton {
-                id: keyboardButton
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            BreezeComponents.Battery {}
         }
     }
 
