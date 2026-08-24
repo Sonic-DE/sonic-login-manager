@@ -147,6 +147,10 @@ int main(int argc, char *argv[])
     parser.addOption(QCommandLineOption(QStringLiteral("test"), QStringLiteral("Run in test mode")));
     parser.addHelpOption();
 
+    // The shared workspace footer owns the keyboard backend. Qt requires its
+    // input-method plugin to be selected before constructing the application.
+    qputenv("QT_IM_MODULE", "qtvirtualkeyboard");
+    qunsetenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE");
     QGuiApplication app(argc, argv);
 
     SONICLOGIN::SignalHandler signalHandler;

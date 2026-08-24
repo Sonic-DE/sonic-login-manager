@@ -23,7 +23,7 @@ Item {
 
         property var activeWindow: null
         property bool initialized: false
-        property var sessionButtonPopupOwners: []
+        property var timeoutInhibitors: []
     }
 
     Binding {
@@ -99,14 +99,19 @@ Item {
 
     // Shared functionality
 
-    readonly property bool greeterHasSessionButtonPopup: internal.sessionButtonPopupOwners.length > 0
+    readonly property bool hasTimeoutInhibitors: internal.timeoutInhibitors.length > 0
+    readonly property bool greeterHasSessionButtonPopup: hasTimeoutInhibitors
 
-    function setSessionButtonPopupVisible(owner, visible) {
-        let owners = internal.sessionButtonPopupOwners.filter(candidate => candidate !== owner);
-        if (visible) {
+    function setTimeoutInhibited(owner, inhibited) {
+        let owners = internal.timeoutInhibitors.filter(candidate => candidate !== owner);
+        if (inhibited) {
             owners.push(owner);
         }
-        internal.sessionButtonPopupOwners = owners;
+        internal.timeoutInhibitors = owners;
+    }
+
+    function setSessionButtonPopupVisible(owner, visible) {
+        setTimeoutInhibited(owner, visible);
     }
 
     readonly property bool inhibitGreeterTimeout: {
@@ -116,7 +121,7 @@ Item {
         } else if (greeterState.loginState === GreeterState.LoginState.UserPrompt && greeterState.userPromptPassword.length > 0) {
             // We're on the user prompt and a password is entered
             return true;
-        } else if (greeterState.greeterHasSessionButtonPopup) {
+        } else if (greeterState.hasTimeoutInhibitors) {
             return true;
         }
 
