@@ -62,7 +62,7 @@ HelperApp::HelperApp(int &argc, char **argv)
                    << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
                    << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
                    << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
-        QCoreApplication::instance()->exit(-1);
+        QCoreApplication::instance()->exit(Auth::HELPER_SUCCESS);
     });
 
     s->addCustomSignal(SIGQUIT);
@@ -77,7 +77,7 @@ HelperApp::HelperApp(int &argc, char **argv)
                        << "pamResult=" << (m_backend ? m_backend->pamResult() : -1)
                        << "pamErrorString=" << (m_backend ? m_backend->pamErrorString() : QStringLiteral("<null>"))
                        << "isPamOpen=" << (m_backend ? m_backend->isPamOpen() : false);
-            QCoreApplication::instance()->exit(-1);
+            QCoreApplication::instance()->exit(Auth::HELPER_SUCCESS);
         }
     });
 
