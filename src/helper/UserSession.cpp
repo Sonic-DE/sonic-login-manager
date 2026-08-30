@@ -43,12 +43,11 @@
 
 namespace SONICLOGIN {
 
-UserSession::UserSession(HelperApp *parent) : QProcess(parent) {
-  connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-          this, &UserSession::finished);
-  connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-          this, &UserSession::onProcessFinished);
-  setChildProcessModifier(std::bind(&UserSession::childModifier, this));
+UserSession::UserSession(HelperApp *parent)
+    : QProcess(parent)
+{
+    connect(this, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &UserSession::onProcessFinished);
+    setChildProcessModifier(std::bind(&UserSession::childModifier, this));
 }
 
 void UserSession::onProcessFinished(int exitCode,
