@@ -326,7 +326,7 @@ void XOrgUserHelper::displayFinished()
     auto cmd = DATA_INSTALL_DIR "/scripts/Xstop";
     qInfo("XOrgUserHelper::displayFinished: Running display stop script: %s", cmd);
     QProcess *displayStopScript = nullptr;
-    if (startProcess(cmd, sessionEnvironment(), &displayStopScript)) {
+    if (startProcess(cmd, sessionEnvironment(), &displayStopScript, false)) {
         if (!displayStopScript->waitForFinished(5000)) {
             displayStopScript->kill();
         }
