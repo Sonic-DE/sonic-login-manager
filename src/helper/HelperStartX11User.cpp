@@ -46,7 +46,10 @@ int main(int argc, char **argv)
                    << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                    << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
                    << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();
-        QCoreApplication::instance()->exit(-1);
+        // SIGTERM is the normal graceful-stop path. Exit cleanly with
+        // HELPER_SUCCESS (0) rather than -1, which truncated to 255 and was
+        // reported to the parent UserSession as an error exit code.
+        QCoreApplication::instance()->exit(SONICLOGIN::Auth::HELPER_SUCCESS);
     });
     s.addCustomSignal(SIGQUIT);
     QObject::connect(&s, &SONICLOGIN::SignalHandler::customSignalReceived, &app, [&argc, &argv](int signal) {
@@ -57,7 +60,7 @@ int main(int argc, char **argv)
                        << "parentProcess(PPID)=" << ppid << "=" << parentName << "arguments=" << QCoreApplication::arguments()
                        << "displayServerCmd=" << (argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("<null>"))
                        << "sessionCmd=" << (argc > 2 ? QString::fromLocal8Bit(argv[2]) : QStringLiteral("<null>")) << "uid=" << ::getuid();
-            QCoreApplication::instance()->exit(-1);
+            QCoreApplication::instance()->exit(SONICLOGIN::Auth::HELPER_SUCCESS);
         }
     });
 
