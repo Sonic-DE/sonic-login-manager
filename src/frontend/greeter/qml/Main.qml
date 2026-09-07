@@ -30,6 +30,15 @@ Item {
     Kirigami.Theme.inherit: false
 
     property string notificationMessage
+    property bool authenticationInProgress: false
+    property bool authenticationMessageActive: false
+
+    onAuthenticationMessageActiveChanged: SonicLogin.GreeterState.setTimeoutInhibited(root, authenticationMessageActive)
+    Component.onDestruction: {
+        if (SonicLogin.GreeterState) {
+            SonicLogin.GreeterState.setTimeoutInhibited(root, false);
+        }
+    }
 
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
@@ -382,6 +391,9 @@ Item {
     }
 
     function handleLoginRequest(username, password) {
+        notificationResetTimer.stop();
+        root.authenticationMessageActive = false;
+        root.authenticationInProgress = true;
         root.notificationMessage = "";
         // GreeterState handles updating stateconfig with user/session of successful login
         SonicLogin.GreeterState.handleLoginRequest(username, password);
@@ -390,8 +402,26 @@ Item {
     Connections {
         target: SonicLogin.Authenticator
 
+        // e.g. pam_u2f's "cue" asking the user to touch their key. Not auto-cleared
+        // like "Login Failed" is: handleLoginRequest() clears it on the next attempt.
+        function onInformationMessage(message) {
+            notificationResetTimer.stop();
+            root.notificationMessage = message;
+            root.authenticationMessageActive = message.length > 0;
+            if (root.authenticationMessageActive) {
+                // Reveal the persistent cue even if the compact keyboard UI was active.
+                footer.hideVirtualKeyboard();
+                if (root.authenticationInProgress) {
+                    SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window);
+                }
+            }
+        }
+
         function onLoginFailed() {
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
             notificationMessage = i18nd("sonic_login", "Login Failed");
+            notificationResetTimer.restart();
 
             footer.enabled = true;
             mainStack.enabled = true;
@@ -401,6 +431,9 @@ Item {
         }
 
         function onSocketDisconnected() {
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
+            notificationResetTimer.stop();
             notificationMessage = i18nd("sonic_login", "Connection to login service lost");
 
             footer.enabled = true;
@@ -411,14 +444,12 @@ Item {
         }
 
         function onLoginSucceeded() {
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
+            notificationResetTimer.stop();
+            root.notificationMessage = "";
             mainStack.opacity = 0;
             footer.opacity = 0;
-        }
-    }
-
-    onNotificationMessageChanged: {
-        if (notificationMessage) {
-            notificationResetTimer.start();
         }
     }
 
