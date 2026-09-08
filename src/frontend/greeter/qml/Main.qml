@@ -8,7 +8,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 
 import org.kde.kirigami as Kirigami
 import org.kde.breeze.components as BreezeComponents
@@ -76,16 +76,18 @@ Item {
         onPressed: SonicLogin.GreeterState.activateWindow(Window.window);
         onPositionChanged: SonicLogin.GreeterState.activateWindow(Window.window);
 
-        DropShadow {
+        MultiEffect {
             id: clockShadow
             anchors.fill: clock
             source: clock
             visible: !softwareRendering && clock.visible
-            radius: 7
-            verticalOffset: 0.8
-            samples: 15
-            spread: 0.2
-            color: Qt.rgba(0, 0, 0, 0.7)
+            shadowEnabled: true
+            shadowHorizontalOffset: 0
+            shadowVerticalOffset: 0.8
+            shadowColor: Qt.rgba(0, 0, 0, 0.7)
+            shadowBlur: 1
+            blurMax: 7
+            shadowScale: 1.2
             opacity: loginScreenRoot.uiVisible ? 0 : 1
             Behavior on opacity {
                 OpacityAnimator {

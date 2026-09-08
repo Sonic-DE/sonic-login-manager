@@ -5,7 +5,7 @@
 */
 
 import QtQuick
-import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 
 import org.kde.kirigami as Kirigami
 
@@ -25,10 +25,13 @@ Item {
         }
     }
 
-    FastBlur {
+    MultiEffect {
         id: wallpaperBlur
         anchors.fill: parent
-        radius: 50 * wallpaperFader.factor
+        blurEnabled: true
+        blurMax: 50
+        blur: wallpaperFader.factor
+        blurMultiplier: 0
     }
 
     ShaderEffect {
