@@ -41,6 +41,8 @@ void WallpaperAppMessageHandler(QtMsgType type, const QMessageLogContext &, cons
 WallpaperApp::WallpaperApp(int &argc, char **argv)
     : QGuiApplication(argc, argv)
 {
+    setQuitOnLastWindowClosed(false);
+
     // Install message handler to log to soniclogin.log
     qInstallMessageHandler(WallpaperAppMessageHandler);
 
@@ -62,6 +64,7 @@ WallpaperApp::~WallpaperApp()
 void WallpaperApp::start(bool testMode)
 {
     m_testMode = testMode;
+    setQuitOnLastWindowClosed(testMode);
 
     if (m_testMode) {
         qInfo() << "WallpaperApp: starting standalone test window";
