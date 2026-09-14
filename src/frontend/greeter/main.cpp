@@ -34,14 +34,14 @@
 #include "sonicloginsettings.h"
 #include "stateconfig.h"
 
+#include <memory>
 #include <signal.h>
 
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xfixes.h>
 #include <private/qtx11extras_p.h>
 
-class LoginGreeter : public QObject
-{
+class LoginGreeter : public QObject {
     Q_OBJECT
 public:
     explicit LoginGreeter(QObject *parent = nullptr)
@@ -58,6 +58,9 @@ public:
     static bool testModeEnabled();
 
 private:
+    // qmlRegisterSingletonInstance objects must stay on their original engine,
+    // including while there are temporarily no screen windows.
+    std::shared_ptr<QQmlEngine> m_engine;
     QHash<QScreen *, PlasmaQuick::QuickViewSharedEngine *> m_windows;
 
     void createWindowForScreen(QScreen *screen)
@@ -84,6 +87,9 @@ private:
         }
 
         window = new PlasmaQuick::QuickViewSharedEngine();
+        if (!m_engine) {
+            m_engine = window->engine();
+        }
         window->QObject::setParent(this);
         window->setScreen(screen);
         window->setColor(s_testMode ? Qt::darkGray : Qt::transparent);
@@ -101,9 +107,9 @@ private:
 
         m_windows.insert(screen, window);
 
-        connect(qApp, &QGuiApplication::screenRemoved, this, [this, window](QScreen *screenRemoved) {
-            if (screenRemoved == window->screen()) {
-                m_windows.remove(window->screen());
+        connect(qApp, &QGuiApplication::screenRemoved, window, [this, window, screen](QScreen *screenRemoved) {
+            if (screenRemoved == screen) {
+                m_windows.remove(screen);
                 delete window;
             }
         });
@@ -176,6 +182,8 @@ int main(int argc, char *argv[])
 
     parser.process(app);
     LoginGreeter::setTestModeEnabled(parser.isSet(QStringLiteral("test")));
+    // Service mode must survive monitor removal; standalone tests still close normally.
+    app.setQuitOnLastWindowClosed(LoginGreeter::testModeEnabled());
 
     QQuickWindow::setDefaultAlphaBuffer(true);
     SONICLOGIN::GreeterProxy *authenticator = nullptr;
