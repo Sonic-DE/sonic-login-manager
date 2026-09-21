@@ -71,8 +71,25 @@ if(INSTALL_PAM_CONFIGURATION)
         endif()
     endif()
 
+    if(PAM_OS_CONFIGURATION STREQUAL "gentoo")
+        if(SYSTEMD_FOUND)
+            set(GENTOO_PAM_SESSION_MODULE "pam_systemd.so")
+        else()
+            set(GENTOO_PAM_SESSION_MODULE "pam_elogind.so")
+        endif()
+        configure_file(
+            pam/gentoo/soniclogin-greeter.in
+            pam/gentoo/soniclogin-greeter
+            @ONLY
+        )
+    endif()
+
     # Install pam files
     install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin-autologin DESTINATION ${PAM_CONFIG_DIR})
-    install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin-greeter DESTINATION ${PAM_CONFIG_DIR})
+    if(PAM_OS_CONFIGURATION STREQUAL "gentoo")
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pam/gentoo/soniclogin-greeter DESTINATION ${PAM_CONFIG_DIR})
+    else()
+        install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin-greeter DESTINATION ${PAM_CONFIG_DIR})
+    endif()
     install(FILES pam/${PAM_OS_CONFIGURATION}/soniclogin DESTINATION ${PAM_CONFIG_DIR})
 endif()
