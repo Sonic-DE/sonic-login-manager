@@ -173,9 +173,7 @@ endif()
 
 # Add subdirectories
 add_subdirectory(data)
-if(NOT MANUAL_INITS)
-    add_subdirectory(services)
-endif()
+add_subdirectory(services)
 add_subdirectory(src)
 
 add_subdirectory(test)
