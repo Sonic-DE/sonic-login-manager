@@ -15,6 +15,6 @@ account     required    pam_permit.so
 # The greeter cannot change passwords.
 password    required    pam_deny.so
 
-# Establish the local account and elogind session used on this machine.
+# Establish the local account and selected session manager used on this machine.
 session     required    pam_unix.so
-session     required    pam_elogind.so
+session     required    @GENTOO_PAM_SESSION_MODULE@
