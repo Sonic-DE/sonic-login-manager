@@ -408,6 +408,12 @@ void UserSession::childModifier() {
   }
 #endif
 
+  // Create the Xorg log directory as the session user before starting Xorg.
+  if (x11Session && !QDir(QString::fromLocal8Bit(pw.pw_dir)).mkpath(QStringLiteral(".local/state"))) {
+      qCritical() << "Could not create Xorg log directory under" << pw.pw_dir;
+      _exit(Auth::HELPER_DISPLAYSERVER_ERROR);
+  }
+
   if (sessionClass != QLatin1String("greeter")) {
     // we cannot use setStandardError file as this code is run in the child
     // process we want to redirect after we setuid so that the log file is owned
