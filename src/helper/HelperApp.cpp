@@ -66,9 +66,13 @@ HelperApp::HelperApp(int &argc, char **argv)
         QCoreApplication::instance()->exit(Auth::HELPER_SUCCESS);
     });
 
+    // systemd follows SIGTERM with SIGHUP when it stops the session scope
+    s->addCustomSignal(SIGHUP);
     s->addCustomSignal(SIGQUIT);
     QObject::connect(s, &SignalHandler::customSignalReceived, this, [this](int signal) {
-        if (signal == SIGQUIT) {
+        if (signal == SIGHUP) {
+            QCoreApplication::instance()->exit(Auth::HELPER_SUCCESS);
+        } else if (signal == SIGQUIT) {
             pid_t ppid = getppid();
             QString parentName = getProcessNameByPid(ppid);
             qWarning() << "HelperApp: Received SIGQUIT (signal 3) - diagnostic information:"
