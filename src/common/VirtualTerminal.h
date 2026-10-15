@@ -19,15 +19,30 @@
 
 #include <QString>
 
-namespace SONICLOGIN
-{
-namespace VirtualTerminal
-{
+#include "filedescriptor.h"
+
+namespace SONICLOGIN {
+namespace VirtualTerminal {
 extern const char *defaultVtPath;
+
+class Terminal {
+public:
+    Terminal() = default;
+    Terminal(int tty, FileDescriptor ttyFd);
+
+    bool isValid() const;
+    int tty() const;
+    const FileDescriptor &ttyFd() const;
+
+private:
+    int m_tty = -1;
+    FileDescriptor m_ttyFd;
+};
 
 QString path(int vt);
 int currentVt();
-int setUpNewVt();
+Terminal openVt(int vt);
+Terminal setUpNewVt();
 void jumpToVt(int vt, bool vt_auto);
 }
 }

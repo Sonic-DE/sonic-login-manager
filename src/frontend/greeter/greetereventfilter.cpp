@@ -7,11 +7,37 @@
 #include <KScreenDpms/Dpms>
 #include <kscreendpms/dpms.h>
 
+#include <QKeyEvent>
+
 #include "greetereventfilter.h"
 
 GreeterEventFilter::GreeterEventFilter(QObject *parent)
     : QObject(parent)
 {
+}
+
+QQuickWindow *GreeterEventFilter::window() const
+{
+    return m_window;
+}
+
+void GreeterEventFilter::setWindow(QQuickWindow *window)
+{
+    if (m_window == window) {
+        return;
+    }
+
+    if (m_window) {
+        m_window->removeEventFilter(this);
+    }
+
+    m_window = window;
+
+    if (m_window) {
+        m_window->installEventFilter(this);
+    }
+
+    Q_EMIT windowChanged();
 }
 
 bool GreeterEventFilter::eventFilter(QObject *obj, QEvent *event)
@@ -44,5 +70,5 @@ bool GreeterEventFilter::eventFilter(QObject *obj, QEvent *event)
         }
     }
 
-    return false;
+    return QObject::eventFilter(obj, event);
 }

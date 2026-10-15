@@ -16,14 +16,15 @@ set(LOGIN_GREETER_SRCS
     main.cpp
     stateconfig.cpp
     backend/GreeterProxy.cpp
-    backend/SocketWriter.cpp
     mockbackend/MockGreeterProxy.cpp
     blurscreenbridge.cpp
     greetereventfilter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/SocketWriter.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/Session.cpp
 )
 
-add_definitions(-DTRANSLATION_DOMAIN="soniclogin")
+add_definitions(-DTRANSLATION_DOMAIN="sonic_login")
 
 ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
                                 IDENTIFIER LOGOUT_GREETER

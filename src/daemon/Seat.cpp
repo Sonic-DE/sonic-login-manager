@@ -19,22 +19,24 @@
 
 #include "Configuration.h"
 #include "DaemonApp.h"
+#include "InitSystem.h"
 #include "LogindDBusTypes.h"
 #include "VirtualTerminal.h"
 
 #include <QDebug>
-#include <QFile>
 #include <QTimer>
 
 #include <Login1Manager.h>
 #include <Login1Seat.h>
 #include <Login1Session.h>
+#include <errno.h>
 #include <functional>
 #include <optional>
+#include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
-namespace SONICLOGIN
-{
+namespace SONICLOGIN {
 Seat::Seat(const QString &name, QObject *parent)
     : QObject(parent)
     , m_name(name)
@@ -45,6 +47,94 @@ Seat::Seat(const QString &name, QObject *parent)
 const QString &Seat::name() const
 {
     return m_name;
+}
+
+VirtualTerminal::Terminal Seat::availableVt() const
+{
+    const int initialVt = getInitialVt();
+    // Use the correct TTY device path for the platform.
+    const QString ttyPath = VirtualTerminal::path(initialVt);
+
+    // Log VT device ownership and permissions for diagnostic purposes.
+    struct stat st;
+    if (::stat(qPrintable(ttyPath), &st) == 0) {
+        qInfo() << "Seat::availableVt: VT" << initialVt << "device" << ttyPath << "uid=" << st.st_uid << "gid=" << st.st_gid
+                << "mode=" << QString::number(st.st_mode & 0777, 8);
+    } else {
+        qWarning() << "Seat::availableVt: cannot stat" << ttyPath << ":" << strerror(errno);
+    }
+
+    // Keep the opened device as the reservation instead of closing an access probe.
+    auto terminal = VirtualTerminal::openVt(initialVt);
+    if (terminal.isValid()) {
+        return terminal;
+    }
+
+    const auto vt = VirtualTerminal::currentVt();
+    if (vt > 0) {
+        terminal = VirtualTerminal::openVt(vt);
+        if (terminal.isValid()) {
+            return terminal;
+        }
+    }
+
+    return VirtualTerminal::setUpNewVt();
+}
+
+QString Seat::reusableSessionId(const QString &user) const
+{
+    if (!Logind::isAvailable()) {
+        return {};
+    }
+
+    OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
+    auto reply = manager.ListSessions();
+    reply.waitForFinished();
+
+    for (const SessionInfo &sessionInfo : reply.value()) {
+        if (sessionInfo.userName != user) {
+            continue;
+        }
+
+        OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), sessionInfo.sessionPath.path(), QDBusConnection::systemBus());
+        if (session.service() == QLatin1String("soniclogin") && session.state() == QLatin1String("online")) {
+            return sessionInfo.sessionId;
+        }
+    }
+
+    return {};
+}
+
+void Seat::activateSession(const QString &sessionId) const
+{
+    if (sessionId.isNull()) {
+        return;
+    }
+
+    if (!Logind::isAvailable()) {
+        qDebug() << "Session reuse requested but logind is not available";
+        return;
+    }
+
+    OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
+    manager.UnlockSession(sessionId);
+    manager.ActivateSession(sessionId);
+}
+
+std::optional<int> Seat::vtForSession(const QString &sessionId) const
+{
+    if (!Logind::isAvailable() || sessionId.isEmpty()) {
+        return std::nullopt;
+    }
+
+    OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
+    if (!manager.isValid()) {
+        return std::nullopt;
+    }
+
+    auto sessionPath = manager.GetSession(sessionId);
+    OrgFreedesktopLogin1SessionInterface session(Logind::serviceName(), sessionPath.value().path(), QDBusConnection::systemBus());
+    return QStringView(session.tTY()).mid(3).toInt(); // we need to convert ttyN to N
 }
 
 void Seat::createDisplay()
@@ -67,6 +157,12 @@ void Seat::createDisplay()
     // add display to the list
     m_displays << display;
 
+    // Resolve autologin after reloading configuration. Keep SonicDE's existing
+    // first-login/Relogin eligibility policy; Display only executes this choice.
+    if ((mainConfig.Autologin.Relogin.get() || tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
+        display->setAutoLogin(mainConfig.Autologin.User.get(), mainConfig.Autologin.Session.get());
+    }
+
     // start the display
     startDisplay(display);
 }
@@ -84,6 +180,8 @@ void Seat::startDisplay(Display *display, int tryNr)
 
     if (tryNr >= 3) {
         qCritical() << "Could not start Display server on vt" << display->terminalId();
+        // Use the same cleanup and daemon-exit path as an X11 helper failure.
+        Q_EMIT display->displayServerFailed();
         return;
     }
 
@@ -111,18 +209,7 @@ void Seat::removeDisplay(Display *display)
 void Seat::displayStopped()
 {
     Display *display = qobject_cast<Display *>(sender());
-    std::optional<int> nextVt;
-    auto reusing = display->reuseSessionId();
-
-    // Try to get the VT of the session being reused via logind
-    if (Logind::isAvailable() && !reusing.isEmpty()) {
-        OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
-        if (manager.isValid()) {
-            auto sessionPath = manager.GetSession(reusing);
-            OrgFreedesktopLogin1SessionInterface sessionIface(Logind::serviceName(), sessionPath.value().path(), QDBusConnection::systemBus());
-            nextVt = QStringView(sessionIface.tTY()).mid(3).toInt(); // we need to convert ttyN to N
-        }
-    }
+    std::optional<int> nextVt = vtForSession(display->reuseSessionId());
 
     // remove display
     removeDisplay(display);
@@ -159,6 +246,18 @@ bool Seat::canTTY()
     }
 
     return m_name.compare(QStringLiteral("seat0"), Qt::CaseInsensitive) == 0 && access(VirtualTerminal::defaultVtPath, F_OK) == 0;
+}
+
+bool Seat::tryLockFirstLogin()
+{
+    // One first-login token per seat, so each seat independently gets its
+    // first-boot login; the machine-global soft-reboot check stays on the
+    // daemon (isFirstBoot).
+    if (m_firstLoginLock) {
+        return false;
+    }
+    m_firstLoginLock = true;
+    return daemonApp->isFirstBoot();
 }
 }
 

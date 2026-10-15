@@ -20,13 +20,12 @@
 #include "Display.h"
 #include <QObject>
 #include <QVector>
+#include <optional>
 
-namespace SONICLOGIN
-{
+namespace SONICLOGIN {
 class Display;
 
-class Seat : public QObject
-{
+class Seat : public QObject {
     Q_OBJECT
     Q_DISABLE_COPY(Seat)
 public:
@@ -35,6 +34,11 @@ public:
     const QString &name() const;
     void createDisplay();
     bool canTTY();
+    bool tryLockFirstLogin();
+    VirtualTerminal::Terminal availableVt() const;
+    QString reusableSessionId(const QString &user) const;
+    void activateSession(const QString &sessionId) const;
+    std::optional<int> vtForSession(const QString &sessionId) const;
 
 public slots:
     void removeDisplay(SONICLOGIN::Display *display);
@@ -46,6 +50,8 @@ private:
     void startDisplay(SONICLOGIN::Display *display, int tryNr = 1);
 
     QString m_name;
+
+    bool m_firstLoginLock = false;
 
     QVector<Display *> m_displays;
 };

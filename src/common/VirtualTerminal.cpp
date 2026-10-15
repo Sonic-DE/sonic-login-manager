@@ -32,16 +32,36 @@
 #include <QFileInfo>
 #include <qscopeguard.h>
 #include <sys/ioctl.h>
+#include <utility>
 
 #ifndef Q_OS_FREEBSD
 #define RELEASE_DISPLAY_SIGNAL (SIGRTMAX)
 #define ACQUIRE_DISPLAY_SIGNAL (SIGRTMAX - 1)
 #endif
 
-namespace SONICLOGIN
+namespace SONICLOGIN {
+namespace VirtualTerminal {
+Terminal::Terminal(int tty, FileDescriptor ttyFd)
+    : m_tty(tty)
+    , m_ttyFd(std::move(ttyFd))
 {
-namespace VirtualTerminal
+}
+
+bool Terminal::isValid() const
 {
+    return m_tty > 0 && m_ttyFd.isValid();
+}
+
+int Terminal::tty() const
+{
+    return isValid() ? m_tty : -1;
+}
+
+const FileDescriptor &Terminal::ttyFd() const
+{
+    return m_ttyFd;
+}
+
 #ifdef __FreeBSD__
 const char *defaultVtPath = "/dev/ttyv0";
 
@@ -180,13 +200,27 @@ int currentVt()
     return getVtActive(fd);
 }
 
-int setUpNewVt()
+Terminal openVt(int vt)
+{
+    if (vt <= 0) {
+        return {};
+    }
+    const QString ttyPath = path(vt);
+    const int fd = open(qPrintable(ttyPath), O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {
+        qWarning() << "Failed to open" << ttyPath << ':' << strerror(errno);
+        return {};
+    }
+    return {vt, FileDescriptor(fd)};
+}
+
+Terminal setUpNewVt()
 {
     // open VT master
-    int fd = open(defaultVtPath, O_RDWR | O_NOCTTY);
+    int fd = open(defaultVtPath, O_RDWR | O_NOCTTY | O_CLOEXEC);
     if (fd < 0) {
         qCritical() << "Failed to open VT master:" << strerror(errno);
-        return -1;
+        return {};
     }
     auto closeFd = qScopeGuard([fd] {
         close(fd);
@@ -194,8 +228,8 @@ int setUpNewVt()
 
     int vt = 0;
     if (ioctl(fd, VT_OPENQRY, &vt) < 0) {
-        qCritical() << "Failed to open new VT:" << strerror(errno);
-        return -1;
+        qCritical() << "Failed to find a new VT:" << strerror(errno);
+        return {};
     }
 
     qDebug() << "VT_OPENQRY returned vt=" << vt;
@@ -212,23 +246,12 @@ int setUpNewVt()
         int vtActive = getVtActive(fd);
         qWarning() << "FreeBSD: VT_OPENQRY returned" << vt << ", active VT is" << vtActive;
 
-        // Helper lambda to test if a VT is available
-        auto testVtAvailable = [](int testVt) -> bool {
-            QString vtPath = path(testVt);
-            int testFd = open(qPrintable(vtPath), O_RDWR | O_NOCTTY | O_NONBLOCK);
-            if (testFd >= 0) {
-                close(testFd);
-                return true;
-            }
-            qDebug() << "VT" << testVt << "path:" << vtPath << "not available:" << strerror(errno);
-            return false;
-        };
-
         // First, check if the VT_OPENQRY result is actually usable
         if (vt > 0 && vt != vtActive) {
-            if (testVtAvailable(vt)) {
+            auto terminal = openVt(vt);
+            if (terminal.isValid()) {
                 qWarning() << "FreeBSD: VT_OPENQRY result" << vt << "is available, using it";
-                return vt;
+                return terminal;
             }
             qWarning() << "FreeBSD: VT_OPENQRY result" << vt << "is not actually available, searching for alternative";
         }
@@ -239,13 +262,14 @@ int setUpNewVt()
             if (tryVt == vtActive) {
                 continue;
             }
-            if (testVtAvailable(tryVt)) {
+            auto terminal = openVt(tryVt);
+            if (terminal.isValid()) {
                 qWarning() << "FreeBSD: found available VT:" << tryVt;
-                return tryVt;
+                return terminal;
             }
         }
         qCritical() << "FreeBSD: no available VT found - all VTs appear to be in use";
-        return vtActive;
+        return openVt(vtActive);
     }
 #endif
 
@@ -253,10 +277,14 @@ int setUpNewVt()
     if (vt <= 0) {
         int vtActive = getVtActive(fd);
         qWarning() << "VT_OPENQRY returned" << vt << "(invalid), fall back to active VT" << vtActive;
-        return vtActive;
+        return openVt(vtActive);
     }
 
-    return vt;
+    Terminal terminal = openVt(vt);
+    if (!terminal.isValid()) {
+        qCritical() << "Failed to open a new VT";
+    }
+    return terminal;
 }
 
 void jumpToVt(int vt, bool vt_auto)

@@ -12,13 +12,14 @@ import QtQuick.Effects
 
 import org.kde.kirigami as Kirigami
 import org.kde.breeze.components as BreezeComponents
-import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
+import org.kde.plasma.workspace.loginlockscreen as LoginLockScreen
 
 import org.kde.sonic.login as SonicLogin
 
 Item {
     id: root
+    readonly property bool keyboardActive: footer.virtualKeyboardVisible
     anchors.fill: parent
 
     // If we're using software rendering, draw outlines instead of shadows
@@ -29,6 +30,15 @@ Item {
     Kirigami.Theme.inherit: false
 
     property string notificationMessage
+    property bool authenticationInProgress: false
+    property bool authenticationMessageActive: false
+
+    onAuthenticationMessageActiveChanged: SonicLogin.GreeterState.setTimeoutInhibited(root, authenticationMessageActive)
+    Component.onDestruction: {
+        if (SonicLogin.GreeterState) {
+            SonicLogin.GreeterState.setTimeoutInhibited(root, false);
+        }
+    }
 
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
@@ -43,22 +53,20 @@ Item {
         target: mainStack
     }
 
-    Connections {
-        target: greeterEventFilter
+    SonicLogin.GreeterEventFilter {
+        window: root.Window.window
 
-        function onKeyPressed(): void {
+        onKeyPressed: {
             // callLater, as otherwise 'enter' key press would arrive after waking
             // and the uiVisible check would pass and a login attempt would be made
             Qt.callLater(() => SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window));
         }
 
-        function onEscapeKeyPressed(): void {
+        onEscapeKeyPressed: {
             SonicLogin.GreeterState.timeoutWindow(loginScreenRoot.Window.window);
-            /*
--            if (inputPanel.keyboardActive) {
--                inputPanel.showHide();
--            }
--            */
+            if (footer) {
+                footer.hideVirtualKeyboard();
+            }
             SonicLogin.GreeterState.clearPasswords();
         }
     }
@@ -84,10 +92,12 @@ Item {
             shadowEnabled: true
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 0.8
-            shadowColor: Qt.rgba(0, 0, 0, 0.7)
+            shadowColor: "black"
+            shadowOpacity: 1
             shadowBlur: 1
-            blurMax: 7
-            shadowScale: 1.2
+            // MultiEffect uses a different blur kernel; spread is not a scale.
+            blurMax: 11
+            shadowScale: 1
             opacity: loginScreenRoot.uiVisible ? 0 : 1
             Behavior on opacity {
                 OpacityAnimator {
@@ -100,7 +110,7 @@ Item {
         BreezeComponents.Clock {
             id: clock
             property Item shadow: clockShadow
-            visible: y > 0 && Settings.showClock
+            visible: !root.keyboardActive && y > 0 && Settings.showClock
             anchors.horizontalCenter: parent.horizontalCenter
             y: (userListComponent.userList.y + mainStack.y)/2 - height/2
             Layout.alignment: Qt.AlignBaseline
@@ -145,6 +155,7 @@ Item {
 
             initialItem: Login {
                 id: userListComponent
+                keyboardActive: root.keyboardActive
                 userListModel: SonicLogin.UserModel
                 loginScreenUiVisible: loginScreenRoot.uiVisible
                 userListCurrentIndex: {
@@ -166,7 +177,7 @@ Item {
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
+                        parts.push(i18nd("sonic_login", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -178,7 +189,7 @@ Item {
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        text: i18ndc("sonic_login", "Suspend to disk", "Hibernate")
                         visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -187,7 +198,7 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        text: i18ndc("sonic_login", "Suspend to RAM", "Sleep")
                         visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -196,24 +207,24 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("soniclogin", "Restart")
+                        text: i18nd("sonic_login", "Restart")
                         visible: SonicLogin.Authenticator.canReboot
                         onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("soniclogin", "Shut Down")
+                        text: i18nd("sonic_login", "Shut Down")
                         visible: SonicLogin.Authenticator.canShutdown
                         onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-prompt"
-                        text: i18ndc("soniclogin", "For switching to a username and password prompt", "Other…")
+                        text: i18ndc("sonic_login", "For switching to a username and password prompt", "Other…")
                         onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserPrompt
                         visible: !userListComponent.showUsernamePrompt
                     }]
 
-                onLoginRequest: (username, password) => root.handleLoginRequest(username, password, sessionButton.currentSessionType, sessionButton.currentSessionFileName)
+                onLoginRequest: (username, password) => root.handleLoginRequest(username, password)
             }
 
             readonly property real zoomFactor: 1.5
@@ -283,6 +294,7 @@ Item {
             id: userPromptComponent
 
             Login {
+                keyboardActive: root.keyboardActive
                 showUsernamePrompt: true
                 loginScreenUiVisible: loginScreenRoot.uiVisible
                 fontSize: Kirigami.Theme.defaultFont.pointSize + 2
@@ -290,7 +302,7 @@ Item {
                 notificationMessage: {
                     const parts = [];
                     if (capsLockState.locked) {
-                        parts.push(i18nd("soniclogin", "Caps Lock is on"));
+                        parts.push(i18nd("sonic_login", "Caps Lock is on"));
                     }
                     if (root.notificationMessage) {
                         parts.push(root.notificationMessage);
@@ -306,18 +318,18 @@ Item {
                     }
                     Component.onCompleted: {
                         // as we can't bind inside ListElement
-                        setProperty(0, "realName", i18nd("soniclogin", "Type in Username and Password"));
+                        setProperty(0, "realName", i18nd("sonic_login", "Type in Username and Password"));
                         setProperty(0, "icon", Qt.resolvedUrl(".face.icon").toString());
                     }
                 }
 
-                onLoginRequest: (username, password) => root.handleLoginRequest(username, password, sessionButton.currentSessionType, sessionButton.currentSessionFileName)
+                onLoginRequest: (username, password) => root.handleLoginRequest(username, password)
 
                 //actionItemsVisible: !inputPanel.keyboardActive
                 actionItems: [
                     BreezeComponents.ActionButton {
                         icon.name: "system-hibernate"
-                        text: i18ndc("soniclogin", "Suspend to disk", "Hibernate")
+                        text: i18ndc("sonic_login", "Suspend to disk", "Hibernate")
                         visible: SonicLogin.Authenticator.canHibernate
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -326,7 +338,7 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-suspend"
-                        text: i18ndc("soniclogin", "Suspend to RAM", "Sleep")
+                        text: i18ndc("sonic_login", "Suspend to RAM", "Sleep")
                         visible: SonicLogin.Authenticator.canSuspend
                         onClicked: {
                             SonicLogin.GreeterState.clearPasswords();
@@ -335,92 +347,83 @@ Item {
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-reboot"
-                        text: i18nd("soniclogin", "Restart")
+                        text: i18nd("sonic_login", "Restart")
                         visible: SonicLogin.Authenticator.canReboot
                         onClicked: SonicLogin.Authenticator.reboot()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-shutdown"
-                        text: i18nd("soniclogin", "Shut Down")
+                        text: i18nd("sonic_login", "Shut Down")
                         visible: SonicLogin.Authenticator.canShutdown
                         onClicked: SonicLogin.Authenticator.shutdown()
                     },
                     BreezeComponents.ActionButton {
                         icon.name: "system-user-list"
-                        text: i18nd("soniclogin", "List Users")
+                        text: i18nd("sonic_login", "List Users")
                         onClicked: SonicLogin.GreeterState.loginState = SonicLogin.GreeterState.LoginState.UserList
                     }
                 ]
             }
         }
 
-        RowLayout {
+        LoginLockScreen.Footer {
             id: footer
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: Kirigami.Units.smallSpacing
+            visible: !root.keyboardActive
 
-            spacing: Kirigami.Units.smallSpacing
+            onVirtualKeyboardVisibleChanged: SonicLogin.GreeterState.setTimeoutInhibited(footer, virtualKeyboardVisible)
+            Component.onDestruction: {
+                if (SonicLogin.GreeterState) {
+                    SonicLogin.GreeterState.setTimeoutInhibited(footer, false);
+                }
+            }
+
+            onOskActivated: {
+                SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window);
+                if (mainStack.currentItem) {
+                    mainStack.currentItem.focusFirstVisibleFormControl();
+                }
+            }
 
             Behavior on opacity {
                 OpacityAnimator {
                     duration: Kirigami.Units.longDuration
                 }
             }
-
-            /* Virtual keyboard btn */
-
-            KeyboardButton {
-                id: keyboardButton
-            }
-
-            SessionButton {
-                id: sessionButton
-
-                onSessionChanged: {
-                    // NOTE: This won't work for userPromptComponent: we might
-                    // want a function to focus the correct password box, but
-                    // userPromptComponent has both that and the user box
-                    // Perhaps we need to store which one last had focus
-
-                    // Otherwise the password field loses focus and virtual keyboard
-                    // keystrokes get eaten
-                    userListComponent.mainPasswordBox.forceActiveFocus();
-                }
-
-                Layout.fillHeight: true
-                containmentMask: Item {
-                    parent: sessionButton
-                    anchors.fill: parent
-                    /*
-                    anchors.leftMargin: virtualKeyboardButton.visible || keyboardButton.visible
-                        ? 0 : -footer.anchors.margins
-                    */
-                    anchors.leftMargin: 0
-                    anchors.bottomMargin: -footer.anchors.margins
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            BreezeComponents.Battery {}
         }
     }
 
-    function handleLoginRequest(username, password, sessionType, sessionFileName) {
+    function handleLoginRequest(username, password) {
+        notificationResetTimer.stop();
+        root.authenticationMessageActive = false;
+        root.authenticationInProgress = true;
         root.notificationMessage = "";
         // GreeterState handles updating stateconfig with user/session of successful login
-        SonicLogin.GreeterState.handleLoginRequest(username, password, sessionType, sessionFileName);
+        SonicLogin.GreeterState.handleLoginRequest(username, password);
     }
 
     Connections {
         target: SonicLogin.Authenticator
 
+        // e.g. pam_u2f's "cue" asking the user to touch their key. Not auto-cleared
+        // like "Login Failed" is: handleLoginRequest() clears it on the next attempt.
+        function onInformationMessage(message) {
+            notificationResetTimer.stop();
+            root.notificationMessage = message;
+            root.authenticationMessageActive = message.length > 0;
+            if (root.authenticationMessageActive) {
+                // Reveal the persistent cue even if the compact keyboard UI was active.
+                footer.hideVirtualKeyboard();
+                if (root.authenticationInProgress) {
+                    SonicLogin.GreeterState.activateWindow(loginScreenRoot.Window.window);
+                }
+            }
+        }
+
         function onLoginFailed() {
-            notificationMessage = i18nd("soniclogin", "Login Failed");
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
+            notificationMessage = i18nd("sonic_login", "Login Failed");
+            notificationResetTimer.restart();
 
             footer.enabled = true;
             mainStack.enabled = true;
@@ -430,7 +433,10 @@ Item {
         }
 
         function onSocketDisconnected() {
-            notificationMessage = i18nd("soniclogin", "Connection to login service lost");
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
+            notificationResetTimer.stop();
+            notificationMessage = i18nd("sonic_login", "Connection to login service lost");
 
             footer.enabled = true;
             mainStack.enabled = true;
@@ -440,14 +446,12 @@ Item {
         }
 
         function onLoginSucceeded() {
+            root.authenticationInProgress = false;
+            root.authenticationMessageActive = false;
+            notificationResetTimer.stop();
+            root.notificationMessage = "";
             mainStack.opacity = 0;
             footer.opacity = 0;
-        }
-    }
-
-    onNotificationMessageChanged: {
-        if (notificationMessage) {
-            notificationResetTimer.start();
         }
     }
 

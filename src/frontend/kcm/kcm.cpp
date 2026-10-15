@@ -239,6 +239,7 @@ void SonicLoginKcm::synchronizeSettings()
 
     addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kdeglobals")), QStringLiteral("kdeglobals"));
     addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("plasmarc")), QStringLiteral("plasmarc"));
+    addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("plasma-localerc")), QStringLiteral("plasma-localerc"));
     addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kcminputrc")), QStringLiteral("kcminputrc"));
     addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kwinoutputconfig.json")),
                   QStringLiteral("kwinoutputconfig.json"));
@@ -611,7 +612,7 @@ bool SonicLoginKcm::KDEWalletAvailable()
 
 void SonicLoginKcm::openKDEWallet()
 {
-    KService::Ptr kwalletmanagerService = KService::serviceByDesktopName(QStringLiteral("org.kde.kwalletmanager5"));
+    KService::Ptr kwalletmanagerService = KService::serviceByDesktopName(QStringLiteral("org.kde.kwalletmanager"));
     auto *job = new KIO::ApplicationLauncherJob(kwalletmanagerService);
     job->start();
 }
