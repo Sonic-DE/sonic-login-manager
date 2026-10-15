@@ -50,9 +50,13 @@ int main(int argc, char **argv)
         // reported to the parent UserSession as an error exit code.
         QCoreApplication::instance()->exit(SONICLOGIN::Auth::HELPER_SUCCESS);
     });
+    // systemd follows SIGTERM with SIGHUP when it stops the session scope
+    s.addCustomSignal(SIGHUP);
     s.addCustomSignal(SIGQUIT);
     QObject::connect(&s, &SONICLOGIN::SignalHandler::customSignalReceived, &app, [&argc, &argv](int signal) {
-        if (signal == SIGQUIT) {
+        if (signal == SIGHUP) {
+            QCoreApplication::instance()->exit(SONICLOGIN::Auth::HELPER_SUCCESS);
+        } else if (signal == SIGQUIT) {
             pid_t ppid = getppid();
             QString parentName = SONICLOGIN::getProcessNameByPid(ppid);
             qWarning() << "HelperStartX11User: Received SIGQUIT (signal 3) - diagnostic information:"
