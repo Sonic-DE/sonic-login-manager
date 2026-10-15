@@ -92,10 +92,12 @@ Item {
             shadowEnabled: true
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 0.8
-            shadowColor: Qt.rgba(0, 0, 0, 0.7)
+            shadowColor: "black"
+            shadowOpacity: 1
             shadowBlur: 1
-            blurMax: 7
-            shadowScale: 1.2
+            // MultiEffect uses a different blur kernel; spread is not a scale.
+            blurMax: 11
+            shadowScale: 1
             opacity: loginScreenRoot.uiVisible ? 0 : 1
             Behavior on opacity {
                 OpacityAnimator {
