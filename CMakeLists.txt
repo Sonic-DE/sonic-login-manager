@@ -9,7 +9,7 @@ option(INSTALL_PAM_CONFIGURATION "Install PAM configuration files" ON)
 option(MANUAL_INITS "Disable init-system detection and service installation" OFF)
 
 # Version settings
-set(PROJECT_DEP_VERSION "6.7.0")
+set(PROJECT_DEP_VERSION "6.8.0")
 
 set(QT_MIN_VERSION "6.11.0")
 set(KF6_MIN_VERSION "6.30.0")
