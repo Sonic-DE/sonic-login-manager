@@ -28,11 +28,9 @@
 #include <Login1Manager.h>
 #include <Login1Session.h>
 
-namespace SONICLOGIN
-{
+namespace SONICLOGIN {
 
-class LogindSeat : public QObject
-{
+class LogindSeat : public QObject {
     Q_OBJECT
 public:
     LogindSeat(const QString &name, const QDBusObjectPath &objectPath);
@@ -198,7 +196,8 @@ void SeatManager::switchToGreeter(const QString &name)
     }
 
     // switch to greeter
-    m_seats.value(name)->createDisplay();
+    auto seat = m_seats.value(name);
+    seat->startDisplay(seat->createDisplay());
 }
 
 void SONICLOGIN::SeatManager::logindSecureAttentionKey(const QString &name, const QDBusObjectPath &objectPath)
