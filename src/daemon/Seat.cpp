@@ -41,7 +41,9 @@ Seat::Seat(const QString &name, QObject *parent)
     : QObject(parent)
     , m_name(name)
 {
-    createDisplay();
+    auto display = createDisplay();
+    setupAutoLogin(display);
+    startDisplay(display);
 }
 
 const QString &Seat::name() const
@@ -137,7 +139,7 @@ std::optional<int> Seat::vtForSession(const QString &sessionId) const
     return QStringView(session.tTY()).mid(3).toInt(); // we need to convert ttyN to N
 }
 
-void Seat::createDisplay()
+Display *Seat::createDisplay()
 {
     // reload config if needed
     mainConfig.load();
@@ -157,14 +159,16 @@ void Seat::createDisplay()
     // add display to the list
     m_displays << display;
 
+    return display;
+}
+
+void Seat::setupAutoLogin(Display *display)
+{
     // Resolve autologin after reloading configuration. Keep SonicDE's existing
     // first-login/Relogin eligibility policy; Display only executes this choice.
     if ((mainConfig.Autologin.Relogin.get() || tryLockFirstLogin()) && !mainConfig.Autologin.User.get().isEmpty()) {
         display->setAutoLogin(mainConfig.Autologin.User.get(), mainConfig.Autologin.Session.get());
     }
-
-    // start the display
-    startDisplay(display);
 }
 
 void Seat::startDisplay(Display *display, int tryNr)
@@ -218,7 +222,9 @@ void Seat::displayStopped()
     if (m_displays.isEmpty()) {
         OrgFreedesktopLogin1ManagerInterface manager(Logind::serviceName(), Logind::managerPath(), QDBusConnection::systemBus());
         if (!Logind::isAvailable() || !manager.preparingForShutdown()) {
-            createDisplay();
+            auto display = createDisplay();
+            setupAutoLogin(display);
+            startDisplay(display);
         }
     }
     // If there is still a session running on some display,

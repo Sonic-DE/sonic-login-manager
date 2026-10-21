@@ -32,7 +32,8 @@ public:
     explicit Seat(const QString &name, QObject *parent = 0);
 
     const QString &name() const;
-    void createDisplay();
+    Display *createDisplay();
+    void startDisplay(SONICLOGIN::Display *display, int tryNr = 1);
     bool canTTY();
     bool tryLockFirstLogin();
     VirtualTerminal::Terminal availableVt() const;
@@ -47,7 +48,7 @@ private slots:
     void displayStopped();
 
 private:
-    void startDisplay(SONICLOGIN::Display *display, int tryNr = 1);
+    void setupAutoLogin(SONICLOGIN::Display *display);
 
     QString m_name;
 
