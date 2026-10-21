@@ -19,6 +19,7 @@ import org.kde.sonic.login as SonicLogin
 
 SessionManagementScreen {
     id: root
+    showUserListWithKeyboard: true
     property Item mainPasswordBox: passwordBox
 
     property bool showUsernamePrompt: !showUserList

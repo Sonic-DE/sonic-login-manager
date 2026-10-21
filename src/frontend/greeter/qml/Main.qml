@@ -20,6 +20,15 @@ import org.kde.sonic.login as SonicLogin
 Item {
     id: root
     readonly property bool keyboardActive: footer.virtualKeyboardVisible
+    readonly property real availableLoginHeight: {
+        const keyboard = Qt.inputMethod.keyboardRectangle;
+        if (!keyboardActive || keyboard.width <= 0 || keyboard.height <= 0
+            || keyboard.x >= width || keyboard.x + keyboard.width <= 0
+            || keyboard.y >= height || keyboard.y + keyboard.height <= 0) {
+            return height;
+        }
+        return Math.max(0, Math.min(height, keyboard.y));
+    }
     anchors.fill: parent
 
     // If we're using software rendering, draw outlines instead of shadows
@@ -121,7 +130,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
 
-            height: root.height + Kirigami.Units.gridUnit * 3
+            height: root.keyboardActive ? root.availableLoginHeight : root.height + Kirigami.Units.gridUnit * 3
 
             hoverEnabled: true
 
