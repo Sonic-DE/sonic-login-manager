@@ -1,0 +1,20 @@
+import QtQuick
+
+Item {
+    id: root
+    required property var configuration
+    required property string pluginName
+    property string providerAtCreation: ""
+    Component.onCompleted: providerAtCreation = configuration.Provider || ""
+    readonly property int imageStatus: image.status
+
+    Image {
+        id: image
+        anchors.fill: parent
+        cache: false
+        fillMode: Image.Stretch
+        source: root.pluginName === "org.kde.potd"
+            ? "http://127.0.0.1:@PORT@/" + root.configuration.Provider + ".png"
+            : root.configuration.Image || ""
+    }
+}

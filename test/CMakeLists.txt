@@ -12,6 +12,65 @@ set_tests_properties(Configuration PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT
 
 target_link_libraries(ConfigurationTest Qt6::Core Qt6::Test)
 
+find_package(X11 REQUIRED COMPONENTS Xcursor)
+add_executable(ThemeSyncTest ThemeSyncTest.cpp ../src/common/ThemeSync.cpp)
+target_link_libraries(ThemeSyncTest PRIVATE Qt6::Test KF6::ConfigCore ZLIB::ZLIB X11::Xcursor)
+add_test(NAME ThemeSync COMMAND ThemeSyncTest)
+
+find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
+add_executable(GreeterPaletteTest GreeterPaletteTest.cpp)
+target_link_libraries(GreeterPaletteTest PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Test KF6::IconThemes KF6::I18nQml)
+target_compile_definitions(GreeterPaletteTest PRIVATE GREETER_PALETTE_QML="${CMAKE_CURRENT_SOURCE_DIR}/GreeterPaletteTest.qml")
+qt_add_resources(GreeterPaletteTest greeter_palette_config
+    PREFIX "/"
+    BASE "${CMAKE_SOURCE_DIR}/src/frontend/greeter"
+    FILES "${CMAKE_SOURCE_DIR}/src/frontend/greeter/qtquickcontrols2.conf"
+)
+add_test(NAME GreeterPalette COMMAND GreeterPaletteTest)
+set_tests_properties(GreeterPalette PROPERTIES ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_SCALE_FACTOR=1;DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus;DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-system-bus"
+)
+
+# Compile the production loader with private settings and no system sources. Never
+# read /etc/soniclogin.conf or write the system log during an automated test.
+set(wallpaper_source "${CMAKE_SOURCE_DIR}/src/frontend/wallpaper")
+set(settings_source "${CMAKE_SOURCE_DIR}/src/frontend/settings")
+add_executable(WallpaperAppTest
+    WallpaperAppTest.cpp
+    ${wallpaper_source}/wallpaperapp.cpp
+    ${wallpaper_source}/wallpaperwindow.cpp
+    ${settings_source}/sonicloginsettings.cpp
+    ${settings_source}/sonicloginsettingsdefaults.cpp
+    ${settings_source}/sonicloginsettings.h
+    ${settings_source}/sonicloginsettingsdefaults.h
+)
+target_include_directories(WallpaperAppTest BEFORE PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/wallpaper" "${wallpaper_source}" "${settings_source}"
+)
+target_compile_definitions(WallpaperAppTest PRIVATE WALLPAPER_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/wallpaper")
+kconfig_add_kcfg_files(WallpaperAppTest GENERATE_MOC ${settings_source}/sonicloginsettingsbase.kcfgc)
+target_link_libraries(WallpaperAppTest PRIVATE Qt6::Quick Qt6::Network Qt6::DBus Qt6::Test
+    KF6::ConfigQml KF6::I18n KF6::Package KF6::WindowSystem Plasma::PlasmaQuick)
+qt_add_resources(WallpaperAppTest wallpaper_test_host
+    PREFIX "/qt/qml/org/kde/sonic/login/wallpaper"
+    BASE "${wallpaper_source}"
+    FILES ${wallpaper_source}/main.qml ${wallpaper_source}/WallpaperFader.qml
+)
+qt_add_resources(WallpaperAppTest wallpaper_test_module
+    PREFIX "/qt/qml/org/kde/sonic/login/wallpaper"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/wallpaper"
+    FILES "${CMAKE_CURRENT_SOURCE_DIR}/wallpaper/qmldir"
+)
+qt_add_shaders(WallpaperAppTest wallpaper_test_shaders
+    PREFIX "/qt/qml/org/sonic/login/wallpaper/shaders"
+    FILES ${wallpaper_source}/WallpaperFader.frag
+    OUTPUTS WallpaperFader.frag.qsb
+)
+add_test(NAME WallpaperApp COMMAND WallpaperAppTest)
+set_tests_properties(WallpaperApp PROPERTIES TIMEOUT 120 ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_SCALE_FACTOR=1;DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus;DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-system-bus"
+)
+
 add_executable(FileDescriptorTest
     FileDescriptorTest.cpp
     ../src/common/filedescriptor.cpp

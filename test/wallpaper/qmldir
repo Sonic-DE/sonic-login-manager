@@ -1,0 +1,2 @@
+module org.kde.sonic.login.wallpaper
+WallpaperFader 1.0 WallpaperFader.qml
