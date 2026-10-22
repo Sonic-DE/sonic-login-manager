@@ -12,6 +12,7 @@ set(DAEMON_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/Session.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SocketWriter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
+    ${CMAKE_SOURCE_DIR}/src/common/ThemeSync.cpp
     ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
     ${CMAKE_SOURCE_DIR}/src/common/filedescriptor.cpp
     ${CMAKE_SOURCE_DIR}/src/auth/Auth.cpp
@@ -59,6 +60,7 @@ target_link_libraries(soniclogin
                       ${PAM_LIBRARIES}
                       KF6::ConfigCore
                       KF6::ConfigGui
+                      ZLIB::ZLIB
                       KF6::CoreAddons)
 
 

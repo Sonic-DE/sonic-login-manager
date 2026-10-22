@@ -6,6 +6,7 @@ target_sources(kcm_soniclogin PRIVATE
     kcm.cpp kcm.h
     kcm_messagelogger.cpp
     soniclogindata.cpp soniclogindata.h
+    ${CMAKE_SOURCE_DIR}/src/common/ThemeSync.cpp
 )
 
 target_include_directories(kcm_soniclogin PRIVATE
@@ -14,6 +15,7 @@ target_include_directories(kcm_soniclogin PRIVATE
 
 target_link_libraries(kcm_soniclogin PRIVATE
     settings
+    KF6::ConfigCore
     KF6::I18n
     KF6::KCMUtilsCore
     KF6::KCMUtilsQuick
@@ -21,6 +23,7 @@ target_link_libraries(kcm_soniclogin PRIVATE
     KF6::Service
     Qt6::Core
     Qt6::Network
+    ZLIB::ZLIB
 )
 
 ki18n_install(po)

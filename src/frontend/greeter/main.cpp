@@ -12,12 +12,14 @@
 #include <QDBusReply>
 #include <QGuiApplication>
 #include <QHash>
+#include <QIcon>
 #include <QObject>
 #include <QProcess>
 #include <QQmlContext>
 #include <QScreen>
 #include <QTimer>
 
+#include <KIconTheme>
 #include <KLocalizedString>
 #include <PlasmaQuick/QuickViewSharedEngine>
 
@@ -157,6 +159,10 @@ int main(int argc, char *argv[])
     // input-method plugin to be selected before constructing the application.
     qputenv("QT_IM_MODULE", "qtvirtualkeyboard");
     qunsetenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE");
+    // Keep symbolic icons color-aware even in the standalone test UI, without
+    // replacing a configured icon theme or relying on session defaults.
+    QIcon::setFallbackThemeName(QStringLiteral("silver"));
+    KIconTheme::initTheme();
     QGuiApplication app(argc, argv);
 
     SONICLOGIN::SignalHandler signalHandler;

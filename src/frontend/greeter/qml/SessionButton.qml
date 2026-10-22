@@ -7,13 +7,17 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 
-import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 
 import org.kde.sonic.login as SonicLogin
 
-PlasmaComponents.ComboBox {
+QQC2.ComboBox {
     id: root
+
+    // Use the same color-aware style for the surface, label and popup instead
+    // of mixing a Plasma SVG surface with a complementary-colored label.
+    Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+    Kirigami.Theme.inherit: false
 
     model: SonicLogin.SessionModel
     textRole: "display"
@@ -31,9 +35,9 @@ PlasmaComponents.ComboBox {
         text: root.displayText
     }
 
-    PlasmaComponents.ToolTip.text: currentText
-    PlasmaComponents.ToolTip.visible: hovered && contentItem.truncated && !popup.visible
-    PlasmaComponents.ToolTip.delay: Kirigami.Units.toolTipDelay
+    QQC2.ToolTip.text: currentText
+    QQC2.ToolTip.visible: hovered && contentItem.truncated && !popup.visible
+    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
 
     Connections {
         target: root.popup

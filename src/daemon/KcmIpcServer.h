@@ -26,8 +26,9 @@ struct SavePayload {
 
 struct SyncPayload {
     QList<QPair<QString, QString>> files;
-    // Cursor theme name -> raw tar archive of the theme directory.
-    QList<QPair<QString, QByteArray>> cursorThemes;
+    // Relative XDG data path -> materialized theme bundle. Bare names retain
+    // compatibility with cursor tarballs sent by older KCM clients.
+    QList<QPair<QString, QByteArray>> themes;
     // KScreen per-output and combined config JSONs, keyed by their path
     // relative to the user's $XDG_DATA_HOME/kscreen/ directory.
     QList<QPair<QString, QByteArray>> kscreenFiles;
