@@ -16,7 +16,6 @@
 #include <QList>
 #include <QLocalSocket>
 #include <QLoggingCategory>
-#include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
@@ -33,6 +32,7 @@
 #include <KService>
 #include <KUser>
 
+#include "ThemeSync.h"
 #include "models/sessionmodel.h"
 #include "models/usermodel.h"
 #include "soniclogindata.h"
@@ -251,22 +251,19 @@ void SonicLoginKcm::synchronizeSettings()
 
     addConfigFile(QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kxkbrc")), QStringLiteral("kxkbrc"));
 
-    // Locate the cursor theme named in kcminputrc and bundle it so the greeter
-    // can find its assets under the soniclogin user's $XCURSOR_PATH.
     QJsonObject themes;
-    const QString kcminputrcPath = QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kcminputrc"));
-    if (!kcminputrcPath.isEmpty()) {
-        KConfig cfg(kcminputrcPath);
-        const QString cursorTheme = cfg.group(QStringLiteral("Mouse")).readEntry("cursorTheme", QString());
-        if (!cursorTheme.isEmpty()) {
-            const QByteArray themeTar = bundleCursorTheme(cursorTheme);
-            if (!themeTar.isEmpty()) {
-                themes[cursorTheme] = QString::fromLatin1(themeTar.toBase64());
-                qInfo() << "synchronizeSettings: bundled cursor theme" << cursorTheme << "size=" << themeTar.size();
-            } else {
-                qWarning() << "synchronizeSettings: could not bundle cursor theme" << cursorTheme << "(not found locally; relying on system path)";
-            }
-        }
+    QMap<QString, QString> themeConfigs;
+    QMap<QString, QByteArray> themeAssets;
+    QString themeError;
+    if (!SONICLOGIN::ThemeSync::collectSettings(&themeConfigs, &themeAssets, &themeError)) {
+        Q_EMIT errorOccurred(kxi18n("Unable to copy desktop themes: %1").subs(themeError).toString());
+        return;
+    }
+    for (auto it = themeConfigs.cbegin(); it != themeConfigs.cend(); ++it) {
+        files[it.key()] = it.value();
+    }
+    for (auto it = themeAssets.cbegin(); it != themeAssets.cend(); ++it) {
+        themes[it.key()] = QString::fromLatin1(it.value().toBase64());
     }
 
     QByteArray argsJson;
@@ -417,7 +414,8 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
         return;
     }
 
-    static const quint32 MsgSyncSettings = 1;
+    // Older daemons reject this version instead of silently ignoring assets.
+    static const quint32 MsgSyncSettings = 4;
     static const quint32 MsgResetSettings = 2;
     static const quint32 MsgSaveConfig = 3;
     static const quint32 MsgResponse = 100;
@@ -445,8 +443,7 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
             for (auto it = files.constBegin(); it != files.constEnd(); ++it) {
                 out << it.key() << it.value().toString();
             }
-            // Append cursor theme tarballs so the daemon can extract them
-            // into the soniclogin user's icons directory.
+            // Append theme bundles keyed by their relative XDG data path.
             const QJsonObject themes = args.value(QStringLiteral("themes")).toObject();
             out << static_cast<quint32>(themes.size());
             for (auto it = themes.constBegin(); it != themes.constEnd(); ++it) {
@@ -483,7 +480,7 @@ void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
     QString err;
     in >> responseType >> responseId >> okRaw >> err;
     while (!in.commitTransaction()) {
-        if (!socket.waitForReadyRead(15000)) {
+        if (!socket.waitForReadyRead(op == QLatin1String("sync") ? 120000 : 15000)) {
             Q_EMIT errorOccurred(kxi18n("Daemon did not respond: %1").subs(socket.errorString()).toString());
             return;
         }
@@ -620,58 +617,3 @@ void SonicLoginKcm::openKDEWallet()
 #include "kcm.moc"
 
 #include "moc_kcm.cpp"
-
-QByteArray SonicLoginKcm::bundleCursorTheme(const QString &themeName)
-{
-    // Reject obviously unsafe names.
-    if (themeName.isEmpty() || themeName.contains(QLatin1Char('/')) || themeName.contains(QLatin1Char('\0')) || themeName == QStringLiteral(".")
-        || themeName == QStringLiteral("..")) {
-        return {};
-    }
-
-    // Look for the theme in standard XDG locations, preferring user-specific
-    // installations over system-wide ones (matching the cursor loader's
-    // precedence).
-    QStringList searchRoots;
-    searchRoots << QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/icons");
-    const QString homeIcons = QDir::homePath() + QStringLiteral("/.icons");
-    if (!searchRoots.contains(homeIcons)) {
-        searchRoots << homeIcons;
-    }
-    searchRoots << QStringLiteral("/usr/share/icons");
-    searchRoots << QStringLiteral("/usr/local/share/icons");
-
-    QString themeDir;
-    for (const QString &root : searchRoots) {
-        const QString candidate = root + QLatin1Char('/') + themeName;
-        if (QFileInfo::exists(candidate + QStringLiteral("/index.theme")) || QFileInfo::exists(candidate + QStringLiteral("/cursors"))) {
-            themeDir = candidate;
-            break;
-        }
-    }
-    if (themeDir.isEmpty()) {
-        return {};
-    }
-
-    // Use tar(1) to produce a deterministic archive of the theme directory
-    // contents. We strip the leading "<themeName>/" component by changing
-    // into the parent directory and archiving with the bare themeName.
-    QProcess tar;
-    tar.setProcessChannelMode(QProcess::MergedChannels);
-    const QString parentDir = QFileInfo(themeDir).absolutePath();
-    tar.start(QStringLiteral("tar"), {QStringLiteral("-cf"), QStringLiteral("-"), QStringLiteral("-C"), parentDir, themeName});
-    if (!tar.waitForStarted(5000)) {
-        qWarning() << "bundleCursorTheme: failed to start tar:" << tar.errorString();
-        return {};
-    }
-    if (!tar.waitForFinished(30000)) {
-        qWarning() << "bundleCursorTheme: tar timed out:" << tar.errorString();
-        tar.kill();
-        return {};
-    }
-    if (tar.exitStatus() != QProcess::NormalExit || tar.exitCode() != 0) {
-        qWarning() << "bundleCursorTheme: tar failed:" << tar.readAll();
-        return {};
-    }
-    return tar.readAll();
-}

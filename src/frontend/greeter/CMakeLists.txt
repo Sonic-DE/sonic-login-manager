@@ -70,6 +70,7 @@ target_link_libraries(soniclogin-greeter PRIVATE
     Qt::Quick
     Qt::DBus
     KF6::I18n
+    KF6::IconThemes
     Plasma::PlasmaQuick
     KF6::Package
     KF6::WindowSystem

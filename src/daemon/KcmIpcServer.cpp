@@ -9,6 +9,7 @@
 #include "MessageHandler.h"
 
 #include "Constants.h"
+#include "ThemeSync.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -40,6 +41,7 @@ namespace
 constexpr quint32 MsgSyncSettings = 1;
 constexpr quint32 MsgResetSettings = 2;
 constexpr quint32 MsgSaveConfig = 3;
+constexpr quint32 MsgSyncThemeSettings = 4;
 constexpr quint32 MsgResponse = 100;
 
 constexpr QFile::Permissions standardPermissions = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
@@ -183,7 +185,7 @@ void KcmIpcServer::onReadyRead()
         return;
     }
 
-    if (type == MsgSyncSettings) {
+    if (type == MsgSyncSettings || type == MsgSyncThemeSettings) {
         syncPayload = handleSyncRead(reader);
     } else if (type == MsgSaveConfig) {
         savePayload = handleSaveRead(reader);
@@ -206,7 +208,7 @@ void KcmIpcServer::onReadyRead()
     }
 
     QPair<bool, QString> result;
-    if (type == MsgSyncSettings) {
+    if (type == MsgSyncSettings || type == MsgSyncThemeSettings) {
         if (syncPayload) {
             result = handleSyncWrite(*syncPayload);
         } else {
@@ -352,12 +354,12 @@ std::optional<SyncPayload> KcmIpcServer::handleSyncRead(QDataStream &in)
     quint32 nThemes = 0;
     in >> nThemes;
 
-    payload.cursorThemes.reserve(nThemes);
+    payload.themes.reserve(nThemes);
     for (quint32 i = 0; i < nThemes; ++i) {
         QString themeName;
         QByteArray tarBytes;
         in >> themeName >> tarBytes;
-        payload.cursorThemes.append(qMakePair(themeName, tarBytes));
+        payload.themes.append(qMakePair(themeName, tarBytes));
     }
 
     quint32 nKscreenFiles = 0;
@@ -460,21 +462,26 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         return qMakePair(false, QStringLiteral("soniclogin user not found"));
     }
 
+    // Make all selected assets available before switching configuration to
+    // them. Never report a successful sync after a failed theme installation.
+    for (const auto &theme : payload.themes) {
+        if (theme.first.contains(QLatin1Char('/'))) {
+            QString error;
+            const KUser greeter(QStringLiteral("soniclogin"));
+            if (!ThemeSync::install(homeDir, theme.first, theme.second, &error, greeter.userId().nativeId(), greeter.groupId().nativeId())) {
+                return qMakePair(false, error);
+            }
+        } else {
+            const auto result = extractCursorTheme(homeDir, theme.first, theme.second);
+            if (!result.first) {
+                return result;
+            }
+        }
+    }
+
     QDir cacheLocation(homeDir + QStringLiteral("/.cache"));
     if (cacheLocation.exists()) {
         cacheLocation.removeRecursively();
-    }
-
-    QDir homeLocation(homeDir);
-    QDir configLocation(homeDir + QStringLiteral("/.config"));
-    if (!configLocation.exists()) {
-        homeLocation.mkdir(QStringLiteral(".config"), standardDirectoryPermissions);
-        chownPath(configLocation.path());
-    }
-    QDir fontConfigLocation(homeDir + QStringLiteral("/.config/fontconfig"));
-    if (!fontConfigLocation.exists()) {
-        configLocation.mkdir(QStringLiteral("fontconfig"), standardDirectoryPermissions);
-        chownPath(fontConfigLocation.path());
     }
 
     QStringList fileNames;
@@ -484,36 +491,18 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         contents.insert(file.first, file.second);
     }
 
-    auto createConfigFile = [&](const QString &name) {
-        if (!fileNames.contains(name)) {
-            QFile::remove(homeDir + QStringLiteral("/.config/") + name);
-            return;
-        }
-        QFile file(homeDir + QStringLiteral("/.config/") + name);
-        if (file.open(QFile::WriteOnly | QFile::Text | QFile::Truncate, standardPermissions)) {
-            QTextStream out(&file);
-            out << contents.value(name);
-            chownPath(file.fileName());
-        }
-    };
-
-    createConfigFile(QStringLiteral("kdeglobals"));
-    createConfigFile(QStringLiteral("plasmarc"));
-    createConfigFile(QStringLiteral("plasma-localerc"));
-    createConfigFile(QStringLiteral("kcminputrc"));
-    createConfigFile(QStringLiteral("kwinoutputconfig.json"));
-    createConfigFile(QStringLiteral("fontconfig/fonts.conf"));
-    createConfigFile(QStringLiteral("kxkbrc"));
-
-    // Extract any bundled cursor themes into the soniclogin user's icons
-    // directory so the greeter can load them via $XCURSOR_PATH.
-    QStringList extractedCursorThemes;
-    for (const auto &theme : payload.cursorThemes) {
-        auto result = extractCursorTheme(homeDir, theme.first, theme.second);
-        if (result.first) {
-            extractedCursorThemes.append(theme.first);
-        } else {
-            qWarning() << "handleSync: failed to extract cursor theme" << theme.first << ":" << result.second;
+    const KUser greeter(QStringLiteral("soniclogin"));
+    for (const auto &name : {QStringLiteral("kdeglobals"),
+                             QStringLiteral("plasmarc"),
+                             QStringLiteral("plasma-localerc"),
+                             QStringLiteral("kcminputrc"),
+                             QStringLiteral("kwinoutputconfig.json"),
+                             QStringLiteral("fontconfig/fonts.conf"),
+                             QStringLiteral("kxkbrc")}) {
+        const std::optional<QString> text = fileNames.contains(name) ? std::optional<QString>(contents.value(name)) : std::nullopt;
+        QString error;
+        if (!ThemeSync::writeConfig(homeDir, name, text, &error, greeter.userId().nativeId(), greeter.groupId().nativeId())) {
+            return qMakePair(false, error);
         }
     }
 
@@ -569,8 +558,8 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         }
     }
 
-    qInfo() << "handleSync:" << payload.files.size() << "files," << extractedCursorThemes.size() << "cursor themes," << extractedKscreenFiles.size()
-            << "kscreen files for" << homeDir;
+    qInfo() << "handleSync:" << payload.files.size() << "files," << payload.themes.size() << "themes," << extractedKscreenFiles.size() << "kscreen files for"
+            << homeDir;
     return qMakePair(true, QString());
 }
 
@@ -600,17 +589,9 @@ QPair<bool, QString> KcmIpcServer::handleReset(QDataStream &in)
     QFile(homeDir + QStringLiteral("/.config/kwinoutputconfig.json")).remove();
     QFile(homeDir + QStringLiteral("/.config/kxkbrc")).remove();
 
-    // Remove any cursor theme directories we synced from the user's session.
-    // We identify them by the marker file left behind during extraction so we
-    // never delete a theme that the soniclogin user installed independently.
-    QDir iconsDir(homeDir + QStringLiteral("/.local/share/icons"));
-    if (iconsDir.exists()) {
-        const QFileInfoList entries = iconsDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QFileInfo &entry : entries) {
-            if (QFile::exists(entry.absoluteFilePath() + QStringLiteral("/.soniclogin-synced"))) {
-                QDir(entry.absoluteFilePath()).removeRecursively();
-            }
-        }
+    QString themeError;
+    if (!ThemeSync::reset(homeDir, &themeError)) {
+        return qMakePair(false, themeError);
     }
 
     const QString kscreenRoot = homeDir + QStringLiteral("/.local/share/kscreen");
