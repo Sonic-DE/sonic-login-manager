@@ -215,6 +215,12 @@ void WallpaperApp::setupWallpaperPlugin(WallpaperWindow *window, QQuickItem *wal
         configLoader = new KConfigLoader(cfg, &file, this);
     }
 
+    if (!hasWallpaperConfig && m_wallpaperPackage.metadata().pluginId() == QStringLiteral("org.kde.potd")) {
+        if (auto *provider = configLoader->findItemByName(QStringLiteral("Provider"))) {
+            provider->setProperty(QStringLiteral("bing"));
+        }
+    }
+
     KConfigPropertyMap *config = new KConfigPropertyMap(configLoader, this);
     // potd (picture of the day) is using a kded to monitor changes and
     // cache data for the lockscreen. Let's notify it.
