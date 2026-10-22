@@ -36,6 +36,13 @@ ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
 
 add_executable(soniclogin-greeter ${LOGIN_GREETER_SRCS})
 
+# Use the color-aware Quick style even without a session platform theme.
+qt_add_resources(soniclogin-greeter greeter_controls_config
+    PREFIX "/"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}"
+    FILES qtquickcontrols2.conf
+)
+
 # Enable automatic MOC processing for Qt signals/slots
 set_target_properties(soniclogin-greeter PROPERTIES AUTOMOC ON)
 
