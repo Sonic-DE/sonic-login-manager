@@ -21,6 +21,7 @@
 #include <QDBusArgument>
 #include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -745,8 +746,47 @@ static void doApply(KScreen::ConfigPtr config, const QString &kscreenDir)
     }
 }
 
+static bool waitForWindowManager(int timeoutMs)
+{
+    qInfo() << "Waiting for window manager readiness (org.kde.KWin)";
+    QElapsedTimer elapsed;
+    elapsed.start();
+    auto *bus = QDBusConnection::sessionBus().interface();
+    if (!bus) {
+        qWarning() << "Cannot wait for window manager: session bus is unavailable";
+        return false;
+    }
+    do {
+        const QDBusReply<bool> registered = bus->isServiceRegistered(QStringLiteral("org.kde.KWin"));
+        if (!registered.isValid()) {
+            qWarning() << "Cannot query window manager readiness:" << registered.error();
+            return false;
+        }
+        if (registered.value()) {
+            return true;
+        }
+        QThread::msleep(100);
+    } while (elapsed.elapsed() < timeoutMs);
+    qWarning() << "Timed out waiting for org.kde.KWin after" << timeoutMs << "ms";
+    return false;
+}
+
 static bool applyKScreen(bool standalone)
 {
+    // The login compositor cannot use BusName=org.kde.KWin: the desktop unit
+    // already declares it, and systemd rejects duplicate bus-name watchers.
+    // Its simple service starts before initialization finishes, so gate the
+    // setup oneshot here rather than allowing the greeter to race readiness.
+    if (standalone && !waitForWindowManager(30000)) {
+        return false;
+    }
+    // Both the direct launcher and systemd's --apply-kscreen oneshot reach
+    // this point after SonicWin is ready and before the greeter starts. Cursor
+    // initialization must also run when there is no saved KScreen config.
+    const KConfig cursorCfg(QStringLiteral("kcminputrc"));
+    const KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
+    applyCursorTheme(cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_light")), cursorInputCfg.readEntry("cursorSize", 24));
+
     const QString xdgDataHome = QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
     qDebug() << "applyKScreen: starting, XDG_DATA_HOME=" << xdgDataHome << ", DISPLAY=" << qgetenv("DISPLAY");
 
@@ -829,8 +869,7 @@ int main(int argc, char **argv)
     }
 
     if (applyOnly) {
-        applyKScreen(/*standalone=*/true);
-        return 0;
+        return applyKScreen(/*standalone=*/true) ? 0 : 1;
     }
 
     createConfigDirectory();
@@ -980,26 +1019,11 @@ int main(int argc, char **argv)
         }
 
         // Bounded wait for kwin DBus name to ensure RandR state is populated
-        bool kwinRegistered = false;
-        for (int i = 0; i < 15; ++i) {
-            QDBusReply<bool> reply = QDBusConnection::sessionBus().interface()->isServiceRegistered(QStringLiteral("org.kde.KWin"));
-            if (reply.isValid() && reply.value()) {
-                kwinRegistered = true;
-                break;
-            }
-            QThread::msleep(200);
-        }
-        if (!kwinRegistered) {
+        if (!waitForWindowManager(3000)) {
             qWarning() << "StartSonicLoginX11: org.kde.KWin did not register on session bus within timeout";
         }
 
-        KConfig cursorCfg(QStringLiteral("kcminputrc"));
-        KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
-        const QString themeName = cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_light"));
-        const int themeSize = cursorInputCfg.readEntry("cursorSize", 24);
-        applyCursorTheme(themeName, themeSize);
-
-        // Apply synced KScreen config before starting the greeter
+        // Apply the cursor and synced KScreen config before starting the greeter.
         applyKScreen(/*standalone=*/false);
 
         // Start the greeter

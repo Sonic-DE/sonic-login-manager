@@ -1,11 +1,13 @@
 [Unit]
-Description=Apply synced KScreen config (Login Manager Version)
+Description=Apply synced cursor and KScreen config (Login Manager Version)
 PartOf=soniclogin-x11.target
 After=soniclogin-sonic-win.service
 Requires=soniclogin-sonic-win.service
+Before=soniclogin.service soniclogin-wallpaper.service
 
 [Service]
 Type=oneshot
+TimeoutStartSec=40s
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/start-soniclogin-x11 --apply-kscreen
 Slice=session.slice
 RemainAfterExit=no
