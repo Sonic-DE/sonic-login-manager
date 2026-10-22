@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0">
+    <kcfgfile name=""/>
+    <group name="General">
+        <entry name="Provider" type="String"><default>apod</default></entry>
+        <entry name="Image" type="String"><default>@IMAGE@</default></entry>
+        <entry name="Color" type="Color"><default>#123456</default></entry>
+    </group>
+</kcfg>
