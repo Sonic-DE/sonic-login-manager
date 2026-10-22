@@ -28,6 +28,7 @@ Item {
     MultiEffect {
         id: wallpaperBlur
         anchors.fill: parent
+        autoPaddingEnabled: false
         blurEnabled: true
         blurMax: 50
         blur: wallpaperFader.factor
