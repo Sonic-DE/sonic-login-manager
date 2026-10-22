@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 
     // The shared workspace footer owns the keyboard backend. Qt requires its
     // input-method plugin to be selected before constructing the application.
-    qputenv("QT_IM_MODULE", "qtvirtualkeyboard");
+    qputenv("QT_IM_MODULE", "sonicvirtualkeyboard");
     qunsetenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE");
     // Keep symbolic icons color-aware even in the standalone test UI, without
     // replacing a configured icon theme or relying on session defaults.
