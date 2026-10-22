@@ -1,0 +1,7 @@
+// Private build-tree paths for the real launcher compiled into the test helper.
+#pragma once
+#define STATE_DIR "@CURSOR_STARTUP_STATE_DIR@"
+#define RUNTIME_DIR "@CURSOR_STARTUP_STATE_DIR@/runtime"
+#define BIN_INSTALL_DIR "@CURSOR_STARTUP_BIN_DIR@"
+#define LIBEXEC_INSTALL_DIR "@CURSOR_STARTUP_BIN_DIR@"
+#define LOG_FILE "@CURSOR_STARTUP_STATE_DIR@/startup.log"

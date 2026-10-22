@@ -71,6 +71,45 @@ set_tests_properties(WallpaperApp PROPERTIES TIMEOUT 120 ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_SCALE_FACTOR=1;DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus;DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-system-bus"
 )
 
+# Execute the real startup code with private constants and an init detector
+# stub; never launch a real compositor, greeter, daemon or authentication flow.
+set(CURSOR_STARTUP_STATE_DIR "${CMAKE_CURRENT_BINARY_DIR}/cursor-startup-state")
+set(CURSOR_STARTUP_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/cursor-startup-bin")
+find_package(Qt6GuiPrivate REQUIRED)
+configure_file(cursor-startup/Constants.h.in cursor-startup/Constants.h @ONLY)
+ecm_qt_declare_logging_category(cursor_startup_sources HEADER debug.h
+    IDENTIFIER PLASMA_STARTUP CATEGORY_NAME org.kde.startup DEFAULT_SEVERITY Debug)
+add_executable(CursorStartupHelper ../src/frontend/startkde/start-soniclogin.cpp ${cursor_startup_sources})
+get_target_property(cursor_startup_libraries start-soniclogin-x11 LINK_LIBRARIES)
+target_link_libraries(CursorStartupHelper PRIVATE ${cursor_startup_libraries})
+target_include_directories(CursorStartupHelper BEFORE PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/cursor-startup" "${CMAKE_CURRENT_SOURCE_DIR}/cursor-startup")
+kconfig_target_kcfg_file(CursorStartupHelper
+    FILE "${CMAKE_SOURCE_DIR}/src/frontend/startkde/lookandfeelsettings.kcfg" CLASS_NAME LookAndFeelSettings)
+
+find_package(X11 REQUIRED COMPONENTS Xcursor Xfixes)
+add_executable(CursorStartupTest CursorStartupTest.cpp)
+target_link_libraries(CursorStartupTest PRIVATE Qt6::Test Qt6::DBus X11::Xcursor X11::Xfixes)
+target_compile_definitions(CursorStartupTest PRIVATE
+    CURSOR_STARTUP_STATE_DIR="${CURSOR_STARTUP_STATE_DIR}"
+    CURSOR_STARTUP_BIN_DIR="${CURSOR_STARTUP_BIN_DIR}"
+    CURSOR_STARTUP_HELPER="$<TARGET_FILE:CursorStartupHelper>")
+add_dependencies(CursorStartupTest CursorStartupHelper)
+find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session)
+if(XVFB_RUN_EXECUTABLE AND DBUS_RUN_SESSION_EXECUTABLE)
+    add_test(NAME CursorStartup COMMAND ${XVFB_RUN_EXECUTABLE} -a -s "-screen 0 800x600x24"
+        ${DBUS_RUN_SESSION_EXECUTABLE} -- ${CMAKE_COMMAND} -E env
+        QT_QPA_PLATFORM=xcb QT_QPA_PLATFORMTHEME=generic QT_NO_XDG_DESKTOP_PORTAL=1
+        SONICLOGIN_CURSOR_TEST_ISOLATED=1 $<TARGET_FILE:CursorStartupTest>)
+else()
+    message(STATUS "CursorStartup X11 integration test needs xvfb-run and dbus-run-session; integration cases will be skipped")
+    add_test(NAME CursorStartup COMMAND CursorStartupTest)
+endif()
+set_tests_properties(CursorStartup PROPERTIES RUN_SERIAL TRUE TIMEOUT 90)
+add_test(NAME CursorSystemdOrdering COMMAND ${CMAKE_COMMAND}
+    -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/CursorSystemdOrderingTest.cmake)
+
 add_executable(FileDescriptorTest
     FileDescriptorTest.cpp
     ../src/common/filedescriptor.cpp

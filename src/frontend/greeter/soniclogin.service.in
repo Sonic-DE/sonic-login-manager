@@ -1,9 +1,9 @@
 [Unit]
 Description=Sonic Login
 PartOf=soniclogin-x11.target
-After=soniclogin-sonic-win.service
+Requires=soniclogin-apply-kscreen.service
+After=soniclogin-sonic-win.service soniclogin-apply-kscreen.service
 
 [Service]
 ExecStart=@CMAKE_INSTALL_FULL_LIBEXECDIR@/soniclogin-greeter
 Slice=session.slice
-
