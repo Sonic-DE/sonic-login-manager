@@ -110,6 +110,22 @@ set_tests_properties(CursorStartup PROPERTIES RUN_SERIAL TRUE TIMEOUT 90)
 add_test(NAME CursorSystemdOrdering COMMAND ${CMAKE_COMMAND}
     -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/CursorSystemdOrderingTest.cmake)
 
+add_executable(WallpaperFaderTest WallpaperFaderTest.cpp)
+target_link_libraries(WallpaperFaderTest PRIVATE Qt6::Quick Qt6::Test)
+target_compile_definitions(WallpaperFaderTest PRIVATE WALLPAPER_FADER_TEST_QML="${CMAKE_CURRENT_SOURCE_DIR}/WallpaperFaderTest.qml")
+qt_add_shaders(WallpaperFaderTest wallpaper_fader_test_shaders
+    PREFIX "/qt/qml/org/sonic/login/wallpaper/shaders"
+    FILES ${wallpaper_source}/WallpaperFader.frag OUTPUTS WallpaperFader.frag.qsb)
+if(XVFB_RUN_EXECUTABLE)
+    add_test(NAME WallpaperFader COMMAND ${XVFB_RUN_EXECUTABLE} -a -s "-screen 0 1920x1080x24"
+        ${CMAKE_COMMAND} -E env QT_QPA_PLATFORM=xcb QSG_RHI_BACKEND=opengl
+        LIBGL_ALWAYS_SOFTWARE=1 SONICLOGIN_BLUR_TEST_ISOLATED=1 $<TARGET_FILE:WallpaperFaderTest>)
+else()
+    add_test(NAME WallpaperFader COMMAND WallpaperFaderTest)
+    set_tests_properties(WallpaperFader PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
+set_tests_properties(WallpaperFader PROPERTIES TIMEOUT 90)
+
 add_executable(FileDescriptorTest
     FileDescriptorTest.cpp
     ../src/common/filedescriptor.cpp
