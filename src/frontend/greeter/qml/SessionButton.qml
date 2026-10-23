@@ -15,8 +15,9 @@ QQC2.ComboBox {
     id: root
 
     // Use the same color-aware style for the surface, label and popup instead
-    // of mixing a Plasma SVG surface with a complementary-colored label.
-    Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+    // of mixing a Plasma SVG surface with an unrelated label palette.
+    // Match Main.qml's selected scheme, rather than its complementary set.
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
     model: SonicLogin.SessionModel

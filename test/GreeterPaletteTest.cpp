@@ -6,6 +6,8 @@
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -15,6 +17,8 @@
 #include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTest>
+
+#include "lookandfeelsettings.h"
 
 #include <KIconTheme>
 #include <KLocalizedQmlContext>
@@ -84,12 +88,52 @@ private Q_SLOTS:
         QVERIFY(config.readAll().contains("Style=org.kde.breeze"));
     }
 
+    void darkSilverIsTheStartupDefault()
+    {
+        LookAndFeelSettings settings;
+        QCOMPARE(settings.lookAndFeelPackage(), QStringLiteral("org.kde.silverdarkbottompanel.desktop"));
+        QCOMPARE(settings.defaultDarkLookAndFeel(), QStringLiteral("org.kde.silverdarkbottompanel.desktop"));
+        QCOMPARE(settings.defaultLightLookAndFeel(), QStringLiteral("org.kde.silverlightbottompanel.desktop"));
+    }
+
     void selectorAndIconsFollowPalette_data()
     {
         QTest::addColumn<QColor>("foreground");
         QTest::addColumn<QColor>("background");
         QTest::newRow("dark-theme") << QColor("#beffe6") << QColor("#202428");
         QTest::newRow("light-theme") << QColor("#183d56") << QColor("#f5f5f5");
+    }
+
+    void unmodifiedSelectorFollowsSelectedScheme_data()
+    {
+        QTest::addColumn<QColor>("foreground");
+        QTest::addColumn<QColor>("background");
+        QTest::newRow("dark-silver-light-text") << QColor(252, 252, 252) << QColor(42, 46, 50);
+        QTest::newRow("light-silver-dark-text") << QColor(35, 38, 41) << QColor(239, 240, 241);
+    }
+
+    void unmodifiedSelectorFollowsSelectedScheme()
+    {
+        QFETCH(QColor, foreground);
+        QFETCH(QColor, background);
+        // Initialize the real KDE/Kirigami palette from private kdeglobals in
+        // fresh processes. QGuiApplication::setPalette() alone does not change
+        // the Kirigami platform theme's KColorScheme.
+        if (!qEnvironmentVariableIsSet("SONICLOGIN_PALETTE_TEST")) {
+            QProcess child;
+            auto env = QProcessEnvironment::systemEnvironment();
+            env.insert(QStringLiteral("SONICLOGIN_PALETTE_TEST"), foreground.name());
+            env.insert(QStringLiteral("SONICLOGIN_PALETTE_BACKGROUND"), background.name());
+            child.setProcessEnvironment(env);
+            child.start(QCoreApplication::applicationFilePath(),
+                        {QStringLiteral("unmodifiedSelectorFollowsSelectedScheme:") + QString::fromLatin1(QTest::currentDataTag())});
+            QVERIFY(child.waitForFinished(10000));
+            QCOMPARE(child.exitStatus(), QProcess::NormalExit);
+            QVERIFY2(child.exitCode() == 0, (child.readAllStandardOutput() + child.readAllStandardError()).constData());
+            return;
+        }
+        QCOMPARE(m_view.rootObject()->property("unmodifiedForeground").value<QColor>(), foreground);
+        QCOMPARE(m_view.rootObject()->property("unmodifiedBackground").value<QColor>(), background);
     }
 
     void selectorAndIconsFollowPalette()
@@ -104,9 +148,9 @@ private Q_SLOTS:
         auto *label = selector->property("contentItem").value<QObject *>();
         QVERIFY(label);
         QTRY_COMPARE(label->property("color").value<QColor>(), foreground);
-        // Kirigami's Complementary color set, not a Plasma SVG surface with
+        // The selected scheme's Window color set, not a Plasma SVG surface with
         // unrelated colors. Rendered checks catch the original white-on-white.
-        QVERIFY(root->property("selectorUsesComplementary").toBool());
+        QVERIFY(root->property("selectorUsesWindow").toBool());
         QImage screenshot;
         QTRY_VERIFY_WITH_TIMEOUT(!(screenshot = m_view.grabWindow()).isNull(), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(matchingPixels(m_view.grabWindow(), QRect(20, 130, 32, 32), foreground) > 100, 5000);
@@ -145,7 +189,19 @@ int main(int argc, char **argv)
         QFile file(path);
         return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
     };
-    if (!write(config + QStringLiteral("/kdeglobals"), "[Icons]\nTheme=PaletteTest\n")
+    QByteArray globals = "[Icons]\nTheme=PaletteTest\n";
+    if (qEnvironmentVariableIsSet("SONICLOGIN_PALETTE_TEST")) {
+        auto rgb = [](const QString &name) {
+            const QColor color(name);
+            return QByteArray::number(color.red()) + ',' + QByteArray::number(color.green()) + ',' + QByteArray::number(color.blue());
+        };
+        const auto foreground = rgb(qEnvironmentVariable("SONICLOGIN_PALETTE_TEST"));
+        const auto background = rgb(qEnvironmentVariable("SONICLOGIN_PALETTE_BACKGROUND"));
+        globals += "[Colors:Window]\nForegroundNormal=" + foreground + "\nBackgroundNormal=" + background + '\n';
+        // Deliberately opposite: using Complementary must fail these tests.
+        globals += "[Colors:Complementary]\nForegroundNormal=" + background + "\nBackgroundNormal=" + foreground + '\n';
+    }
+    if (!write(config + QStringLiteral("/kdeglobals"), globals)
         || !write(data + QStringLiteral("/icons/PaletteTest/index.theme"),
                   "[Icon Theme]\nName=PaletteTest\nFollowsColorScheme=true\nDirectories=32x32/actions\n[32x32/actions]\nSize=32\nType=Fixed\nContext=Actions\n")
         || !write(
@@ -159,7 +215,7 @@ int main(int argc, char **argv)
     qputenv("XDG_CONFIG_DIRS", (fixture.path() + QStringLiteral("/empty-config")).toUtf8());
     qputenv("XDG_DATA_HOME", data.toUtf8());
     qputenv("XDG_CACHE_HOME", (fixture.path() + QStringLiteral("/cache")).toUtf8());
-    qputenv("QT_QPA_PLATFORMTHEME", "generic");
+    qputenv("QT_QPA_PLATFORMTHEME", qEnvironmentVariableIsSet("SONICLOGIN_PALETTE_TEST") ? "kde" : "generic");
     qunsetenv("QT_QUICK_CONTROLS_STYLE");
     qunsetenv("QT_QUICK_CONTROLS_CONF");
     KIconTheme::initTheme();
