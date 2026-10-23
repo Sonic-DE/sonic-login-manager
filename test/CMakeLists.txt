@@ -19,7 +19,12 @@ add_test(NAME ThemeSync COMMAND ThemeSyncTest)
 
 find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 add_executable(GreeterPaletteTest GreeterPaletteTest.cpp)
-target_link_libraries(GreeterPaletteTest PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Test KF6::IconThemes KF6::I18nQml)
+target_include_directories(GreeterPaletteTest PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(GreeterPaletteTest PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Test KF6::IconThemes KF6::I18nQml KF6::ConfigGui)
+kconfig_target_kcfg_file(GreeterPaletteTest
+    FILE ../src/frontend/startkde/lookandfeelsettings.kcfg
+    CLASS_NAME LookAndFeelSettings
+)
 target_compile_definitions(GreeterPaletteTest PRIVATE GREETER_PALETTE_QML="${CMAKE_CURRENT_SOURCE_DIR}/GreeterPaletteTest.qml")
 qt_add_resources(GreeterPaletteTest greeter_palette_config
     PREFIX "/"

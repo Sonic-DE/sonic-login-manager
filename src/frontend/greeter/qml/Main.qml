@@ -35,7 +35,10 @@ Item {
     // See https://bugs.kde.org/show_bug.cgi?id=398317
     readonly property bool softwareRendering: GraphicsInfo.api === GraphicsInfo.Software
 
-    Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+    // Follow the selected scheme: dark Silver has light foregrounds, and
+    // light Silver has dark foregrounds. Complementary is a separate palette,
+    // not the user's selected light/dark appearance.
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
     property string notificationMessage

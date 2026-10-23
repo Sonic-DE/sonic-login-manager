@@ -430,7 +430,7 @@ void setupPlasmaEnvironment()
         lnfManager.setMode(KLookAndFeelManager::Mode::Apply);
         KConfig globals(QStringLiteral("kdeglobals")); // Reload the config
         KConfigGroup generalGroup(&globals, QStringLiteral("General"));
-        const QString colorScheme = generalGroup.readEntry("ColorScheme", QStringLiteral("SilverLight"));
+        const QString colorScheme = generalGroup.readEntry("ColorScheme", QStringLiteral("SilverDark"));
         QString path = lnfManager.colorSchemeFile(colorScheme);
 
         if (!path.isEmpty()) {
