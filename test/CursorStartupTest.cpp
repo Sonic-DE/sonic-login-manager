@@ -132,9 +132,12 @@ private Q_SLOTS:
         QVERIFY(QDir().mkpath(stateDir + QStringLiteral("/runtime")));
         QVERIFY(QFile::setPermissions(stateDir + QStringLiteral("/runtime"), QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
         const QString theme = configured ? QStringLiteral("UserCursor") : QStringLiteral("silver_cursors_light");
+        // Full startup applies the dark Silver look-and-feel defaults after
+        // preparing the initial environment. The one-shot path does not.
+        const QString appliedTheme = !configured && !oneshot ? QStringLiteral("silver_cursors_dark") : theme;
         const int size = configured ? 48 : 24;
         const XcursorPixel color = configured ? 0xffd04090 : 0xff20c080;
-        QVERIFY(putCursor(theme, size, color));
+        QVERIFY(putCursor(appliedTheme, size, color));
         const QByteArray input = configured ? "[Mouse]\ncursorTheme=UserCursor\ncursorSize=48\n" : QByteArray();
         QVERIFY(put(stateDir + QStringLiteral("/.config/kcminputrc"), input));
         // Catch regressions that only set environment variables, overwrite
@@ -199,7 +202,7 @@ private Q_SLOTS:
         }
         const QByteArray updated = resources();
         QVERIFY2(updated.contains("Xft.dpi:\t144"), updated.constData());
-        QVERIFY2(updated.contains("Xcursor.theme:\t" + theme.toUtf8()), updated.constData());
+        QVERIFY2(updated.contains("Xcursor.theme:\t" + appliedTheme.toUtf8()), updated.constData());
         QVERIFY2(updated.contains("Xcursor.size:\t" + QByteArray::number(size)), updated.constData());
         QVERIFY(!updated.contains("OldTheme"));
         QCOMPARE(updated.count("Xcursor.theme:"), 1);

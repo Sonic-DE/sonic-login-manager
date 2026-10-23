@@ -35,6 +35,8 @@ public:
     Q_PROPERTY(bool isDefaultsWallpaper READ isDefaultsWallpaper NOTIFY isDefaultsWallpaperChanged)
     Q_PROPERTY(UserModel *userModel READ userModel CONSTANT)
     Q_PROPERTY(SessionModel *sessionModel READ sessionModel CONSTANT)
+    Q_PROPERTY(bool busy READ busy NOTIFY operationStatusChanged)
+    Q_PROPERTY(QString operationStatus READ operationStatus NOTIFY operationStatusChanged)
 
     Q_INVOKABLE QList<WallpaperInfo> availableWallpaperPlugins()
     {
@@ -59,6 +61,14 @@ public:
     bool isDefaultsWallpaper() const;
     UserModel *userModel() const;
     SessionModel *sessionModel() const;
+    bool busy() const
+    {
+        return !m_operationStatus.isEmpty();
+    }
+    QString operationStatus() const
+    {
+        return m_operationStatus;
+    }
 
 public Q_SLOTS:
     void load() override;
@@ -71,6 +81,7 @@ Q_SIGNALS:
     void errorOccurred(const QString &untranslatedMessage);
     void syncAttempted();
     void authRequired();
+    void operationStatusChanged();
 
     void defaultsCalled();
     void isDefaultsWallpaperChanged();
@@ -85,10 +96,12 @@ private:
     KConfigPropertyMap *wallpaperConfiguration() const;
 
     void sendToDaemon(const QString &op, const QJsonObject &args);
+    void setOperationStatus(const QString &status);
 
     WallpaperSettings *m_wallpaperSettings;
     QString m_currentWallpaper;
     bool m_forceUpdateState = false;
+    QString m_operationStatus;
 
     QString m_pendingAuthUser;
     QString m_pendingAuthPassword;
