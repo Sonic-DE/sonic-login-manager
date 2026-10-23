@@ -4,6 +4,7 @@ add_compile_definitions(QT_MESSAGELOGCONTEXT)
 
 target_sources(kcm_soniclogin PRIVATE
     kcm.cpp kcm.h
+    daemonrequest.cpp daemonrequest.h
     kcm_messagelogger.cpp
     soniclogindata.cpp soniclogindata.h
     ${CMAKE_SOURCE_DIR}/src/common/ThemeSync.cpp
@@ -23,6 +24,7 @@ target_link_libraries(kcm_soniclogin PRIVATE
     KF6::Service
     Qt6::Core
     Qt6::Network
+    Qt6::Concurrent
     ZLIB::ZLIB
 )
 

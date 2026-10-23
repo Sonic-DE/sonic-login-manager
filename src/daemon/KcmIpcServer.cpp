@@ -462,8 +462,9 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
         return qMakePair(false, QStringLiteral("soniclogin user not found"));
     }
 
-    // Make all selected assets available before switching configuration to
+    // Make selected user-local assets available before switching configuration to
     // them. Never report a successful sync after a failed theme installation.
+    QSet<QString> retainedThemes;
     for (const auto &theme : payload.themes) {
         if (theme.first.contains(QLatin1Char('/'))) {
             QString error;
@@ -471,12 +472,21 @@ QPair<bool, QString> KcmIpcServer::handleSyncWrite(const SyncPayload &payload)
             if (!ThemeSync::install(homeDir, theme.first, theme.second, &error, greeter.userId().nativeId(), greeter.groupId().nativeId())) {
                 return qMakePair(false, error);
             }
+            retainedThemes.insert(theme.first);
         } else {
             const auto result = extractCursorTheme(homeDir, theme.first, theme.second);
             if (!result.first) {
                 return result;
             }
+            retainedThemes.insert(QStringLiteral("icons/") + theme.first);
         }
+    }
+    // Earlier syncs copied system themes as well. Remove obsolete managed
+    // copies so ordinary system lookup wins, without touching independent
+    // greeter themes or the user assets just installed above.
+    QString pruneError;
+    if (!ThemeSync::prune(homeDir, retainedThemes, &pruneError)) {
+        return qMakePair(false, pruneError);
     }
 
     QDir cacheLocation(homeDir + QStringLiteral("/.cache"));

@@ -253,6 +253,21 @@ bool collectSettings(QMap<QString, QString> *configs, QMap<QString, QByteArray> 
         }
         return sources;
     };
+    // The greeter already searches the system XDG data directories. Copy only
+    // private session assets, including legacy ~/.icons and user-specific data
+    // directories added to XDG_DATA_DIRS. Do not merge entire system themes into
+    // a small user override with the same ID.
+    const QString homePrefix = QDir::cleanPath(QDir::homePath()) + QLatin1Char('/');
+    const QString dataPrefix = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)) + QLatin1Char('/');
+    auto isUserSource = [&](const QString &source) {
+        const QFileInfo info(source);
+        for (const auto &path : {info.absoluteFilePath(), info.canonicalFilePath()}) {
+            if (path.startsWith(homePrefix) || path.startsWith(dataPrefix)) {
+                return true;
+            }
+        }
+        return false;
+    };
     QSet<QString> visited;
     qsizetype bundledBytes = 0;
     std::function<bool(const QString &)> addTheme;
@@ -268,27 +283,39 @@ bool collectSettings(QMap<QString, QString> *configs, QMap<QString, QByteArray> 
         }
         visited.insert(relativeName);
         auto sources = sourcesFor(relativeName);
+        QStringList privateSources;
+        for (const auto &source : sources) {
+            if (isUserSource(source)) {
+                privateSources << source;
+            }
+        }
         if (sources.isEmpty() && relativeName.startsWith(QLatin1String("color-schemes/"))
             && KSharedConfig::openConfig(QStringLiteral("kdeglobals"), KConfig::NoGlobals)->hasGroup(QStringLiteral("Colors:View"))) {
             // A customized palette may exist only in kdeglobals, with no
             // separately installed .colors file. Snapshot it under its ID.
-            sources << temporary.path() + QStringLiteral("/kdeglobals");
+            privateSources << temporary.path() + QStringLiteral("/kdeglobals");
+            sources = privateSources;
         }
-        QByteArray bytes;
-        if (!bundle(sources, &bytes, error)) {
-            if (error) {
-                *error = QStringLiteral("%1: %2").arg(relativeName, *error);
+        if (sources.isEmpty()) {
+            return fail(error, QStringLiteral("%1: Selected theme is not installed").arg(relativeName));
+        }
+        if (!privateSources.isEmpty()) {
+            QByteArray bytes;
+            if (!bundle(privateSources, &bytes, error)) {
+                if (error) {
+                    *error = QStringLiteral("%1: %2").arg(relativeName, *error);
+                }
+                return false;
             }
-            return false;
+            bundledBytes += qFromBigEndian<quint32>(bytes.constData());
+            if (bundledBytes > 2 * maximumBytes) {
+                return fail(error, QStringLiteral("Selected themes exceed the total size limit"));
+            }
+            themes->insert(relativeName, bytes);
         }
-        bundledBytes += qFromBigEndian<quint32>(bytes.constData());
-        if (bundledBytes > 2 * maximumBytes) {
-            return fail(error, QStringLiteral("Selected themes exceed the total size limit"));
-        }
-        themes->insert(relativeName, bytes);
         if (relativeName.startsWith(QLatin1String("icons/"))) {
-            // Bundle inherited themes too; a user-local theme often contains
-            // only overrides and relies on an installed parent for most icons.
+            // Visit inherited themes too, but transfer only their user-local
+            // assets. System parents remain available through normal lookup.
             for (const auto &source : sources) {
                 if (!QFileInfo::exists(source + QStringLiteral("/index.theme"))) {
                     continue;
@@ -528,7 +555,7 @@ bool writeConfig(const QString &home, const QString &relativeName, const std::op
         : fail(error, QStringLiteral("Cannot install synchronized configuration: %1").arg(name));
 }
 
-bool reset(const QString &home, QString *error)
+bool prune(const QString &home, const QSet<QString> &retained, QString *error)
 {
     for (const auto &root : roots) {
         const QString relative = QStringLiteral(".local/share/") + root;
@@ -545,7 +572,7 @@ bool reset(const QString &home, QString *error)
         const QString parentPath = descriptorPath(parentFd);
         const auto entries = QDir(parentPath).entryInfoList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
         for (const auto &entry : entries) {
-            if (entry.isSymLink()) {
+            if (entry.isSymLink() || retained.contains(root + QLatin1Char('/') + entry.fileName())) {
                 continue;
             }
             const QString path = entry.filePath();
@@ -568,5 +595,10 @@ bool reset(const QString &home, QString *error)
         }
     }
     return true;
+}
+
+bool reset(const QString &home, QString *error)
+{
+    return prune(home, {}, error);
 }
 }

@@ -7,18 +7,19 @@
  *  SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-#include <QDataStream>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QList>
-#include <QLocalSocket>
 #include <QLoggingCategory>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QtConcurrentRun>
+#include <utility>
 
 #include <pwd.h>
 #include <unistd.h>
@@ -38,6 +39,7 @@
 #include "soniclogindata.h"
 #include "wallpapersettings.h"
 
+#include "daemonrequest.h"
 #include "kcm.h"
 
 extern void installKcmMessageHandler();
@@ -80,6 +82,9 @@ void SonicLoginKcm::load()
 
 void SonicLoginKcm::save()
 {
+    if (busy()) {
+        return;
+    }
     QTemporaryDir tempDir;
     if (!tempDir.isValid()) {
         Q_EMIT errorOccurred(kxi18n("Unable to save settings because a temporary "
@@ -216,15 +221,14 @@ QJsonObject SonicLoginKcm::collectWallpapers(const QUrl &imageUri)
     return result;
 }
 
-void SonicLoginKcm::synchronizeSettings()
-{
-    if (KUser("soniclogin").homeDir().isEmpty()) {
-        Q_EMIT errorOccurred(kxi18n("Unable to synchronise Plasma settings because the 'soniclogin' "
-                                    "user does not exist. Please check your Sonic Login install.")
-                                 .toString());
-        return;
-    }
+namespace {
+struct SyncArguments {
+    QJsonObject arguments;
+    QString error;
+};
 
+SyncArguments collectSyncArguments()
+{
     QJsonObject files;
     auto addConfigFile = [&files](const QString &path, const QString &key) {
         if (path.isEmpty()) {
@@ -256,8 +260,7 @@ void SonicLoginKcm::synchronizeSettings()
     QMap<QString, QByteArray> themeAssets;
     QString themeError;
     if (!SONICLOGIN::ThemeSync::collectSettings(&themeConfigs, &themeAssets, &themeError)) {
-        Q_EMIT errorOccurred(kxi18n("Unable to copy desktop themes: %1").subs(themeError).toString());
-        return;
+        return {{}, kxi18n("Unable to copy desktop themes: %1").subs(themeError).toString()};
     }
     for (auto it = themeConfigs.cbegin(); it != themeConfigs.cend(); ++it) {
         files[it.key()] = it.value();
@@ -266,7 +269,7 @@ void SonicLoginKcm::synchronizeSettings()
         themes[it.key()] = QString::fromLatin1(it.value().toBase64());
     }
 
-    QByteArray argsJson;
+    QJsonObject arguments;
     {
         QJsonObject args;
         args[QStringLiteral("files")] = files;
@@ -328,26 +331,55 @@ void SonicLoginKcm::synchronizeSettings()
 
         args[QStringLiteral("themes")] = themes;
         args[QStringLiteral("kscreen")] = kscreenFiles;
-        argsJson = QJsonDocument(args).toJson(QJsonDocument::Compact);
+        arguments = args;
     }
 
-    m_pendingContinuation = [this, argsJson]() {
-        QJsonObject args = QJsonDocument::fromJson(argsJson).object();
-        sendToDaemon(QStringLiteral("sync"), args);
-    };
+    return {arguments, {}};
+}
+}
 
-    if (m_pendingAuthUser.isEmpty()) {
-        setNeedsSave(false);
-        Q_EMIT authRequired();
-    } else {
-        setNeedsSave(false);
-        m_pendingContinuation();
-        m_pendingContinuation = nullptr;
+void SonicLoginKcm::synchronizeSettings()
+{
+    if (busy()) {
+        return;
     }
+    if (KUser("soniclogin").homeDir().isEmpty()) {
+        Q_EMIT errorOccurred(kxi18n("Unable to synchronise Plasma settings because the 'soniclogin' "
+                                    "user does not exist. Please check your Sonic Login install.")
+                                 .toString());
+        return;
+    }
+    setOperationStatus(kxi18n("Preparing selected desktop themes…").toString());
+    auto *watcher = new QFutureWatcher<SyncArguments>(this);
+    connect(watcher, &QFutureWatcher<SyncArguments>::finished, this, [this, watcher]() {
+        const auto result = watcher->result();
+        watcher->deleteLater();
+        setOperationStatus({});
+        if (!result.error.isEmpty()) {
+            Q_EMIT errorOccurred(result.error);
+            return;
+        }
+        m_pendingContinuation = [this, args = result.arguments]() {
+            sendToDaemon(QStringLiteral("sync"), args);
+        };
+        setNeedsSave(false);
+        if (m_pendingAuthUser.isEmpty()) {
+            Q_EMIT authRequired();
+        } else {
+            m_pendingContinuation();
+            m_pendingContinuation = nullptr;
+        }
+    });
+    // Worker inputs/results are plain values; no GUI object is accessed there.
+    // Destroying the page safely disconnects the watcher callback.
+    watcher->setFuture(QtConcurrent::run(collectSyncArguments));
 }
 
 void SonicLoginKcm::resetSynchronizedSettings()
 {
+    if (busy()) {
+        return;
+    }
     if (KUser("soniclogin").homeDir().isEmpty()) {
         Q_EMIT errorOccurred(kxi18n("Unable to reset Plasma settings because the 'soniclogin' user "
                                     "does not exist. Please check your Sonic Login install.")
@@ -371,6 +403,9 @@ void SonicLoginKcm::resetSynchronizedSettings()
 
 void SonicLoginKcm::submitAuth(const QString &username, const QString &password)
 {
+    if (busy()) {
+        return;
+    }
     m_pendingAuthUser = username;
     m_pendingAuthPassword = password;
     if (m_pendingContinuation) {
@@ -389,122 +424,43 @@ void SonicLoginKcm::cancelAuth()
 
 void SonicLoginKcm::sendToDaemon(const QString &op, const QJsonObject &args)
 {
-    const auto clearCredentials = qScopeGuard([this]() {
-        m_pendingAuthUser.clear();
-        m_pendingAuthPassword.clear();
+    if (busy()) {
+        return;
+    }
+    const QString username = std::exchange(m_pendingAuthUser, {});
+    const QString password = std::exchange(m_pendingAuthPassword, {});
+    setOperationStatus(kxi18n("Applying login screen settings…").toString());
+    auto *watcher = new QFutureWatcher<SONICLOGIN::DaemonReply>(this);
+    connect(watcher, &QFutureWatcher<SONICLOGIN::DaemonReply>::finished, this, [this, watcher, op, args]() {
+        const auto reply = watcher->result();
+        watcher->deleteLater();
+        setOperationStatus({});
+        if (reply.success) {
+            if (op == QLatin1String("save")) {
+                updateState();
+                setNeedsSave(false);
+            }
+            Q_EMIT syncAttempted();
+        } else {
+            if (reply.rejected) {
+                m_pendingContinuation = [this, op, args]() {
+                    sendToDaemon(op, args);
+                };
+                Q_EMIT authRequired();
+            }
+            Q_EMIT errorOccurred(reply.error);
+        }
     });
+    watcher->setFuture(QtConcurrent::run([op, args, username, password]() {
+        return SONICLOGIN::requestDaemon(op, args, username, password);
+    }));
+}
 
-    QFile pidFile(QStringLiteral("/run/soniclogin/daemon.pid"));
-    if (!pidFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        Q_EMIT errorOccurred(kxi18n("Sonic Login daemon is not running. Start it and try again.").toString());
-        return;
-    }
-    bool ok = false;
-    const qint64 pid = pidFile.readAll().trimmed().toLongLong(&ok);
-    pidFile.close();
-    if (!ok || pid <= 0) {
-        Q_EMIT errorOccurred(kxi18n("Sonic Login daemon is not running. Start it and try again.").toString());
-        return;
-    }
-
-    QLocalSocket socket;
-    socket.connectToServer(QStringLiteral("/run/soniclogin/kcm-ipc-") + QString::number(pid));
-    if (!socket.waitForConnected(5000)) {
-        Q_EMIT errorOccurred(kxi18n("Cannot connect to the Sonic Login daemon: %1").subs(socket.errorString()).toString());
-        return;
-    }
-
-    // Older daemons reject this version instead of silently ignoring assets.
-    static const quint32 MsgSyncSettings = 4;
-    static const quint32 MsgResetSettings = 2;
-    static const quint32 MsgSaveConfig = 3;
-    static const quint32 MsgResponse = 100;
-
-    quint32 type = 0;
-    if (op == QLatin1String("sync")) {
-        type = MsgSyncSettings;
-    } else if (op == QLatin1String("reset")) {
-        type = MsgResetSettings;
-    } else if (op == QLatin1String("save")) {
-        type = MsgSaveConfig;
-    } else {
-        Q_EMIT errorOccurred(kxi18n("Unknown operation: %1").subs(op).toString());
-        return;
-    }
-
-    QByteArray block;
-    {
-        QDataStream out(&block, QIODevice::WriteOnly);
-        out.setVersion(QDataStream::Qt_6_0);
-        out << m_pendingAuthUser << m_pendingAuthPassword << type << static_cast<quint32>(1);
-        if (type == MsgSyncSettings) {
-            const QJsonObject files = args.value(QStringLiteral("files")).toObject();
-            out << static_cast<quint32>(files.size());
-            for (auto it = files.constBegin(); it != files.constEnd(); ++it) {
-                out << it.key() << it.value().toString();
-            }
-            // Append theme bundles keyed by their relative XDG data path.
-            const QJsonObject themes = args.value(QStringLiteral("themes")).toObject();
-            out << static_cast<quint32>(themes.size());
-            for (auto it = themes.constBegin(); it != themes.constEnd(); ++it) {
-                out << it.key() << QByteArray::fromBase64(it.value().toString().toLatin1());
-            }
-            // Append KScreen per-output and combined config JSONs so the
-            // daemon can drop them into the soniclogin user's
-            // $XDG_DATA_HOME/kscreen tree.
-            const QJsonObject kscreenFiles = args.value(QStringLiteral("kscreen")).toObject();
-            out << static_cast<quint32>(kscreenFiles.size());
-            for (auto it = kscreenFiles.constBegin(); it != kscreenFiles.constEnd(); ++it) {
-                out << it.key() << QByteArray::fromBase64(it.value().toString().toLatin1());
-            }
-        } else if (type == MsgSaveConfig) {
-            const QString config = args.value(QStringLiteral("config")).toString();
-            const QJsonObject wallpapers = args.value(QStringLiteral("wallpapers")).toObject();
-            out << config;
-            out << static_cast<quint32>(wallpapers.size());
-            for (auto it = wallpapers.constBegin(); it != wallpapers.constEnd(); ++it) {
-                out << it.key() << QByteArray::fromBase64(it.value().toString().toLatin1());
-            }
-        }
-    }
-    socket.write(block);
-    socket.flush();
-
-    QByteArray buffer;
-    QDataStream in(&socket);
-    in.setVersion(QDataStream::Qt_6_0);
-    in.startTransaction();
-    quint32 responseType = 0;
-    quint32 responseId = 0;
-    quint8 okRaw = 0;
-    QString err;
-    in >> responseType >> responseId >> okRaw >> err;
-    while (!in.commitTransaction()) {
-        if (!socket.waitForReadyRead(op == QLatin1String("sync") ? 120000 : 15000)) {
-            Q_EMIT errorOccurred(kxi18n("Daemon did not respond: %1").subs(socket.errorString()).toString());
-            return;
-        }
-        in.startTransaction();
-        in >> responseType >> responseId >> okRaw >> err;
-    }
-
-    if (responseType != MsgResponse) {
-        Q_EMIT errorOccurred(kxi18n("Unexpected response from daemon: %1").subs(responseType).toString());
-        return;
-    }
-
-    if (okRaw) {
-        if (op == QLatin1String("save")) {
-            updateState();
-            setNeedsSave(false);
-        }
-        Q_EMIT syncAttempted();
-    } else {
-        m_pendingContinuation = [this, op, args]() {
-            sendToDaemon(op, args);
-        };
-        Q_EMIT authRequired();
-        Q_EMIT errorOccurred(err.isEmpty() ? kxi18n("Operation failed.").toString() : err);
+void SonicLoginKcm::setOperationStatus(const QString &status)
+{
+    if (m_operationStatus != status) {
+        m_operationStatus = status;
+        Q_EMIT operationStatusChanged();
     }
 }
 

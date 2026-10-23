@@ -1,5 +1,11 @@
 set(QT_USE_QTTEST TRUE)
 
+add_executable(DaemonRequestTest DaemonRequestTest.cpp ../src/frontend/kcm/daemonrequest.cpp)
+target_include_directories(DaemonRequestTest PRIVATE ../src/frontend/kcm)
+target_link_libraries(DaemonRequestTest PRIVATE Qt6::Network Qt6::Test Qt6::Concurrent KF6::I18n)
+add_test(NAME DaemonRequest COMMAND DaemonRequestTest)
+set_tests_properties(DaemonRequest PROPERTIES TIMEOUT 30)
+
 include_directories(../src/common)
 
 set(ConfigurationTest_SRCS ConfigurationTest.cpp ../src/common/ConfigReader.cpp)

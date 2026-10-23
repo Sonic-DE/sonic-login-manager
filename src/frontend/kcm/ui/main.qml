@@ -42,11 +42,13 @@ KCM.SimpleKCM {
         Kirigami.Action {
             text: i18nc("@action:button", "Apply Desktop Settings…")
             icon.name: "plasma"
+            enabled: !kcm.busy
             onTriggered: syncSheet.open()
         },
         Kirigami.Action {
             text: i18nc("@action:button", "Configure Appearance…")
             icon.name: "edit-image-symbolic"
+            enabled: !kcm.busy
             onTriggered: {
                 while (kcm.depth > 1) {
                     kcm.pop()
@@ -77,6 +79,33 @@ KCM.SimpleKCM {
         }
     }
 
+    QQC2.Popup {
+        parent: QQC2.Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(Kirigami.Units.gridUnit * 24, parent ? parent.width - Kirigami.Units.largeSpacing * 2 : implicitWidth)
+        visible: kcm.busy
+        modal: true
+        dim: true
+        focus: true
+        closePolicy: QQC2.Popup.NoAutoClose
+        padding: Kirigami.Units.largeSpacing
+
+        contentItem: ColumnLayout {
+            spacing: Kirigami.Units.largeSpacing
+            QQC2.BusyIndicator {
+                Layout.alignment: Qt.AlignHCenter
+                running: kcm.busy
+            }
+            QQC2.Label {
+                Layout.fillWidth: true
+                text: kcm.operationStatus
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                Accessible.role: Accessible.StaticText
+            }
+        }
+    }
+
     Kirigami.PromptDialog {
         id: syncSheet
 
@@ -86,17 +115,19 @@ KCM.SimpleKCM {
         title: i18nc("@title:window", "Apply Desktop Settings")
         subtitle: i18n("This will make the SonicDE login screen reflect your customizations to the following desktop settings:") +
                 xi18nc("@info", "<para><list><item>Language and locale settings</item><item>Keyboard layouts</item><item>Screen arrangement, scale, and orientation settings</item><item>NumLock preference</item><item>Font and font rendering settings</item><item>Color scheme</item><item>Icon theme</item><item>Cursor theme and size</item><item>Desktop theme</item></list></para>") +
-                i18n("Selected desktop, icon, cursor, and color themes will be copied to the login screen, including user-installed themes. Font files must still be installed globally.")
+                i18n("Selected user-installed themes and customizations will be copied to the login screen. System-installed themes will be used directly. Font files must still be installed globally.")
 
         customFooterActions: [
             Kirigami.Action {
                 text: i18nc("@action:button", "Apply")
                 icon.name: "dialog-ok-apply"
+                enabled: !kcm.busy
                 onTriggered: kcm.synchronizeSettings()
             },
             Kirigami.Action {
                 text: i18nc("@action:button", "Reset to Default Settings")
                 icon.name: "edit-undo"
+                enabled: !kcm.busy
                 onTriggered: kcm.resetSynchronizedSettings()
             }
         ]
@@ -143,6 +174,7 @@ KCM.SimpleKCM {
 
     ColumnLayout {
         spacing: 0
+        enabled: !kcm.busy
 
         Kirigami.FormLayout {
 

@@ -176,6 +176,7 @@ private Q_SLOTS:
         QString error;
         const auto data = archive({{"safe", "content"}});
         QVERIFY(!ThemeSync::install(home, "icons/Theme", data, &error));
+        QVERIFY(!ThemeSync::prune(home, {}, &error));
         QVERIFY(QDir(outside).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
         QVERIFY(QFile::remove(home + "/.local"));
         const QString independent = home + "/.local/share/icons/Theme/icon.svg";
@@ -252,20 +253,30 @@ private Q_SLOTS:
         QVERIFY(put(system + "/plasma/desktoptheme/default/metadata.json", "fallback desktop"));
         QVERIFY(put(data + "/plasma/look-and-feel/ChosenGlobal/metadata.json", "selected global theme"));
         QVERIFY(put(data + "/color-schemes/ChosenColors.colors", "[Colors:View]\nForegroundNormal=250,250,250\n"));
+        // A local override of a system theme must not pull in its system
+        // assets. This sparse file exceeds the bundle limit if it is read.
+        const QString systemOnly = system + "/icons/ChosenIcons/system-only.svg";
+        QVERIFY(put(systemOnly, "system asset"));
+        QFile largeSystemAsset(systemOnly);
+        QVERIFY(largeSystemAsset.open(QIODevice::ReadWrite));
+        QVERIFY(largeSystemAsset.resize(257 * 1024 * 1024));
+        largeSystemAsset.close();
+        QVERIFY(put(user + "/icons/NotSelected/index.theme", "unrelated user theme"));
+        QVERIFY(put(system + "/icons/NotSelected/index.theme", "unrelated system theme"));
         QMap<QString, QString> configs;
         QMap<QString, QByteArray> themes;
         QString error;
         QVERIFY2(ThemeSync::collectSettings(&configs, &themes, &error), qPrintable(error));
-        for (const auto &name : {"icons/ChosenIcons",
-                                 "icons/SystemParent",
-                                 "icons/ChosenCursor",
-                                 "icons/SystemCursorParent",
-                                 "plasma/desktoptheme/ChosenDesktop",
-                                 "plasma/desktoptheme/SystemDesktopParent",
-                                 "plasma/desktoptheme/default",
-                                 "plasma/look-and-feel/ChosenGlobal",
-                                 "color-schemes/ChosenColors.colors"}) {
-            QVERIFY2(themes.contains(QString::fromLatin1(name)), name);
+        if (themeRoot == system) {
+            QVERIFY(themes.isEmpty()); // Keep only references to system themes.
+        } else {
+            const QSet<QString> expected = {QStringLiteral("icons/ChosenIcons"),
+                                            QStringLiteral("icons/ChosenCursor"),
+                                            QStringLiteral("plasma/desktoptheme/ChosenDesktop"),
+                                            QStringLiteral("plasma/look-and-feel/ChosenGlobal"),
+                                            QStringLiteral("color-schemes/ChosenColors.colors")};
+            const auto names = themes.keys();
+            QCOMPARE(QSet<QString>(names.cbegin(), names.cend()), expected);
         }
         // libXcursor caches XCURSOR_PATH after its first load. Keep the path
         // stable across data rows, with a fresh directory supplied by init().
@@ -280,8 +291,16 @@ private Q_SLOTS:
         QCOMPARE(copied.group("Icons").readEntry("Theme", QString()), "ChosenIcons");
         QCOMPARE(copied.group("General").readEntry("ColorScheme", QString()), "ChosenColors");
         QCOMPARE(copied.group("KDE").readEntry("LookAndFeelPackage", QString()), "ChosenGlobal");
-        QCOMPARE(get(destination + "/.local/share/icons/ChosenIcons/icon.svg"), "selected icon");
-        QCOMPARE(get(destination + "/.local/share/icons/SystemParent/parent.svg"), "inherited icon");
+        if (themeRoot != system) {
+            QCOMPARE(get(destination + "/.local/share/icons/ChosenIcons/icon.svg"), "selected icon");
+        } else {
+            QVERIFY(!QFile::exists(destination + "/.local/share/icons/ChosenIcons"));
+        }
+        QVERIFY(!QFile::exists(destination + "/.local/share/icons/ChosenIcons/system-only.svg"));
+        QVERIFY(!QFile::exists(destination + "/.local/share/icons/SystemParent"));
+        QVERIFY(!QFile::exists(destination + "/.local/share/icons/SystemCursorParent"));
+        QVERIFY(!QFile::exists(destination + "/.local/share/plasma/desktoptheme/default"));
+        QCOMPARE(get(system + "/icons/SystemParent/parent.svg"), "inherited icon");
         KConfig copiedInput(destination + "/.config/kcminputrc", KConfig::SimpleConfig);
         QCOMPARE(copiedInput.group("Mouse").readEntry("cursorTheme", QString()), "ChosenCursor");
         QCOMPARE(copiedInput.group("Mouse").readEntry("cursorSize", 0), 24);
@@ -290,7 +309,7 @@ private Q_SLOTS:
         const auto restorePath = qScopeGuard([&] {
             hadPath ? qputenv("XCURSOR_PATH", oldPath) : qunsetenv("XCURSOR_PATH");
         });
-        qputenv("XCURSOR_PATH", (destination + "/.local/share/icons").toUtf8());
+        qputenv("XCURSOR_PATH", (destination + "/.local/share/icons:" + system + "/icons").toUtf8());
         XcursorImages *cursor = XcursorLibraryLoadImages("left_ptr", "ChosenCursor", 24);
         QVERIFY(cursor);
         const auto destroyCursor = qScopeGuard([cursor] {
@@ -314,6 +333,68 @@ private Q_SLOTS:
         QString error;
         QVERIFY(!ThemeSync::collectSettings(&configs, &themes, &error));
         QVERIFY2(error.contains(QLatin1String("NotInstalled")), qPrintable(error));
+    }
+
+    void prunesStaleManagedCopiesButKeepsCurrentAndIndependentThemes()
+    {
+        QTemporaryDir home;
+        QVERIFY(home.isValid());
+        QString error;
+        const auto directory = archive({{"asset.svg", "theme asset"}});
+        QVERIFY2(ThemeSync::install(home.path(), "icons/OldSystemCopy", directory, &error), qPrintable(error));
+        QVERIFY2(ThemeSync::install(home.path(), "icons/CurrentUserTheme", directory, &error), qPrintable(error));
+        QVERIFY2(ThemeSync::install(home.path(), "color-schemes/OldSystem.colors", archive({{"", "old colors"}}, false), &error), qPrintable(error));
+        const QString data = home.path() + "/.local/share/";
+        QVERIFY(put(data + "icons/Independent/asset.svg", "preserve independent theme"));
+        QVERIFY2(ThemeSync::prune(home.path(), {QStringLiteral("icons/CurrentUserTheme")}, &error), qPrintable(error));
+        QVERIFY(!QFile::exists(data + "icons/OldSystemCopy"));
+        QVERIFY(!QFile::exists(data + "color-schemes/OldSystem.colors"));
+        QVERIFY(!QFile::exists(data + "color-schemes/OldSystem.colors.soniclogin-synced"));
+        QCOMPARE(get(data + "icons/CurrentUserTheme/asset.svg"), "theme asset");
+        QCOMPARE(get(data + "icons/Independent/asset.svg"), "preserve independent theme");
+        QVERIFY2(ThemeSync::reset(home.path(), &error), qPrintable(error));
+        QVERIFY(!QFile::exists(data + "icons/CurrentUserTheme"));
+        QCOMPARE(get(data + "icons/Independent/asset.svg"), "preserve independent theme");
+    }
+
+    void transfersSparseUserOverridesAndInlinePaletteOnly()
+    {
+        const QString user = m_fixture + "/desktop/.local/share", system = m_fixture + "/system";
+        const QString config = m_fixture + "/desktop/.config";
+        QVERIFY(put(config + "/kdeglobals", "[Icons]\nTheme=Shared\n[General]\nColorScheme=PrivatePalette\n[Colors:View]\nForegroundNormal=250,240,230\n"));
+        QVERIFY(put(config + "/plasmarc", "[Theme]\nname=default\n"));
+        QVERIFY(put(config + "/kcminputrc", "[Mouse]\ncursorTheme=SystemCursor\n"));
+        QVERIFY(put(system + "/icons/Shared/index.theme", "[Icon Theme]\nName=Shared\nInherits=PrivateParent,SystemParent\n"));
+        QVERIFY(put(system + "/icons/Shared/icon.svg", "system icon"));
+        QVERIFY(put(system + "/icons/Shared/system-only.svg", "system asset"));
+        QVERIFY(put(system + "/icons/SystemParent/index.theme", "[Icon Theme]\nName=SystemParent\n"));
+        QVERIFY(put(system + "/icons/SystemCursor/index.theme", "[Icon Theme]\nName=SystemCursor\n"));
+        QVERIFY(put(system + "/plasma/desktoptheme/default/metadata.json", "system desktop theme"));
+        // No local index.theme: retain the system metadata and transfer just
+        // this override. A private inherited parent still needs transferring.
+        QVERIFY(put(user + "/icons/Shared/icon.svg", "user override"));
+        QVERIFY(put(user + "/icons/PrivateParent/index.theme", "[Icon Theme]\nName=PrivateParent\n"));
+        QVERIFY(put(user + "/icons/PrivateParent/parent.svg", "private parent"));
+        QMap<QString, QString> configs;
+        QMap<QString, QByteArray> themes;
+        QString error;
+        QVERIFY2(ThemeSync::collectSettings(&configs, &themes, &error), qPrintable(error));
+        const QSet<QString> expected = {QStringLiteral("icons/Shared"),
+                                        QStringLiteral("icons/PrivateParent"),
+                                        QStringLiteral("color-schemes/PrivatePalette.colors")};
+        const auto names = themes.keys();
+        QCOMPARE(QSet<QString>(names.cbegin(), names.cend()), expected);
+        const QString home = m_fixture + "/synced-greeter";
+        for (auto it = themes.cbegin(); it != themes.cend(); ++it) {
+            QVERIFY2(ThemeSync::install(home, it.key(), it.value(), &error), qPrintable(error));
+        }
+        const QString destination = home + "/.local/share/";
+        QCOMPARE(get(destination + "icons/Shared/icon.svg"), "user override");
+        QVERIFY(!QFile::exists(destination + "icons/Shared/system-only.svg"));
+        QVERIFY(!QFile::exists(destination + "icons/Shared/index.theme"));
+        QCOMPARE(get(destination + "icons/PrivateParent/parent.svg"), "private parent");
+        QVERIFY(get(destination + "color-schemes/PrivatePalette.colors").contains("ForegroundNormal=250,240,230"));
+        QCOMPARE(get(system + "/icons/Shared/icon.svg"), "system icon");
     }
 };
 
