@@ -40,6 +40,20 @@ const QStringList roots = {QStringLiteral("icons"),
 constexpr QFile::Permissions filePermissions = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
 constexpr QFile::Permissions directoryPermissions = filePermissions | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther;
 
+void copyEffectiveGroup(const KConfigGroup &source, KConfigGroup &destination)
+{
+    // copyTo() clones internal default entries too. A standalone snapshot must
+    // contain each resolved key once, not conflicting user/default records.
+    const auto entries = source.entryMap();
+    for (auto it = entries.cbegin(); it != entries.cend(); ++it) {
+        destination.writeEntry(it.key(), it.value());
+    }
+    for (const auto &name : source.groupList()) {
+        auto child = destination.group(name);
+        copyEffectiveGroup(source.group(name), child);
+    }
+}
+
 bool fail(QString *error, const QString &message)
 {
     if (error) {
@@ -353,29 +367,29 @@ bool collectSettings(QMap<QString, QString> *configs, QMap<QString, QByteArray> 
         KConfig snapshot(temporary.path() + QLatin1Char('/') + name, KConfig::SimpleConfig);
         for (const auto &groupName : effective->groupList()) {
             auto destination = snapshot.group(groupName);
-            effective->group(groupName).copyTo(&destination);
+            copyEffectiveGroup(effective->group(groupName), destination);
         }
         QStringList selected;
         if (name == QLatin1String("kdeglobals")) {
-            const QString icons = effective->group(QStringLiteral("Icons")).readEntry("Theme", QStringLiteral("silver"));
-            const QString colors = effective->group(QStringLiteral("General")).readEntry("ColorScheme", QStringLiteral("SilverLight"));
+            const QString icons = effective->group(QStringLiteral("Icons")).readEntry("Theme", QStringLiteral("silver-dark"));
+            const QString colors = effective->group(QStringLiteral("General")).readEntry("ColorScheme", QStringLiteral("SilverDark"));
             snapshot.group(QStringLiteral("Icons")).writeEntry("Theme", icons);
             snapshot.group(QStringLiteral("General")).writeEntry("ColorScheme", colors);
             selected << QStringLiteral("icons/") + icons << QStringLiteral("color-schemes/") + colors + QStringLiteral(".colors");
-            const QString lookAndFeel = effective->group(QStringLiteral("KDE")).readEntry("LookAndFeelPackage", QString());
-            if (!lookAndFeel.isEmpty()) {
-                snapshot.group(QStringLiteral("KDE")).writeEntry("LookAndFeelPackage", lookAndFeel);
-                selected << QStringLiteral("plasma/look-and-feel/") + lookAndFeel;
+            // Keep the greeter's own fallback profile; apply the resolved
+            // desktop categories without importing its global-profile policy.
+            for (const auto &key : {"LookAndFeelPackage", "AutomaticLookAndFeel", "DefaultLightLookAndFeel", "DefaultDarkLookAndFeel"}) {
+                snapshot.group("KDE").deleteEntry(key);
             }
         } else if (name == QLatin1String("plasmarc")) {
-            const QString desktop = effective->group(QStringLiteral("Theme")).readEntry("name", QStringLiteral("default"));
+            const QString desktop = effective->group(QStringLiteral("Theme")).readEntry("name", QStringLiteral("silver-dark"));
             snapshot.group(QStringLiteral("Theme")).writeEntry("name", desktop);
             selected << QStringLiteral("plasma/desktoptheme/") + desktop;
             if (desktop != QLatin1String("default")) {
                 selected << QStringLiteral("plasma/desktoptheme/default");
             }
         } else {
-            const QString cursor = effective->group(QStringLiteral("Mouse")).readEntry("cursorTheme", QStringLiteral("silver_cursors_light"));
+            const QString cursor = effective->group(QStringLiteral("Mouse")).readEntry("cursorTheme", QStringLiteral("silver_cursors_dark"));
             snapshot.group(QStringLiteral("Mouse")).writeEntry("cursorTheme", cursor);
             selected << QStringLiteral("icons/") + cursor;
         }

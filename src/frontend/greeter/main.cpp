@@ -17,10 +17,15 @@
 #include <QProcess>
 #include <QQmlContext>
 #include <QScreen>
+#include <QStandardPaths>
 #include <QTimer>
 
+#include <KColorScheme>
+#include <KConfigGroup>
 #include <KIconTheme>
 #include <KLocalizedString>
+#include <KSharedConfig>
+#include <Plasma/Theme>
 #include <PlasmaQuick/QuickViewSharedEngine>
 
 #include "backend/GreeterProxy.h"
@@ -161,9 +166,23 @@ int main(int argc, char *argv[])
     qunsetenv("QT_VIRTUALKEYBOARD_DESKTOP_DISABLE");
     // Keep symbolic icons color-aware even in the standalone test UI, without
     // replacing a configured icon theme or relying on session defaults.
-    QIcon::setFallbackThemeName(QStringLiteral("silver"));
+    QIcon::setFallbackThemeName(QStringLiteral("silver-dark"));
     KIconTheme::initTheme();
     QGuiApplication app(argc, argv);
+    const auto appearance = KSharedConfig::openConfig(QStringLiteral("kdeglobals"));
+    const auto scheme = appearance->group("General").readEntry("ColorScheme", QStringLiteral("SilverDark"));
+    const auto schemeFile = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("color-schemes/") + scheme + QStringLiteral(".colors"));
+    if (!schemeFile.isEmpty()) {
+        // Scheme values are defaults; explicit desktop/user entries win.
+        appearance->addConfigSources({schemeFile});
+    } else {
+        qWarning() << "Selected color scheme was not found:" << scheme;
+    }
+    app.setProperty("KDE_COLOR_SCHEME_PATH", appearance->name());
+    QGuiApplication::setPalette(KColorScheme::createApplicationPalette(appearance));
+    // Initialize the selected Plasma SVG image set before any greeter controls
+    // are created, and keep it alive for the lifetime of those controls.
+    Plasma::Theme desktopTheme;
 
     SONICLOGIN::SignalHandler signalHandler;
     QObject::connect(&signalHandler, &SONICLOGIN::SignalHandler::sigtermReceived, &app, [] {

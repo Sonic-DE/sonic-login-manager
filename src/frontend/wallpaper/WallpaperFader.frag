@@ -10,7 +10,8 @@ layout(location = 0) in vec2 qt_TexCoord0;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    mat4 colorMatrix;
+    vec4 tintColor;
+    float tintAmount;
 };
 layout(binding = 1) uniform mediump sampler2D source;
 layout(location = 0) out vec4 fragColor;
@@ -18,5 +19,9 @@ layout(location = 0) out vec4 fragColor;
 void main(void)
 {
     mediump vec4 tex = texture(source, qt_TexCoord0);
-    fragColor = tex * colorMatrix * qt_Opacity;
+    // Qt supplies both the texture and QColor uniform premultiplied. Preserve
+    // source alpha while blending the tint, including translucent theme colors.
+    mediump vec3 tinted = tex.rgb * (1.0 - tintAmount * tintColor.a)
+        + tintColor.rgb * tex.a * tintAmount;
+    fragColor = vec4(tinted, tex.a) * qt_Opacity;
 }
