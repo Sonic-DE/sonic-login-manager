@@ -280,21 +280,45 @@ static void setCursorXResources(const QString &theme, int size)
     XFlush(disp);
 }
 
-void applyCursorTheme(const QString &theme, int size)
+bool applyCursorTheme(const QString &theme, int size, bool standalone)
 {
+    // The systemd setup helper exits before the greeter starts. Give its
+    // cursor a separate connection so retaining that resource does not also
+    // retain Qt's windows, selections, and other application resources.
+    Display *display = standalone ? XOpenDisplay(nullptr) : QX11Info::display();
+    if (!display) {
+        qWarning() << "Cannot open the X11 display to apply the cursor";
+        return false;
+    }
     if (!theme.isEmpty()) {
-        XcursorSetTheme(QX11Info::display(), QFile::encodeName(theme));
+        XcursorSetTheme(display, QFile::encodeName(theme).constData());
     }
     if (size >= 0) {
-        XcursorSetDefaultSize(QX11Info::display(), size);
+        XcursorSetDefaultSize(display, size);
     }
-    Cursor handle = XcursorLibraryLoadCursor(QX11Info::display(), "left_ptr");
-    XDefineCursor(QX11Info::display(), DefaultRootWindow(QX11Info::display()), handle);
-    XFreeCursor(QX11Info::display(), handle);
-    XFlush(QX11Info::display());
+    Cursor handle = XcursorLibraryLoadCursor(display, "left_ptr");
+    if (handle == None) {
+        qWarning() << "Cannot load the X11 cursor for theme" << theme;
+        if (standalone) {
+            XCloseDisplay(display);
+        }
+        return false;
+    }
+    XDefineCursor(display, DefaultRootWindow(display), handle);
+    if (standalone) {
+        // Keep the cursor ID alive after this short-lived client disconnects.
+        // The X server reclaims temporary retained resources on reset.
+        XSetCloseDownMode(display, RetainTemporary);
+        XSync(display, False);
+        XCloseDisplay(display);
+    } else {
+        XFreeCursor(display, handle);
+        XFlush(display);
+    }
 
     // Also publish the theme/size on the root window RESOURCE_MANAGER .
     setCursorXResources(theme, size);
+    return true;
 }
 
 std::optional<QProcessEnvironment> getSystemdEnvironment()
@@ -785,7 +809,11 @@ static bool applyKScreen(bool standalone)
     // initialization must also run when there is no saved KScreen config.
     const KConfig cursorCfg(QStringLiteral("kcminputrc"));
     const KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
-    applyCursorTheme(cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_dark")), cursorInputCfg.readEntry("cursorSize", 24));
+    const auto cursorTheme = cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_dark"));
+    const int cursorSize = cursorInputCfg.readEntry("cursorSize", 24);
+    if (!applyCursorTheme(cursorTheme, cursorSize, standalone)) {
+        return false;
+    }
 
     const QString xdgDataHome = QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
     qDebug() << "applyKScreen: starting, XDG_DATA_HOME=" << xdgDataHome << ", DISPLAY=" << qgetenv("DISPLAY");
