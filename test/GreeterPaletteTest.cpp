@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+#include <QCryptographicHash>
+#include <QDeadlineTimer>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -13,17 +15,26 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickView>
+#include <QScopeGuard>
+#include <QScreen>
+#include <QSet>
 #include <QSignalSpy>
+#include <QStandardPaths>
 #include <QStringListModel>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QtGui/qguiapplication_platform.h>
+
+#include <xcb/shape.h>
 
 #include "lookandfeelsettings.h"
 
 #include <KIconTheme>
 #include <KLocalizedQmlContext>
+#include <Plasma/Theme>
 
 #include <cmath>
+#include <memory>
 
 class PaletteGreeterState : public QObject {
     Q_OBJECT
@@ -40,9 +51,9 @@ Q_SIGNALS:
 class GreeterPaletteTest : public QObject {
     Q_OBJECT
 
-    QQuickView m_view;
     QStringListModel m_sessions;
     PaletteGreeterState m_state;
+    QQuickView m_view;
 
     static double luminance(const QColor &color)
     {
@@ -67,9 +78,87 @@ class GreeterPaletteTest : public QObject {
         return count;
     }
 
+    static QSet<xcb_window_t> mappedWindows()
+    {
+        auto *connection = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection();
+        const auto root = xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+        auto *tree = xcb_query_tree_reply(connection, xcb_query_tree(connection, root), nullptr);
+        QSet<xcb_window_t> result;
+        if (tree) {
+            const auto windows = xcb_query_tree_children(tree);
+            for (int i = 0; i < xcb_query_tree_children_length(tree); ++i) {
+                auto *attributes = xcb_get_window_attributes_reply(connection, xcb_get_window_attributes(connection, windows[i]), nullptr);
+                if (attributes && attributes->map_state == XCB_MAP_STATE_VIEWABLE) {
+                    result.insert(windows[i]);
+                }
+                free(attributes);
+            }
+            free(tree);
+        }
+        return result;
+    }
+
+    static bool clickScreenPoint(QPoint point)
+    {
+        auto *connection = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection();
+        const auto root = xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+        xcb_warp_pointer(connection, XCB_NONE, root, 0, 0, 0, 0, point.x(), point.y());
+        auto *pointer = xcb_query_pointer_reply(connection, xcb_query_pointer(connection, root), nullptr);
+        const auto target = pointer ? pointer->child : XCB_NONE;
+        free(pointer);
+        if (target == XCB_NONE) {
+            return false;
+        }
+        xcb_button_press_event_t event{};
+        event.response_type = XCB_BUTTON_PRESS;
+        event.detail = 1;
+        event.root = root;
+        event.event = target;
+        event.root_x = event.event_x = point.x();
+        event.root_y = event.event_y = point.y();
+        event.same_screen = true;
+        xcb_send_event(connection, false, target, XCB_EVENT_MASK_BUTTON_PRESS, reinterpret_cast<const char *>(&event));
+        event.response_type = XCB_BUTTON_RELEASE;
+        event.state = XCB_BUTTON_MASK_1;
+        xcb_send_event(connection, false, target, XCB_EVENT_MASK_BUTTON_RELEASE, reinterpret_cast<const char *>(&event));
+        xcb_flush(connection);
+        return true;
+    }
+
+    static QImage newlyShownKeyboard(const QSet<xcb_window_t> &before)
+    {
+        auto *connection = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection();
+        auto *screen = QGuiApplication::primaryScreen();
+        for (const auto window : mappedWindows() - before) {
+            auto *geometry = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, window), nullptr);
+            const bool fullSize = geometry && QSize(geometry->width, geometry->height) == screen->size();
+            free(geometry);
+            if (!fullSize) {
+                continue;
+            }
+            auto *shape = xcb_shape_get_rectangles_reply(connection, xcb_shape_get_rectangles(connection, window, XCB_SHAPE_SK_BOUNDING), nullptr);
+            QRect bounds;
+            if (shape) {
+                const auto rectangles = xcb_shape_get_rectangles_rectangles(shape);
+                for (int i = 0; i < xcb_shape_get_rectangles_rectangles_length(shape); ++i) {
+                    const auto rect = rectangles[i];
+                    bounds |= QRect(rect.x, rect.y, rect.width, rect.height);
+                }
+                free(shape);
+            }
+            if (!bounds.isEmpty() && QRect(QPoint(), screen->size()).contains(bounds) && bounds.top() >= screen->size().height() / 2) {
+                return screen->grabWindow(window, bounds.x(), bounds.y(), bounds.width(), bounds.height()).toImage();
+            }
+        }
+        return {};
+    }
+
 private Q_SLOTS:
     void initTestCase()
     {
+        if (QGuiApplication::platformName() != QLatin1String("xcb")) {
+            QSKIP("The Plasma SVG consumer test requires a private X11 display (xvfb-run)");
+        }
         m_sessions.setStringList({QStringLiteral("Test X11"), QStringLiteral("Test Wayland")});
         qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "SessionModel", &m_sessions);
         qmlRegisterSingletonInstance("org.kde.sonic.login", 0, 1, "GreeterState", &m_state);
@@ -94,6 +183,160 @@ private Q_SLOTS:
         QCOMPARE(settings.lookAndFeelPackage(), QStringLiteral("org.kde.silverdarkbottompanel.desktop"));
         QCOMPARE(settings.defaultDarkLookAndFeel(), QStringLiteral("org.kde.silverdarkbottompanel.desktop"));
         QCOMPARE(settings.defaultLightLookAndFeel(), QStringLiteral("org.kde.silverlightbottompanel.desktop"));
+    }
+
+    void selectedDesktopThemeBackgroundIsRendered()
+    {
+        auto *selector = m_view.rootObject()->property("selector").value<QObject *>();
+        QVERIFY(selector);
+        QVERIFY(selector->setProperty("flat", false));
+        const auto restore = qScopeGuard([selector]() {
+            selector->setProperty("flat", true);
+        });
+        auto orangePixels = [this]() {
+            const auto image = m_view.grabWindow().convertToFormat(QImage::Format_ARGB32);
+            return matchingPixels(image, image.rect(), QColor(240, 120, 0));
+        };
+        // This color exists only in the selected desktop theme's button SVG,
+        // not in an attached-property override or an application palette.
+        QTRY_VERIFY_WITH_TIMEOUT(orangePixels() > 500, 3000);
+    }
+
+    void selectedAppearanceIsRenderedByGreeter_data()
+    {
+        QTest::addColumn<bool>("customized");
+        QTest::newRow("scheme-reference-with-cached-hash") << false;
+        QTest::newRow("explicit-user-overrides-win") << true;
+    }
+
+    void selectedAppearanceIsRenderedByGreeter()
+    {
+        if (!qEnvironmentVariableIntValue("SONICLOGIN_GREETER_TEST_ISOLATED")) {
+            QSKIP("Launching the real greeter requires the private xvfb-run test display");
+        }
+        QFETCH(bool, customized);
+        const auto keyboardSuffix = customized ? QStringLiteral("-override.png") : QStringLiteral("-reference.png");
+        const auto keyboardScreenshot = QStringLiteral(GREETER_KEYBOARD_SCREENSHOT) + keyboardSuffix;
+        for (const auto &file : {QStringLiteral(GREETER_RENDERED_SCREENSHOT), keyboardScreenshot}) {
+            if (QFile::exists(file)) {
+                QVERIFY(QFile::remove(file));
+            }
+        }
+        QFile globals(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + QStringLiteral("/kdeglobals"));
+        QVERIFY(globals.open(QIODevice::ReadOnly));
+        const auto original = globals.readAll();
+        globals.close();
+        const auto restoreConfig = qScopeGuard([&]() {
+            if (globals.open(QIODevice::WriteOnly)) {
+                globals.write(original);
+                globals.close();
+            }
+        });
+        if (customized) {
+            QVERIFY(globals.open(QIODevice::Append));
+            globals.write("[Colors:Window]\nForegroundNormal=255,0,255\nBackgroundNormal=245,245,245\n[Icons]\nTheme=PaletteAlternate\n");
+            globals.close();
+        }
+        const QColor foreground = customized ? QColor(255, 0, 255) : QColor(0, 255, 255);
+        m_view.hide();
+        QQuickWindow backdrop;
+        backdrop.setColor(Qt::black);
+        backdrop.setFlags(Qt::BypassWindowManagerHint);
+        backdrop.setGeometry(QGuiApplication::primaryScreen()->geometry());
+        backdrop.show();
+        const auto restore = qScopeGuard([this]() {
+            m_view.show();
+        });
+        QVERIFY(QTest::qWaitForWindowExposed(&backdrop));
+        auto orangePixels = []() {
+            const auto image = QGuiApplication::primaryScreen()->grabWindow(0).toImage();
+            return matchingPixels(image, image.rect(), QColor(240, 120, 0));
+        };
+        QTRY_COMPARE_WITH_TIMEOUT(orangePixels(), 0, 3000);
+        QProcess greeter;
+        greeter.setProcessChannelMode(QProcess::ForwardedChannels);
+        auto environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("QT_QPA_PLATFORMTHEME"), QStringLiteral("kde"));
+        environment.remove(QStringLiteral("QT_VIRTUALKEYBOARD_STYLE"));
+        environment.remove(QStringLiteral("QT_VIRTUALKEYBOARD_LAYOUT_PATH"));
+        greeter.setProcessEnvironment(environment);
+        const auto stop = qScopeGuard([&greeter]() {
+            greeter.terminate();
+            if (!greeter.waitForFinished(3000)) {
+                greeter.kill();
+                greeter.waitForFinished();
+            }
+        });
+        greeter.start(QStringLiteral(GREETER_BINARY), {QStringLiteral("--test")});
+        QVERIFY(greeter.waitForStarted());
+        QTRY_VERIFY_WITH_TIMEOUT(greeter.state() == QProcess::Running && orangePixels() > 500, 5000);
+        auto clockPixels = [foreground]() {
+            const auto image = QGuiApplication::primaryScreen()->grabWindow(0).toImage();
+            return matchingPixels(image, QRect(0, 0, image.width(), image.height() / 3), foreground);
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(clockPixels() > 100, 3000);
+        QVERIFY(QGuiApplication::primaryScreen()->grabWindow(0).save(QStringLiteral(GREETER_RENDERED_SCREENSHOT)));
+        auto shutdownIconPixels = []() {
+            const auto image = QGuiApplication::primaryScreen()->grabWindow(0).toImage();
+            int count = 0;
+            for (int y = image.height() * 2 / 3; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    // ActionButton uses 85% opacity when unfocused. Only the
+                    // selected icon is green; palette text is cyan/magenta.
+                    if (pixel.green() > 150 && pixel.green() > pixel.red() + 100 && pixel.green() > pixel.blue() + 100) {
+                        ++count;
+                    }
+                }
+            }
+            return count;
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(shutdownIconPixels() > 100, 3000);
+        QVERIFY(QGuiApplication::primaryScreen()->grabWindow(0).save(QStringLiteral(GREETER_RENDERED_SCREENSHOT)));
+
+        const auto windowsBeforeKeyboard = mappedWindows();
+        const QColor background = customized ? QColor(245, 245, 245) : QColor(80, 0, 80);
+        const QColor keyBackground = background.lighter(130);
+        QVERIFY(clickScreenPoint(QPoint(80, QGuiApplication::primaryScreen()->size().height() - 20)));
+        QImage keyboard;
+        int backgroundPixels = 0, keyPixels = 0, textPixels = 0;
+        int redPixels = 0, bluePixels = 0;
+        qint64 redX = 0, redY = 0, blueX = 0, blueY = 0;
+        auto themedKeyboard = [&]() {
+            keyboard = newlyShownKeyboard(windowsBeforeKeyboard);
+            backgroundPixels = matchingPixels(keyboard, keyboard.rect(), background);
+            keyPixels = matchingPixels(keyboard, keyboard.rect(), keyBackground);
+            textPixels = matchingPixels(keyboard, keyboard.rect(), foreground);
+            redPixels = bluePixels = 0;
+            redX = redY = blueX = blueY = 0;
+            for (int y = 0; y < keyboard.height(); ++y) {
+                for (int x = 0; x < keyboard.width(); ++x) {
+                    const auto pixel = keyboard.pixelColor(x, y);
+                    if (pixel.red() > 252 && pixel.green() < 3 && pixel.blue() < 3) {
+                        ++redPixels;
+                        redX += x;
+                        redY += y;
+                    } else if (pixel.blue() > 252 && pixel.red() < 3 && pixel.green() < 3) {
+                        ++bluePixels;
+                        blueX += x;
+                        blueY += y;
+                    }
+                }
+            }
+            // The selected sets have different globe assets: left/right halves
+            // in PaletteTest and top/bottom halves in PaletteAlternate.
+            const bool selectedGlobe = customized ? redY * bluePixels > blueY * redPixels : redX * bluePixels > blueX * redPixels;
+            const bool paletteMatches = backgroundPixels > 1000 && keyPixels > 10000 && textPixels > 50;
+            return !keyboard.isNull() && paletteMatches && redPixels > 100 && bluePixels > 100 && selectedGlobe;
+        };
+        const bool themed = QTest::qWaitFor(themedKeyboard, QDeadlineTimer(5000));
+        qInfo() << "Keyboard image" << keyboard.size();
+        qInfo() << "Keyboard background/key/text pixels" << backgroundPixels << keyPixels << textPixels;
+        qInfo() << "Selected globe red/blue pixels" << redPixels << bluePixels << "alternate set" << customized;
+        if (!keyboard.isNull()) {
+            QVERIFY(keyboard.save(keyboardScreenshot));
+        }
+        QVERIFY(themed);
     }
 
     void selectorAndIconsFollowPalette_data()
@@ -155,7 +398,9 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT(!(screenshot = m_view.grabWindow()).isNull(), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(matchingPixels(m_view.grabWindow(), QRect(20, 130, 32, 32), foreground) > 100, 5000);
         screenshot = m_view.grabWindow();
-        QCOMPARE(screenshot.pixelColor(380, 20 + selector->property("height").toInt() / 2), background);
+        // The surface belongs to the selected desktop SVG, not a forced solid
+        // application-palette background. Text and icons still follow palette.
+        QCOMPARE(screenshot.pixelColor(380, 20 + selector->property("height").toInt() / 2), QColor(240, 120, 0));
         QVERIFY(matchingPixels(screenshot, QRect(20, 20, 300, 40), foreground) > 10);
     }
 
@@ -182,14 +427,38 @@ int main(int argc, char **argv)
     const QString data = fixture.path() + QStringLiteral("/data");
     const QString config = fixture.path() + QStringLiteral("/config");
     const QString icons = data + QStringLiteral("/icons/PaletteTest/32x32/actions");
-    if (!QDir().mkpath(icons) || !QDir().mkpath(config)) {
+    const QString alternateIcons = data + QStringLiteral("/icons/PaletteAlternate/32x32/actions");
+    const QString desktop = data + QStringLiteral("/plasma/desktoptheme/PaletteDesktop");
+    if (!QDir().mkpath(icons) || !QDir().mkpath(alternateIcons) || !QDir().mkpath(config) || !QDir().mkpath(desktop + QStringLiteral("/widgets"))
+        || !QDir().mkpath(data + QStringLiteral("/color-schemes"))) {
         return 1;
     }
     auto write = [](const QString &path, const QByteArray &bytes) {
         QFile file(path);
         return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
     };
-    QByteArray globals = "[Icons]\nTheme=PaletteTest\n";
+    const QByteArray palette = R"([Colors:Window]
+ForegroundNormal=0,255,255
+BackgroundNormal=80,0,80
+[Colors:View]
+ForegroundNormal=0,255,255
+BackgroundNormal=80,0,80
+[Colors:Button]
+ForegroundNormal=0,255,255
+BackgroundNormal=80,0,80
+)";
+    QByteArray globals = "[Icons]\nTheme=PaletteTest\n[General]\nColorScheme=PaletteColors\nColorSchemeHash="
+        + QCryptographicHash::hash(palette, QCryptographicHash::Sha1).toHex() + '\n';
+    if (!write(data + QStringLiteral("/color-schemes/PaletteColors.colors"), palette)) {
+        return 1;
+    }
+    QFile desktopSvg(QStringLiteral(GREETER_SVG_FIXTURE));
+    if (!desktopSvg.open(QIODevice::ReadOnly)
+        || !write(desktop + QStringLiteral("/metadata.json"), "{\"KPlugin\":{\"Id\":\"PaletteDesktop\",\"Name\":\"Palette desktop\"}}")
+        || !write(desktop + QStringLiteral("/widgets/button.svg"), desktopSvg.readAll())
+        || !write(config + QStringLiteral("/plasmarc"), "[Theme]\nname=PaletteDesktop\n")) {
+        return 1;
+    }
     if (qEnvironmentVariableIsSet("SONICLOGIN_PALETTE_TEST")) {
         auto rgb = [](const QString &name) {
             const QColor color(name);
@@ -204,6 +473,17 @@ int main(int argc, char **argv)
     if (!write(config + QStringLiteral("/kdeglobals"), globals)
         || !write(data + QStringLiteral("/icons/PaletteTest/index.theme"),
                   "[Icon Theme]\nName=PaletteTest\nFollowsColorScheme=true\nDirectories=32x32/actions\n[32x32/actions]\nSize=32\nType=Fixed\nContext=Actions\n")
+        || !write(icons + QStringLiteral("/system-shutdown.svg"),
+                  "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><path fill=\"#00ff00\" d=\"M16 2L30 30H2z\"/></svg>")
+        || !write(icons + QStringLiteral("/globe.svg"),
+                  "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><path fill=\"#0000ff\" d=\"M0 0h16v32H0z\"/>"
+                  "<path fill=\"#ff0000\" d=\"M16 0h16v32H16z\"/></svg>")
+        || !write(data + QStringLiteral("/icons/PaletteAlternate/index.theme"),
+                  "[Icon Theme]\nName=PaletteAlternate\nInherits=PaletteTest\nFollowsColorScheme=true\nDirectories=32x32/actions\n"
+                  "[32x32/actions]\nSize=32\nType=Fixed\nContext=Actions\n")
+        || !write(alternateIcons + QStringLiteral("/globe.svg"),
+                  "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><path fill=\"#0000ff\" d=\"M0 0h32v16H0z\"/>"
+                  "<path fill=\"#ff0000\" d=\"M0 16h32v16H0z\"/></svg>")
         || !write(
             icons + QStringLiteral("/regression-symbolic.svg"),
             "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\"><defs><style type=\"text/css\" id=\"current-color-scheme\">.ColorScheme-Text "
@@ -220,6 +500,10 @@ int main(int argc, char **argv)
     qunsetenv("QT_QUICK_CONTROLS_CONF");
     KIconTheme::initTheme();
     QGuiApplication app(argc, argv);
+    std::unique_ptr<Plasma::Theme> desktopTheme;
+    if (QGuiApplication::platformName() == QLatin1String("xcb")) {
+        desktopTheme = std::make_unique<Plasma::Theme>();
+    }
     GreeterPaletteTest tests;
     return QTest::qExec(&tests, argc, argv);
 }

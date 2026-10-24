@@ -225,7 +225,7 @@ void applyCursorEnv()
     const KConfig cfg(kcminputrcPath);
     const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
 
-    const QString cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_light"));
+    const QString cursorTheme = inputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_dark"));
     const int cursorSize = inputCfg.readEntry("cursorSize", 24);
 
     qputenv("XCURSOR_THEME", cursorTheme.toLocal8Bit());
@@ -785,7 +785,7 @@ static bool applyKScreen(bool standalone)
     // initialization must also run when there is no saved KScreen config.
     const KConfig cursorCfg(QStringLiteral("kcminputrc"));
     const KConfigGroup cursorInputCfg = cursorCfg.group(QStringLiteral("Mouse"));
-    applyCursorTheme(cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_light")), cursorInputCfg.readEntry("cursorSize", 24));
+    applyCursorTheme(cursorInputCfg.readEntry("cursorTheme", QStringLiteral("silver_cursors_dark")), cursorInputCfg.readEntry("cursorSize", 24));
 
     const QString xdgDataHome = QString::fromLocal8Bit(qgetenv("XDG_DATA_HOME"));
     qDebug() << "applyKScreen: starting, XDG_DATA_HOME=" << xdgDataHome << ", DISPLAY=" << qgetenv("DISPLAY");

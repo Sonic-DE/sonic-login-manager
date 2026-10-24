@@ -16,6 +16,8 @@
 #include <QPainter>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QQmlEngine>
+#include <QQmlExpression>
 #include <QQuickItem>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -145,6 +147,12 @@ private Q_SLOTS:
         }
         QVERIFY(window);
         QVERIFY(window->rootObject());
+        // The wallpaper must classify the selected Window palette, not the
+        // independent Complementary palette (which may have opposite tones).
+        QQmlExpression usesWindow(qmlContext(window->rootObject()), window->rootObject(), QStringLiteral("Kirigami.Theme.colorSet === Kirigami.Theme.Window"));
+        const auto windowPalette = usesWindow.evaluate();
+        QVERIFY2(!usesWindow.hasError(), qPrintable(usesWindow.error().toString()));
+        QVERIFY(windowPalette.toBool());
         auto *container = window->rootObject()->property("wallpaperContainer").value<QQuickItem *>();
         QVERIFY(container);
         QVERIFY(QTest::qWaitForWindowExposed(window));

@@ -37,6 +37,80 @@ class WallpaperFaderTest : public QObject {
     }
 
 private Q_SLOTS:
+    void tintFollowsTheme_data()
+    {
+        QTest::addColumn<QColor>("background");
+        QTest::addColumn<QColor>("sourceColor");
+        const QColor neutral(128, 128, 128);
+        QTest::newRow("dark-silver") << QColor("#2a2e32") << neutral;
+        QTest::newRow("light-silver") << QColor("#eff0f1") << neutral;
+        QTest::newRow("dark-saturated-blue") << QColor("#2020c0") << neutral;
+        QTest::newRow("warm-theme") << QColor("#c06020") << neutral;
+        QTest::newRow("translucent-theme") << QColor(32, 64, 192, 128) << neutral;
+        QTest::newRow("colored-wallpaper") << QColor("#2a2e32") << QColor(64, 160, 208);
+    }
+
+    void tintFollowsTheme()
+    {
+        if (qgetenv("SONICLOGIN_BLUR_TEST_ISOLATED") != "1") {
+            QSKIP("Rendered blur test requires the private Xvfb CTest wrapper");
+        }
+        QFETCH(QColor, background);
+        QFETCH(QColor, sourceColor);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QImage solid(320, 240, QImage::Format_RGB32);
+        solid.fill(sourceColor);
+        const auto path = fixture.path() + QStringLiteral("/neutral.png");
+        QVERIFY(solid.save(path));
+        QQuickView view;
+        view.setResizeMode(QQuickView::SizeRootObjectToView);
+        view.resize(solid.size());
+        view.setInitialProperties({{QStringLiteral("testImage"), QUrl::fromLocalFile(path)}, {QStringLiteral("themeBackground"), background}});
+        view.setSource(QUrl::fromLocalFile(QStringLiteral(WALLPAPER_FADER_TEST_QML)));
+        QVERIFY2(view.status() == QQuickView::Ready, qPrintable(view.errors().isEmpty() ? QString() : view.errors().first().toString()));
+        view.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&view));
+        QTRY_COMPARE(view.rootObject()->property("imageStatus").toInt(), 1);
+        auto *fader = view.rootObject()->property("fader").value<QQuickItem *>();
+        QVERIFY(fader);
+        const auto center = [&view]() {
+            const auto image = view.grabWindow();
+            return image.isNull() ? QColor() : image.pixelColor(image.width() / 2, image.height() / 2);
+        };
+        const auto matchesTint = [&center, sourceColor](const QColor &tint, double factor) {
+            const auto actual = center();
+            if (!actual.isValid()) {
+                return false;
+            }
+            const double amount = 0.35 * factor * tint.alphaF();
+            const auto expected = [amount](int source, int channel) {
+                return qRound(source * (1 - amount) + channel * amount);
+            };
+            return std::abs(actual.red() - expected(sourceColor.red(), tint.red())) <= 2
+                && std::abs(actual.green() - expected(sourceColor.green(), tint.green())) <= 2
+                && std::abs(actual.blue() - expected(sourceColor.blue(), tint.blue())) <= 2 && actual.alpha() == 255;
+        };
+        // No tint is applied while the wallpaper is unblurred.
+        QTRY_COMPARE(center(), sourceColor);
+        QVERIFY(view.rootObject()->setProperty("blurred", true));
+        QTRY_COMPARE_WITH_TIMEOUT(fader->property("factor").toDouble(), 1.0, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(matchesTint(background, 1), 5000);
+
+        // Tint strength follows the blur transition, not a light/dark threshold.
+        QVERIFY(view.rootObject()->setProperty("blurAmount", 0.5));
+        QTRY_COMPARE_WITH_TIMEOUT(fader->property("factor").toDouble(), 0.5, 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(matchesTint(background, 0.5), 5000);
+
+        // Theme changes must update the tint without re-creating the fader.
+        const QColor alternate("#883355");
+        QVERIFY(view.rootObject()->setProperty("themeBackground", alternate));
+        QTRY_VERIFY_WITH_TIMEOUT(matchesTint(alternate, 0.5), 5000);
+        QVERIFY(view.rootObject()->setProperty("blurred", false));
+        QTRY_COMPARE_WITH_TIMEOUT(fader->property("factor").toDouble(), 0.0, 5000);
+        QTRY_COMPARE(center(), sourceColor);
+    }
+
     void blurCoversEveryEdge_data()
     {
         QTest::addColumn<QSize>("size");

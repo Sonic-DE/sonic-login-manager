@@ -26,13 +26,14 @@ set(LOGIN_GREETER_SRCS
 
 add_definitions(-DTRANSLATION_DOMAIN="sonic_login")
 
-ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS HEADER debug.h
-                                IDENTIFIER LOGOUT_GREETER
-                                CATEGORY_NAME kde.login_greeter
-                                DEFAULT_SEVERITY Debug
-                                DESCRIPTION "login greeter debug"
-                                EXPORT PLASMAWORKSPACE
-                            )
+ecm_qt_declare_logging_category(LOGIN_GREETER_SRCS
+    HEADER debug.h
+    IDENTIFIER LOGOUT_GREETER
+    CATEGORY_NAME kde.login_greeter
+    DEFAULT_SEVERITY Debug
+    DESCRIPTION "login greeter debug"
+    EXPORT PLASMAWORKSPACE
+)
 
 add_executable(soniclogin-greeter ${LOGIN_GREETER_SRCS})
 
@@ -46,9 +47,9 @@ qt_add_resources(soniclogin-greeter greeter_controls_config
 # Enable automatic MOC processing for Qt signals/slots
 set_target_properties(soniclogin-greeter PROPERTIES AUTOMOC ON)
 
-
 set_source_files_properties(qml/GreeterState.qml
-    PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE
+)
 
 ecm_add_qml_module(soniclogin-greeter URI "org.kde.sonic.login" GENERATE_PLUGIN_SOURCE)
 ecm_target_qml_sources(soniclogin-greeter
@@ -71,6 +72,7 @@ target_link_libraries(soniclogin-greeter PRIVATE
     Qt::DBus
     KF6::I18n
     KF6::IconThemes
+    KF6::ColorScheme
     Plasma::PlasmaQuick
     KF6::Package
     KF6::WindowSystem
@@ -82,7 +84,6 @@ target_link_libraries(soniclogin-greeter PRIVATE
     PW::KWorkspace
     KF6::ScreenDpms
 )
-
 
 ecm_finalize_qml_module(soniclogin-greeter)
 

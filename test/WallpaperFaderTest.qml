@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 import QtQuick
+import org.kde.kirigami as Kirigami
 import "../src/frontend/wallpaper" as Wallpaper
 
 Rectangle {
@@ -11,8 +12,11 @@ Rectangle {
     property url testImage
     property bool sourceLayered: true
     property bool blurred: false
+    property real blurAmount: 1
     property alias imageStatus: wallpaper.status
     property alias fader: fader
+    property color themeBackground: "#202428"
+    Kirigami.Theme.backgroundColor: themeBackground
 
     Image {
         id: wallpaper
@@ -25,6 +29,6 @@ Rectangle {
         id: fader
         anchors.fill: parent
         source: wallpaper
-        factor: root.blurred ? 1 : 0
+        factor: root.blurred ? root.blurAmount : 0
     }
 }

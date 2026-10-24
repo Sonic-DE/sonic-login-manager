@@ -25,21 +25,60 @@ add_test(NAME ThemeSync COMMAND ThemeSyncTest)
 
 find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 add_executable(GreeterPaletteTest GreeterPaletteTest.cpp)
+find_package(XCB REQUIRED COMPONENTS XCB SHAPE)
 target_include_directories(GreeterPaletteTest PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(GreeterPaletteTest PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Test KF6::IconThemes KF6::I18nQml KF6::ConfigGui)
+target_link_libraries(GreeterPaletteTest PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Test KF6::IconThemes KF6::I18nQml KF6::ConfigGui Plasma::Plasma XCB::XCB XCB::SHAPE)
 kconfig_target_kcfg_file(GreeterPaletteTest
     FILE ../src/frontend/startkde/lookandfeelsettings.kcfg
     CLASS_NAME LookAndFeelSettings
 )
-target_compile_definitions(GreeterPaletteTest PRIVATE GREETER_PALETTE_QML="${CMAKE_CURRENT_SOURCE_DIR}/GreeterPaletteTest.qml")
+target_compile_definitions(GreeterPaletteTest PRIVATE GREETER_PALETTE_QML="${CMAKE_CURRENT_SOURCE_DIR}/GreeterPaletteTest.qml"
+    GREETER_SVG_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/GreeterPaletteButton.svg"
+    GREETER_BINARY="$<TARGET_FILE:soniclogin-greeter>"
+    GREETER_RENDERED_SCREENSHOT="${CMAKE_CURRENT_BINARY_DIR}/greeter-selected-theme.png"
+    GREETER_KEYBOARD_SCREENSHOT="${CMAKE_CURRENT_BINARY_DIR}/greeter-keyboard")
+add_dependencies(GreeterPaletteTest soniclogin-greeter)
+# The real greeter subprocess needs the same QML providers used when finding
+# its build dependencies, including staged installations outside Qt's prefix.
+set(_greeter_palette_qml_dirs)
+set(_greeter_palette_plugin_dirs)
+set(_greeter_palette_data_dirs)
+set(_greeter_palette_library_dirs)
+foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
+    list(APPEND _greeter_palette_qml_dirs "${_prefix}/${KDE_INSTALL_QMLDIR}")
+    list(APPEND _greeter_palette_plugin_dirs "${_prefix}/${KDE_INSTALL_QTPLUGINDIR}")
+    list(APPEND _greeter_palette_data_dirs "${_prefix}/${KDE_INSTALL_DATADIR}")
+    list(APPEND _greeter_palette_library_dirs "${_prefix}/${KDE_INSTALL_LIBDIR}")
+endforeach()
+list(APPEND _greeter_palette_qml_dirs "${KDE_INSTALL_FULL_QMLDIR}" "$ENV{QML_IMPORT_PATH}")
+list(APPEND _greeter_palette_plugin_dirs "${KDE_INSTALL_FULL_QTPLUGINDIR}" "$ENV{QT_PLUGIN_PATH}")
+list(APPEND _greeter_palette_data_dirs "${KDE_INSTALL_FULL_DATADIR}" "$ENV{XDG_DATA_DIRS}" "/usr/local/share" "/usr/share")
+list(APPEND _greeter_palette_library_dirs "${KDE_INSTALL_FULL_LIBDIR}" "$ENV{LD_LIBRARY_PATH}")
+foreach(_paths IN ITEMS _greeter_palette_qml_dirs _greeter_palette_plugin_dirs _greeter_palette_data_dirs _greeter_palette_library_dirs)
+    list(FILTER ${_paths} EXCLUDE REGEX "^$")
+    list(REMOVE_DUPLICATES ${_paths})
+endforeach()
+list(JOIN _greeter_palette_qml_dirs ":" _greeter_palette_qml_path)
+list(JOIN _greeter_palette_plugin_dirs ":" _greeter_palette_plugin_path)
+list(JOIN _greeter_palette_data_dirs ":" _greeter_palette_data_path)
+list(JOIN _greeter_palette_library_dirs ":" _greeter_palette_library_path)
 qt_add_resources(GreeterPaletteTest greeter_palette_config
     PREFIX "/"
     BASE "${CMAKE_SOURCE_DIR}/src/frontend/greeter"
     FILES "${CMAKE_SOURCE_DIR}/src/frontend/greeter/qtquickcontrols2.conf"
 )
-add_test(NAME GreeterPalette COMMAND GreeterPaletteTest)
+find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+if(XVFB_RUN_EXECUTABLE)
+    add_test(NAME GreeterPalette COMMAND ${XVFB_RUN_EXECUTABLE} -a -s "-screen 0 1280x1024x24" $<TARGET_FILE:GreeterPaletteTest>)
+    set(_greeter_palette_platform xcb)
+    set(_greeter_palette_isolated 1)
+else()
+    add_test(NAME GreeterPalette COMMAND GreeterPaletteTest)
+    set(_greeter_palette_platform offscreen)
+    set(_greeter_palette_isolated 0)
+endif()
 set_tests_properties(GreeterPalette PROPERTIES ENVIRONMENT
-    "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_SCALE_FACTOR=1;DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus;DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-system-bus"
+    "QT_QPA_PLATFORM=${_greeter_palette_platform};QT_QUICK_BACKEND=software;QT_SCALE_FACTOR=1;LC_ALL=C.UTF-8;LANGUAGE=en_US;QML_IMPORT_PATH=${_greeter_palette_qml_path};QT_PLUGIN_PATH=${_greeter_palette_plugin_path};XDG_DATA_DIRS=${_greeter_palette_data_path};LD_LIBRARY_PATH=${_greeter_palette_library_path};SONICLOGIN_GREETER_TEST_ISOLATED=${_greeter_palette_isolated};DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-bus;DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent/soniclogin-test-system-bus"
 )
 
 # Compile the production loader with private settings and no system sources. Never

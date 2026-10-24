@@ -69,7 +69,7 @@ static void loadCursorEnv(QProcessEnvironment &env)
     const KConfig cfg(kcminputrcPath);
     const KConfigGroup inputCfg = cfg.group(QStringLiteral("Mouse"));
 
-    const QString cursorTheme = inputCfg.readEntry(QStringLiteral("cursorTheme"), QStringLiteral("silver_cursors_light"));
+    const QString cursorTheme = inputCfg.readEntry(QStringLiteral("cursorTheme"), QStringLiteral("silver_cursors_dark"));
     const int cursorSize = inputCfg.readEntry(QStringLiteral("cursorSize"), 24);
 
     QStringList cursorPath;

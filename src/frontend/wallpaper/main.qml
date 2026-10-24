@@ -16,7 +16,9 @@ Item {
     id: main
     anchors.fill: parent
 
-    Kirigami.Theme.colorSet: Kirigami.Theme.Complementary
+    // Match the greeter's selected light/dark scheme, not the independent
+    // Complementary colors, which may have the opposite background tone.
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
     property alias wallpaperContainer: wallpaperPlaceholder

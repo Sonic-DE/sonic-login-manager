@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+  <rect id="normal-center" x="4" y="4" width="16" height="16" fill="#f07800"/>
+  <rect id="normal-left" x="0" y="4" width="4" height="16" fill="#f07800"/>
+  <rect id="normal-right" x="20" y="4" width="4" height="16" fill="#f07800"/>
+  <rect id="normal-top" x="4" y="0" width="16" height="4" fill="#f07800"/>
+  <rect id="normal-bottom" x="4" y="20" width="16" height="4" fill="#f07800"/>
+  <rect id="normal-topleft" x="0" y="0" width="4" height="4" fill="#f07800"/>
+  <rect id="normal-topright" x="20" y="0" width="4" height="4" fill="#f07800"/>
+  <rect id="normal-bottomleft" x="0" y="20" width="4" height="4" fill="#f07800"/>
+  <rect id="normal-bottomright" x="20" y="20" width="4" height="4" fill="#f07800"/>
+</svg>

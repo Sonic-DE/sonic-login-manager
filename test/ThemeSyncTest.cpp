@@ -234,12 +234,21 @@ private Q_SLOTS:
         QFETCH(QString, themeRoot);
         const QString home = m_fixture + "/desktop", user = home + "/.local/share", system = m_fixture + "/system";
         const QString config = home + "/.config";
+        const QString defaults = m_fixture + "/config-defaults";
         const bool legacy = themeRoot.endsWith(QLatin1String("/.icons"));
         const QString icons = legacy ? themeRoot : themeRoot + "/icons";
         const QString data = legacy ? user : themeRoot;
-        QVERIFY(put(config + "/kdeglobals", "[Icons]\nTheme=ChosenIcons\n[General]\nColorScheme=ChosenColors\n[KDE]\nLookAndFeelPackage=ChosenGlobal\n"));
+        // Match a real desktop: selected values override kdedefaults, while
+        // some settings (such as the scheme name/font) exist only in defaults.
+        QVERIFY(put(defaults + "/kdeglobals", "[Icons]\nTheme=SystemParent\n[General]\nColorScheme=ChosenColors\nfont=FixtureFont,10,-1,5,50,0,0,0,0,0\n"));
+        QVERIFY(put(defaults + "/plasmarc", "[Theme]\nname=SystemDesktopParent\n"));
+        QVERIFY(
+            put(defaults + "/kcminputrc", "[Mouse]\ncursorTheme=SystemCursorParent\ncursorSize=48\n[Libinput][Touchpad]\nTapToClick=true\nLeftHanded=false\n"));
+        QVERIFY(put(config + "/kdeglobals",
+                    "[Icons]\nTheme=ChosenIcons\n[KDE]\nLookAndFeelPackage=ChosenGlobal\nAutomaticLookAndFeel=true\nDefaultLightLookAndFeel="
+                    "ChosenGlobal\nDefaultDarkLookAndFeel=ChosenGlobal\n"));
         QVERIFY(put(config + "/plasmarc", "[Theme]\nname=ChosenDesktop\n"));
-        QVERIFY(put(config + "/kcminputrc", "[Mouse]\ncursorTheme=ChosenCursor\ncursorSize=24\n"));
+        QVERIFY(put(config + "/kcminputrc", "[Mouse]\ncursorTheme=ChosenCursor\ncursorSize=24\n[Libinput][Touchpad]\nLeftHanded=true\n"));
         QVERIFY(put(icons + "/ChosenIcons/index.theme", "[Icon Theme]\nName=ChosenIcons\nInherits=SystemParent\n"));
         QVERIFY(put(icons + "/ChosenIcons/icon.svg", "selected icon"));
         QVERIFY(put(system + "/icons/SystemParent/index.theme", "[Icon Theme]\nName=SystemParent\nInherits=ChosenIcons\n"));
@@ -273,7 +282,6 @@ private Q_SLOTS:
             const QSet<QString> expected = {QStringLiteral("icons/ChosenIcons"),
                                             QStringLiteral("icons/ChosenCursor"),
                                             QStringLiteral("plasma/desktoptheme/ChosenDesktop"),
-                                            QStringLiteral("plasma/look-and-feel/ChosenGlobal"),
                                             QStringLiteral("color-schemes/ChosenColors.colors")};
             const auto names = themes.keys();
             QCOMPARE(QSet<QString>(names.cbegin(), names.cend()), expected);
@@ -290,7 +298,10 @@ private Q_SLOTS:
         KConfig copied(destination + "/.config/kdeglobals", KConfig::SimpleConfig);
         QCOMPARE(copied.group("Icons").readEntry("Theme", QString()), "ChosenIcons");
         QCOMPARE(copied.group("General").readEntry("ColorScheme", QString()), "ChosenColors");
-        QCOMPARE(copied.group("KDE").readEntry("LookAndFeelPackage", QString()), "ChosenGlobal");
+        QCOMPARE(copied.group("General").readEntry("font", QString()), "FixtureFont,10,-1,5,50,0,0,0,0,0");
+        for (const auto &key : {"LookAndFeelPackage", "AutomaticLookAndFeel", "DefaultLightLookAndFeel", "DefaultDarkLookAndFeel"}) {
+            QVERIFY(!copied.group("KDE").hasKey(key));
+        }
         if (themeRoot != system) {
             QCOMPARE(get(destination + "/.local/share/icons/ChosenIcons/icon.svg"), "selected icon");
         } else {
@@ -304,6 +315,16 @@ private Q_SLOTS:
         KConfig copiedInput(destination + "/.config/kcminputrc", KConfig::SimpleConfig);
         QCOMPARE(copiedInput.group("Mouse").readEntry("cursorTheme", QString()), "ChosenCursor");
         QCOMPARE(copiedInput.group("Mouse").readEntry("cursorSize", 0), 24);
+        QVERIFY(copiedInput.group("Libinput").group("Touchpad").readEntry("TapToClick", false));
+        QVERIFY(copiedInput.group("Libinput").group("Touchpad").readEntry("LeftHanded", false));
+        KConfig copiedPlasma(destination + "/.config/plasmarc", KConfig::SimpleConfig);
+        QCOMPARE(copiedPlasma.group("Theme").readEntry("name", QString()), "ChosenDesktop");
+        QCOMPARE(get(destination + "/.config/kdeglobals").count("\nTheme="), 1);
+        QCOMPARE(get(destination + "/.config/kdeglobals").count("\nColorScheme="), 1);
+        QCOMPARE(get(destination + "/.config/kdeglobals").count("\nfont="), 1);
+        QCOMPARE(get(destination + "/.config/plasmarc").count("\nname="), 1);
+        QCOMPARE(get(destination + "/.config/kcminputrc").count("\ncursorTheme="), 1);
+        QCOMPARE(get(destination + "/.config/kcminputrc").count("\nLeftHanded="), 1);
         const QByteArray oldPath = qgetenv("XCURSOR_PATH");
         const bool hadPath = qEnvironmentVariableIsSet("XCURSOR_PATH");
         const auto restorePath = qScopeGuard([&] {
@@ -323,6 +344,33 @@ private Q_SLOTS:
             QVERIFY(!QFile::exists(destination + "/.local/share/" + it.key()));
         }
         QVERIFY(!QFile::exists(destination + "/.local/share/color-schemes/ChosenColors.colors.soniclogin-synced"));
+    }
+
+    void fallbackSelectionsUseSilverDark()
+    {
+        const QString system = m_fixture + "/system";
+        QVERIFY(put(system + "/icons/silver-dark/index.theme", "[Icon Theme]\nName=Silver Dark\n"));
+        QVERIFY(put(system + "/icons/silver_cursors_dark/index.theme", "[Icon Theme]\nName=Silver Cursor Dark\n"));
+        QVERIFY(put(system + "/plasma/desktoptheme/silver-dark/metadata.json", "{}"));
+        QVERIFY(put(system + "/plasma/desktoptheme/default/metadata.json", "{}"));
+        QVERIFY(put(system + "/color-schemes/SilverDark.colors", "[Colors:Window]\nForegroundNormal=252,252,252\n"));
+        QMap<QString, QString> configs;
+        QMap<QString, QByteArray> themes;
+        QString error;
+        QVERIFY2(ThemeSync::collectSettings(&configs, &themes, &error), qPrintable(error));
+        QVERIFY(themes.isEmpty());
+        const QString home = m_fixture + "/synced-greeter";
+        for (auto it = configs.cbegin(); it != configs.cend(); ++it) {
+            QVERIFY2(ThemeSync::writeConfig(home, it.key(), it.value(), &error), qPrintable(error));
+        }
+        KConfig globals(home + "/.config/kdeglobals", KConfig::SimpleConfig);
+        KConfig plasma(home + "/.config/plasmarc", KConfig::SimpleConfig);
+        KConfig input(home + "/.config/kcminputrc", KConfig::SimpleConfig);
+        QCOMPARE(globals.group("Icons").readEntry("Theme", QString()), "silver-dark");
+        QCOMPARE(globals.group("General").readEntry("ColorScheme", QString()), "SilverDark");
+        QCOMPARE(plasma.group("Theme").readEntry("name", QString()), "silver-dark");
+        QCOMPARE(input.group("Mouse").readEntry("cursorTheme", QString()), "silver_cursors_dark");
+        QVERIFY(!globals.group("KDE").hasKey("LookAndFeelPackage"));
     }
 
     void missingSelectedThemeIsAnError()
