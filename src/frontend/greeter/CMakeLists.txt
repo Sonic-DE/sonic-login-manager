@@ -11,6 +11,7 @@ include_directories(
 
 find_package(X11 REQUIRED COMPONENTS Xcursor Xfixes)
 find_package(Qt6GuiPrivate REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS QuickControls2)
 
 set(LOGIN_GREETER_SRCS
     main.cpp
@@ -69,6 +70,7 @@ kconfig_add_kcfg_files(soniclogin-greeter GENERATE_MOC stateconfig.kcfgc)
 target_link_libraries(soniclogin-greeter PRIVATE
     settings
     Qt::Quick
+    Qt::QuickControls2
     Qt::DBus
     KF6::I18n
     KF6::IconThemes
