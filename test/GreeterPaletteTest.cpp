@@ -456,6 +456,13 @@ BackgroundNormal=80,0,80
     if (!desktopSvg.open(QIODevice::ReadOnly)
         || !write(desktop + QStringLiteral("/metadata.json"), "{\"KPlugin\":{\"Id\":\"PaletteDesktop\",\"Name\":\"Palette desktop\"}}")
         || !write(desktop + QStringLiteral("/widgets/button.svg"), desktopSvg.readAll())
+        // An SVG theme can carry its own palette. It must not override the
+        // selected application scheme's cyan/magenta text in the real greeter.
+        || !write(desktop + QStringLiteral("/colors"),
+                  "[Colors:Window]\nForegroundNormal=255,255,0\nBackgroundNormal=45,48,52\n"
+                  "[Colors:View]\nForegroundNormal=255,255,0\nBackgroundNormal=45,48,52\n"
+                  "[Colors:Button]\nForegroundNormal=255,255,0\nBackgroundNormal=45,48,52\n"
+                  "[Colors:Complementary]\nForegroundNormal=255,255,0\nBackgroundNormal=45,48,52\n")
         || !write(config + QStringLiteral("/plasmarc"), "[Theme]\nname=PaletteDesktop\n")) {
         return 1;
     }

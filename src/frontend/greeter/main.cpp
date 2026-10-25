@@ -10,12 +10,15 @@
 #include <QDBusConnection>
 #include <QDBusInterface>
 #include <QDBusReply>
+#include <QDynamicPropertyChangeEvent>
 #include <QGuiApplication>
 #include <QHash>
 #include <QIcon>
 #include <QObject>
 #include <QProcess>
 #include <QQmlContext>
+#include <QQmlEngine>
+#include <QQuickStyle>
 #include <QScreen>
 #include <QStandardPaths>
 #include <QTimer>
@@ -48,12 +51,24 @@
 #include <X11/extensions/Xfixes.h>
 #include <private/qtx11extras_p.h>
 
+class GreeterKeyboardSettings : public QObject {
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        if (event->type() == QEvent::Show && object->inherits("InputPanelWindow")) {
+            object->setProperty("settingsAvailable", false);
+        }
+        return QObject::eventFilter(object, event);
+    }
+};
+
 class LoginGreeter : public QObject {
     Q_OBJECT
 public:
     explicit LoginGreeter(QObject *parent = nullptr)
         : QObject(parent)
     {
+        qApp->installEventFilter(&m_keyboardSettings);
         connect(qApp, &QGuiApplication::screenAdded, this, [this](QScreen *screen) {
             createWindowForScreen(screen);
         });
@@ -65,6 +80,7 @@ public:
     static bool testModeEnabled();
 
 private:
+    GreeterKeyboardSettings m_keyboardSettings;
     // qmlRegisterSingletonInstance objects must stay on their original engine,
     // including while there are temporarily no screen windows.
     std::shared_ptr<QQmlEngine> m_engine;
@@ -94,6 +110,8 @@ private:
         }
 
         window = new PlasmaQuick::QuickViewSharedEngine();
+        window->engine()->setProperty("_kirigamiTheme", QStringLiteral("org.kde.breeze"));
+        window->engine()->installEventFilter(this);
         if (!m_engine) {
             m_engine = window->engine();
         }
@@ -126,6 +144,18 @@ private:
                 window->setGeometry(s->geometry());
             }
         });
+    }
+
+    bool eventFilter(QObject *object, QEvent *event) override
+    {
+        // The shared look-and-feel plugin sets KirigamiPlasmaStyle during
+        // import. A standalone greeter must keep the selected application
+        // scheme, rather than the SVG theme's optional independent colors.
+        if (event->type() == QEvent::DynamicPropertyChange && static_cast<QDynamicPropertyChangeEvent *>(event)->propertyName() == "_kirigamiTheme"
+            && object->property("_kirigamiTheme").toString() != QLatin1String("org.kde.breeze")) {
+            object->setProperty("_kirigamiTheme", QStringLiteral("org.kde.breeze"));
+        }
+        return QObject::eventFilter(object, event);
     }
 
     static bool s_testMode;
@@ -169,7 +199,14 @@ int main(int argc, char *argv[])
     QIcon::setFallbackThemeName(QStringLiteral("silver-dark"));
     KIconTheme::initTheme();
     QGuiApplication app(argc, argv);
-    const auto appearance = KSharedConfig::openConfig(QStringLiteral("kdeglobals"));
+    if (QQuickStyle::name() != QLatin1String("org.kde.breeze")) {
+        QQuickStyle::setStyle(QStringLiteral("org.kde.breeze"));
+    }
+    auto configPath = QStandardPaths::locate(QStandardPaths::GenericConfigLocation, QStringLiteral("kdeglobals"));
+    if (configPath.isEmpty()) {
+        configPath = QStringLiteral("kdeglobals");
+    }
+    const auto appearance = KSharedConfig::openConfig(configPath);
     const auto scheme = appearance->group("General").readEntry("ColorScheme", QStringLiteral("SilverDark"));
     const auto schemeFile = QStandardPaths::locate(QStandardPaths::GenericDataLocation, QStringLiteral("color-schemes/") + scheme + QStringLiteral(".colors"));
     if (!schemeFile.isEmpty()) {
@@ -178,7 +215,7 @@ int main(int argc, char *argv[])
     } else {
         qWarning() << "Selected color scheme was not found:" << scheme;
     }
-    app.setProperty("KDE_COLOR_SCHEME_PATH", appearance->name());
+    app.setProperty("KDE_COLOR_SCHEME_PATH", configPath);
     QGuiApplication::setPalette(KColorScheme::createApplicationPalette(appearance));
     // Initialize the selected Plasma SVG image set before any greeter controls
     // are created, and keep it alive for the lifetime of those controls.
