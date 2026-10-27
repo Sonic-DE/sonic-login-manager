@@ -99,7 +99,8 @@ if(NOT MANUAL_INITS)
     endif()
 
     # sysvinit detection - check for /etc/inittab and telinit command
-    if(EXISTS "/etc/inittab")
+    # OpenRC systems often run sysvinit as PID 1 only to start OpenRC; their services are OpenRC's.
+    if(EXISTS "/etc/inittab" AND NOT OPENRC_FOUND)
         find_program(SYSVINIT_TELINIT_EXECUTABLE NAMES telinit)
         if(SYSVINIT_TELINIT_EXECUTABLE)
             set(SYSVINIT_FOUND TRUE)

@@ -1,23 +1,39 @@
 #!/bin/sh
 # sysvinit script for soniclogin
-# Provides: soniclogin
-# Required-Start: $local_fs $network
-# Required-Stop: $local_fs $network
-# XTODO: add proper dependency for getty
-# Keybits: NO
+### BEGIN INIT INFO
+# Provides:          soniclogin
+# Required-Start:    $local_fs $remote_fs $syslog dbus
+# Required-Stop:     $local_fs $remote_fs $syslog dbus
+# Should-Start:      elogind
+# Should-Stop:       elogind
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Sonic Login Manager
+### END INIT INFO
 
-. /etc/rc.subr
+# --background gives the daemon /dev/null as stdout, so it writes /var/log/sonic/soniclogin.log itself.
+DAEMON=@CMAKE_INSTALL_FULL_BINDIR@/soniclogin
+# start-stop-daemon's own pid file; the daemon's daemon.pid is separate and stays the daemon's.
+PIDFILE=/run/soniclogin-sysvinit.pid
 
-name="soniclogin"
-rcvar=soniclogin_enable
-command="@CMAKE_INSTALL_FULL_BINDIR@/soniclogin"
-pidfile="/run/soniclogin/soniclogin.pid"
-sig_stop=TERM
-sig_reload=USR1
-
-load_rc_config $name
-
-# Set environment variables for the daemon
-export SONICLOGIN_GREETER_EXEC=@CMAKE_INSTALL_FULL_BINDIR@/start-soniclogin-x11
-
-run_rc_command "$1"
+case "$1" in
+start)
+    start-stop-daemon --start --quiet --background --make-pidfile --pidfile "$PIDFILE" --exec "$DAEMON"
+    ;;
+stop)
+    # The daemon ends its sessions on SIGTERM before it exits.
+    start-stop-daemon --stop --quiet --retry TERM/30 --pidfile "$PIDFILE" --exec "$DAEMON"
+    rm -f "$PIDFILE"
+    ;;
+restart|force-reload)
+    "$0" stop
+    "$0" start
+    ;;
+status)
+    start-stop-daemon --status --pidfile "$PIDFILE" --exec "$DAEMON"
+    ;;
+*)
+    echo "Usage: $0 {start|stop|restart|force-reload|status}" >&2
+    exit 3
+    ;;
+esac

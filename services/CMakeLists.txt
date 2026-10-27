@@ -220,7 +220,11 @@ elseif(S6_FOUND)
 endif()
 
 # sysvinit script - install if detected
-configure_file(sysvinit/soniclogin.in sysvinit/soniclogin)
+# OpenRC and sysvinit both install ${CMAKE_INSTALL_SYSCONFDIR}/init.d/soniclogin.
+if(NOT SPLIT_BUILD AND OPENRC_FOUND AND SYSVINIT_FOUND)
+    message(FATAL_ERROR "OPENRC_FOUND and SYSVINIT_FOUND both install init.d/soniclogin; choose one, or use SPLIT_BUILD for separate packages")
+endif()
+configure_file(sysvinit/soniclogin.in sysvinit/soniclogin @ONLY)
 if(SPLIT_BUILD)
     install(
         PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/sysvinit/soniclogin"
