@@ -16,6 +16,7 @@
 
 #include "DaemonApp.h"
 
+#include "Constants.h"
 #include "DisplayManager.h"
 #include "KcmIpcServer.h"
 #include "LogindDBusTypes.h"
@@ -24,7 +25,7 @@
 #include "SelfProvisioner.h"
 #include "SignalHandler.h"
 
-#include "MessageHandler.h"
+#include <Sonic/Logging/Logging>
 
 #include <QDBusConnectionInterface>
 #include <QDebug>
@@ -41,21 +42,20 @@
 #include <cstdlib>
 #include <iostream>
 
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.daemon")
+
 namespace SONICLOGIN
 {
 DaemonApp *DaemonApp::self = nullptr;
 
-void DaemonMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN DAEMON"), msg);
-}
 DaemonApp::DaemonApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
 {
     // point instance to this
     self = this;
 
-    qInstallMessageHandler(SONICLOGIN::DaemonMessageHandler);
+    // SelfProvisioner installed it already; a second install changes nothing.
+    Sonic::Logging::install({.rotateOnStartup = true});
 
     // log message
     qDebug() << "Initializing...";
@@ -270,9 +270,15 @@ int main(int argc, char **argv)
     if (arguments.contains(QStringLiteral("--help")) || arguments.contains(QStringLiteral("-h"))) {
         std::cout << "Usage: soniclogin [options]\n"
                   << "Options: \n"
-                  << "  --test-mode         Start daemon in test mode" << std::endl;
+                  << "  --test-mode              Start daemon in test mode\n"
+                  << "  --prepare-log-directory  Create or repair the root log directory, then exit" << std::endl;
 
         return EXIT_FAILURE;
+    }
+
+    // Run by service files before a service manager opens a log inside the root log directory.
+    if (arguments.contains(QStringLiteral("--prepare-log-directory"))) {
+        return Sonic::Logging::prepareRootLogDirectory() ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
     // Self-provision: create user, directories, setup logging, clean up stale sockets

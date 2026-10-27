@@ -35,6 +35,8 @@ target_link_libraries(start-soniclogin-x11 PRIVATE
     X11::X11          # NEW — for XGetWindowProperty/XChangeProperty/XA_RESOURCE_MANAGER
     X11::Xcursor
     Qt6::GuiPrivate
+    Sonic::InitInfo
+    Sonic::Logging
 )
 
 

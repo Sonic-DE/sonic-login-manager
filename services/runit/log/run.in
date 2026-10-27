@@ -1,6 +1,13 @@
 #!/bin/sh
 exec 2>&1; set -e
 
-[ -d /var/log/sonic-login-manager ] || mkdir -p -m 0755 /var/log/sonic-login-manager
+# Create or repair /var/log/sonic with the daemon's own trust rules first; the
+# subdirectory is then safe to create inside the trusted, root-only parent.
+@CMAKE_INSTALL_FULL_BINDIR@/soniclogin --prepare-log-directory
+[ -d /var/log/sonic/soniclogin ] || mkdir -m 0755 /var/log/sonic/soniclogin
 
-exec svlogd -tt /var/log/sonic-login-manager
+# The old svlogd directory isn't written any more; rm doesn't follow a symlink.
+rm -rf /var/log/sonic-login-manager
+
+# No -tt: every line the daemon writes already carries its timestamp.
+exec svlogd /var/log/sonic/soniclogin

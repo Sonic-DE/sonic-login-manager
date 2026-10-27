@@ -8,13 +8,16 @@
 
 #include "HelperApp.h"
 #include "Configuration.h"
-#include "SafeDataStream.h"
+#include "Messages.h"
 #include "UserSession.h"
 #include "backend/PamBackend.h"
 
-#include "MessageHandler.h"
+#include <Sonic/Ipc/Connection>
+
 #include "SignalHandler.h"
 #include "VirtualTerminal.h"
+
+#include <Sonic/Logging/Logging>
 
 #include <QtCore/QDebug>
 #include <QtCore/QFile>
@@ -34,13 +37,10 @@
 #endif
 #include <utmpx.h>
 
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.helper")
+
 namespace SONICLOGIN
 {
-
-void HelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    messageHandler(type, QStringLiteral("SONICLOGIN HELPER"), msg);
-}
 
 HelperApp::HelperApp(int &argc, char **argv)
     : QCoreApplication(argc, argv)
@@ -48,7 +48,8 @@ HelperApp::HelperApp(int &argc, char **argv)
     , m_session(new UserSession(this))
     , m_socket(new QLocalSocket(this))
 {
-    qInstallMessageHandler(HelperMessageHandler);
+    Sonic::Logging::install({.rotateOnStartup = true});
+    qInfo() << "HelperApp: logging to" << Sonic::Logging::logFilePath() << "as uid" << geteuid();
     SignalHandler *s = new SignalHandler(this);
 
     QObject::connect(s, &SignalHandler::sigtermReceived, this, [this] {
@@ -155,14 +156,42 @@ void HelperApp::setUp()
     m_socket->connectToServer(server, QIODevice::ReadWrite | QIODevice::Unbuffered);
 }
 
+template<typename... Fields>
+void HelperApp::sendMessage(Msg message, const Fields &...fields)
+{
+    // The payload keeps the old stream bytes; the frame type is the message.
+    QByteArray payload;
+    QDataStream output(&payload, QIODevice::WriteOnly);
+    output << message;
+    ((output << fields), ...);
+    if (!m_connection || !m_connection->sendBlocking(quint32(message), payload, -1)) {
+        qCritical() << "Couldn't send message" << message << "to the daemon";
+    }
+}
+
+QByteArray HelperApp::receivePayload()
+{
+    if (!m_pendingPayloads.isEmpty()) {
+        return m_pendingPayloads.takeFirst();
+    }
+    if (!m_connection) {
+        return {};
+    }
+    const std::optional<Sonic::Ipc::Frame> frame = m_connection->waitForFrame(-1);
+    if (!frame) {
+        qCritical() << "No reply from the daemon";
+        return {};
+    }
+    return frame->payload;
+}
+
 void HelperApp::doAuth()
 {
-    SafeDataStream str(m_socket);
-    str << Msg::HELLO << m_id;
-    str.send();
-    if (str.status() != QDataStream::Ok) {
-        qCritical() << "Couldn't write initial message:" << str.status();
-    }
+    m_connection = new Sonic::Ipc::Connection(m_socket, helperProtocolVersion, Sonic::Ipc::defaultMaxPayload, this);
+    connect(m_connection, &Sonic::Ipc::Connection::frameReceived, this, [this](quint32, const QByteArray &payload) {
+        m_pendingPayloads.append(payload);
+    });
+    sendMessage(Msg::HELLO, m_id);
 
     if (!m_backend->start(m_user)) {
         qCritical() << "doAuth: PAM backend start failed, exiting with HELPER_AUTH_ERROR";
@@ -217,28 +246,20 @@ void HelperApp::sessionFinished(int status)
 
 void HelperApp::info(const QString &message, Auth::Info type)
 {
-    SafeDataStream str(m_socket);
-    str << Msg::INFO << message << type;
-    str.send();
-    m_socket->waitForBytesWritten();
+    sendMessage(Msg::INFO, message, type);
 }
 
 void HelperApp::error(const QString &message, Auth::Error type)
 {
-    SafeDataStream str(m_socket);
-    str << Msg::ERROR << message << type;
-    str.send();
-    m_socket->waitForBytesWritten();
+    sendMessage(Msg::ERROR, message, type);
 }
 
 Request HelperApp::request(const Request &request)
 {
     Msg m = Msg::MSG_UNKNOWN;
     Request response;
-    SafeDataStream str(m_socket);
-    str << Msg::REQUEST << request;
-    str.send();
-    str.receive();
+    sendMessage(Msg::REQUEST, request);
+    QDataStream str(receivePayload());
     str >> m >> response;
     if (m != REQUEST) {
         response = Request();
@@ -251,13 +272,11 @@ QProcessEnvironment HelperApp::authenticated(const QString &user)
 {
     Msg m = Msg::MSG_UNKNOWN;
     QProcessEnvironment env;
-    SafeDataStream str(m_socket);
-    str << Msg::AUTHENTICATED << user;
-    str.send();
+    sendMessage(Msg::AUTHENTICATED, user);
     if (user.isEmpty()) {
         return env;
     }
-    str.receive();
+    QDataStream str(receivePayload());
     str >> m >> env;
     if (m != AUTHENTICATED) {
         env = QProcessEnvironment();
@@ -269,10 +288,8 @@ QProcessEnvironment HelperApp::authenticated(const QString &user)
 void HelperApp::sessionOpened(bool success)
 {
     Msg m = Msg::MSG_UNKNOWN;
-    SafeDataStream str(m_socket);
-    str << Msg::SESSION_STATUS << success;
-    str.send();
-    str.receive();
+    sendMessage(Msg::SESSION_STATUS, success);
+    QDataStream str(receivePayload());
     str >> m;
     if (m != SESSION_STATUS) {
         qCritical() << "Received a wrong opcode instead of SESSION_STATUS:" << m;
@@ -293,10 +310,8 @@ void HelperApp::sessionOpened(bool success)
 void HelperApp::displayServerStarted(const QString &displayName)
 {
     Msg m = Msg::MSG_UNKNOWN;
-    SafeDataStream str(m_socket);
-    str << Msg::DISPLAY_SERVER_STARTED << displayName;
-    str.send();
-    str.receive();
+    sendMessage(Msg::DISPLAY_SERVER_STARTED, displayName);
+    QDataStream str(receivePayload());
     str >> m;
     if (m != DISPLAY_SERVER_STARTED) {
         qCritical() << "Received a wrong opcode instead of DISPLAY_SERVER_STARTED:" << m;

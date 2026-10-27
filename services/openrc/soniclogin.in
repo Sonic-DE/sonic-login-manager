@@ -9,7 +9,8 @@ command="@CMAKE_INSTALL_FULL_BINDIR@/soniclogin"
 command_args="--foreground"
 pidfile="/run/soniclogin.pid"
 
-output_log="/var/log/sonic-login-manager.log"
+# The daemon recognises supervise-daemon's capture and writes its log lines to stdout.
+output_log="/var/log/sonic/soniclogin.log"
 error_log="/var/log/sonic-login-manager.err"
 
 depend() {
@@ -25,7 +26,9 @@ depend() {
 }
 
 start_pre() {
-    # The daemon downgrades to soniclogin before writing, so the log files
-    # must be owned by soniclogin and be non-executable.
-    checkpath -f -m 0644 -o soniclogin:soniclogin "${output_log}" "${error_log}"
+    # Create or repair /var/log/sonic with the daemon's own trust rules before
+    # supervise-daemon opens output_log inside it; an insecure old directory is
+    # moved aside, never taken over.
+    "${command}" --prepare-log-directory || return 1
+    checkpath -f -m 0644 -o root:root "${output_log}" "${error_log}"
 }

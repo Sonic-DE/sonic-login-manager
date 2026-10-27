@@ -10,13 +10,14 @@
 #include "AuthMessages.h"
 #include "Constants.h"
 #include "LogindDBusTypes.h"
-#include "SafeDataStream.h"
+#include "Messages.h"
+
+#include <Sonic/Ipc/Connection>
+#include <Sonic/Ipc/Server>
 
 #include <QtCore/QDebug>
 #include <QtCore/QProcess>
 #include <QtCore/QUuid>
-#include <QtNetwork/QLocalServer>
-#include <QtNetwork/QLocalSocket>
 
 #include <QtQml/QtQml>
 
@@ -32,11 +33,27 @@
 
 namespace SONICLOGIN
 {
-class Auth::SocketServer : public QLocalServer
+namespace {
+// One message per frame: the frame type is the message, the payload the message's stream bytes.
+template<typename... Fields>
+void sendMessage(Sonic::Ipc::Connection *connection, Msg message, const Fields &...fields)
 {
+    if (!connection) {
+        qWarning() << "Auth: no helper connection for message" << message;
+        return;
+    }
+    QByteArray payload;
+    QDataStream output(&payload, QIODevice::WriteOnly);
+    output << message;
+    ((output << fields), ...);
+    connection->send(quint32(message), payload);
+}
+}
+
+class Auth::SocketServer : public Sonic::Ipc::Server {
     Q_OBJECT
 public slots:
-    void handleNewConnection();
+    void handleNewConnection(Sonic::Ipc::Connection *connection);
 
 public:
     static SocketServer *instance();
@@ -53,9 +70,9 @@ class Auth::Private : public QObject
 public:
     Private(Auth *parent);
     ~Private();
-    void setSocket(QLocalSocket *socket);
+    void setConnection(Sonic::Ipc::Connection *connection);
 public slots:
-    void dataPending();
+    void framePending(quint32 type, const QByteArray &payload);
     void childExited(int exitCode, QProcess::ExitStatus exitStatus);
     void childError(QProcess::ProcessError error);
     void requestFinished();
@@ -63,7 +80,7 @@ public slots:
 public:
     AuthRequest *request{nullptr};
     QProcess *child{nullptr};
-    QLocalSocket *socket{nullptr};
+    Sonic::Ipc::Connection *connection{nullptr};
     QString displayServerCmd;
     QString sessionPath{};
     QString user{};
@@ -77,27 +94,27 @@ public:
 qint64 Auth::Private::lastId = 1;
 
 Auth::SocketServer::SocketServer()
-    : QLocalServer()
+    : Sonic::Ipc::Server()
 {
-    connect(this, &QLocalServer::newConnection, this, &Auth::SocketServer::handleNewConnection);
+    connect(this, &Sonic::Ipc::Server::newConnection, this, &Auth::SocketServer::handleNewConnection);
 }
 
-void Auth::SocketServer::handleNewConnection()
+void Auth::SocketServer::handleNewConnection(Sonic::Ipc::Connection *connection)
 {
-    while (hasPendingConnections()) {
+    // The helper's first frame names the Auth it belongs to; later frames go to that Auth.
+    connect(connection, &Sonic::Ipc::Connection::frameReceived, this, [this, connection](quint32 type, const QByteArray &payload) {
+        disconnect(connection, &Sonic::Ipc::Connection::frameReceived, this, nullptr);
         Msg m = Msg::MSG_UNKNOWN;
-        qint64 id;
-        QLocalSocket *socket = nextPendingConnection();
-        SafeDataStream str(socket);
-        str.receive();
+        qint64 id = 0;
+        QDataStream str(payload);
         str >> m >> id;
-        if (m == Msg::HELLO && id && SocketServer::instance()->helpers.contains(id)) {
-            helpers[id]->setSocket(socket);
-            if (socket->bytesAvailable() > 0) {
-                helpers[id]->dataPending();
-            }
+        if (type == quint32(Msg::HELLO) && m == Msg::HELLO && id && helpers.contains(id)) {
+            helpers[id]->setConnection(connection);
+        } else {
+            qWarning() << "Auth: helper connection without a valid HELLO; closing it";
+            connection->socket()->abort();
         }
-    }
+    });
 }
 
 Auth::SocketServer *Auth::SocketServer::instance()
@@ -105,7 +122,9 @@ Auth::SocketServer *Auth::SocketServer::instance()
     static std::unique_ptr<Auth::SocketServer> self;
     if (!self) {
         self.reset(new SocketServer());
-        self->listen(QStringLiteral("soniclogin-auth-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
+        self->listen(QStringLiteral("soniclogin-auth-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)),
+                     Sonic::Ipc::Server::Access::User,
+                     helperProtocolVersion);
     }
     return self.get();
 }
@@ -148,20 +167,28 @@ Auth::Private::~Private()
     SocketServer::instance()->helpers.remove(id);
 }
 
-void Auth::Private::setSocket(QLocalSocket *socket)
+void Auth::Private::setConnection(Sonic::Ipc::Connection *connection)
 {
-    this->socket = socket;
-    connect(socket, &QLocalSocket::readyRead, this, &Auth::Private::dataPending);
+    this->connection = connection;
+    connect(connection, &Sonic::Ipc::Connection::frameReceived, this, &Auth::Private::framePending);
+    connect(connection, &Sonic::Ipc::Connection::disconnected, this, [this, connection] {
+        if (this->connection == connection) {
+            this->connection = nullptr;
+        }
+    });
 }
 
-void Auth::Private::dataPending()
+void Auth::Private::framePending(quint32 type, const QByteArray &payload)
 {
     Auth *auth = qobject_cast<Auth *>(parent());
     Msg m = MSG_UNKNOWN;
-    SafeDataStream str(socket);
-    while (socket->bytesAvailable() > 0) {
-        str.receive();
+    QDataStream str(payload);
+    {
         str >> m;
+        if (quint32(m) != type) {
+            Q_EMIT auth->error(QStringLiteral("Auth: frame type %1 doesn't match its message %2").arg(type).arg(m), ERROR_INTERNAL);
+            return;
+        }
         switch (m) {
         case ERROR: {
             qWarning() << "Auth::dataPending: Got ERROR";
@@ -190,9 +217,7 @@ void Auth::Private::dataPending()
             if (!user.isEmpty()) {
                 auth->setUser(user);
                 Q_EMIT auth->authentication(user, true);
-                str.reset();
-                str << AUTHENTICATED << environment;
-                str.send();
+                sendMessage(connection, AUTHENTICATED, environment);
             } else {
                 Q_EMIT auth->authentication(user, false);
             }
@@ -202,18 +227,14 @@ void Auth::Private::dataPending()
             bool status;
             str >> status;
             Q_EMIT auth->sessionStarted(status);
-            str.reset();
-            str << SESSION_STATUS;
-            str.send();
+            sendMessage(connection, SESSION_STATUS);
             break;
         }
         case DISPLAY_SERVER_STARTED: {
             QString displayName;
             str >> displayName;
             Q_EMIT auth->displayServerReady(displayName);
-            str.reset();
-            str << DISPLAY_SERVER_STARTED;
-            str.send();
+            sendMessage(connection, DISPLAY_SERVER_STARTED);
             break;
         }
         default: {
@@ -251,10 +272,8 @@ void Auth::Private::childError(QProcess::ProcessError error)
 
 void Auth::Private::requestFinished()
 {
-    SafeDataStream str(socket);
     Request r = request->request();
-    str << REQUEST << r;
-    str.send();
+    sendMessage(connection, REQUEST, r);
     request->setRequest();
 }
 

@@ -26,6 +26,9 @@ target_link_libraries(kcm_soniclogin PRIVATE
     Qt6::Network
     Qt6::Concurrent
     ZLIB::ZLIB
+    Sonic::InitInfo
+    Sonic::Ipc
+    Sonic::Logging
 )
 
 ki18n_install(po)

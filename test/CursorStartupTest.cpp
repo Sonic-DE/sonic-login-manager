@@ -23,6 +23,8 @@
 namespace {
 const QString stateDir = QStringLiteral(CURSOR_STARTUP_STATE_DIR);
 const QString binDir = QStringLiteral(CURSOR_STARTUP_BIN_DIR);
+// Sonic Logging's file for the helper; the test runs it with HOME set to stateDir.
+const QString helperLog = stateDir + QStringLiteral("/.local/state/sonic/CursorStartupHelper.log");
 
 bool put(const QString &path, const QByteArray &bytes)
 {
@@ -183,8 +185,7 @@ private Q_SLOTS:
         QVERIFY(process.waitForStarted());
         if (oneshot) {
             QVERIFY(process.waitForFinished(10000));
-            QVERIFY2(process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0,
-                     (process.readAll() + get(stateDir + QStringLiteral("/startup.log"))).constData());
+            QVERIFY2(process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0, (process.readAll() + get(helperLog)).constData());
             QVERIFY(!QFile::exists(stateDir + QStringLiteral("/soniclogin-greeter.env")));
         } else {
             QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(stateDir + QStringLiteral("/soniclogin-greeter.env")), 10000);
@@ -271,7 +272,7 @@ private Q_SLOTS:
         process.start(QStringLiteral(CURSOR_STARTUP_HELPER), {QStringLiteral("--apply-kscreen")});
         QVERIFY(process.waitForStarted());
         if (connected) {
-            QTRY_VERIFY_WITH_TIMEOUT(get(stateDir + QStringLiteral("/startup.log")).contains("Waiting for window manager readiness"), 5000);
+            QTRY_VERIFY_WITH_TIMEOUT(get(helperLog).contains("Waiting for window manager readiness"), 5000);
             QTest::qWait(200);
             QCOMPARE(process.state(), QProcess::Running);
             QCOMPARE(resources(), original);
@@ -280,7 +281,7 @@ private Q_SLOTS:
             }
         }
         QTRY_COMPARE_WITH_TIMEOUT(process.state(), QProcess::NotRunning, appears ? 10000 : 35000);
-        const auto diagnostics = process.readAll() + get(stateDir + QStringLiteral("/startup.log"));
+        const auto diagnostics = process.readAll() + get(helperLog);
         QVERIFY2(process.exitStatus() == QProcess::NormalExit, diagnostics.constData());
         QCOMPARE(process.exitCode(), appears ? 0 : 1);
         if (appears) {

@@ -4,6 +4,10 @@
  */
 
 #include "daemonrequest.h"
+#include "Messages.h"
+
+#include <Sonic/Ipc/Frame>
+#include <Sonic/Ipc/FrameReader>
 
 #include <QDataStream>
 #include <QFutureWatcher>
@@ -14,20 +18,23 @@
 #include <QTimer>
 #include <QtConcurrentRun>
 
+#include <memory>
+
 class DaemonRequestTest : public QObject {
     Q_OBJECT
 private:
+    // Today's reply bytes, framed as the daemon sends them.
     static QByteArray reply(bool success = true, const QString &error = {}, quint32 id = 1)
     {
         QByteArray bytes;
         QDataStream out(&bytes, QIODevice::WriteOnly);
         out.setVersion(QDataStream::Qt_6_0);
         out << quint32(100) << id << quint8(success) << error;
-        return bytes;
+        return Sonic::Ipc::encodeFrame(100, bytes, SONICLOGIN::kcmProtocolVersion);
     }
 
 private Q_SLOTS:
-    void unchangedProtocolAndResponsiveEventLoop_data()
+    void framedProtocolAndResponsiveEventLoop_data()
     {
         QTest::addColumn<QString>("operation");
         QTest::newRow("sync-v4") << QStringLiteral("sync");
@@ -35,7 +42,7 @@ private Q_SLOTS:
         QTest::newRow("save-v3") << QStringLiteral("save");
     }
 
-    void unchangedProtocolAndResponsiveEventLoop()
+    void framedProtocolAndResponsiveEventLoop()
     {
         QFETCH(QString, operation);
         QTemporaryDir temporary;
@@ -53,11 +60,18 @@ private Q_SLOTS:
         connect(&server, &QLocalServer::newConnection, this, [&]() {
             auto *peer = server.nextPendingConnection();
             connect(peer, &QLocalSocket::disconnected, peer, &QObject::deleteLater);
-            auto decode = [&, peer]() {
+            auto reader = std::make_shared<Sonic::Ipc::FrameReader>(SONICLOGIN::kcmProtocolVersion, 512 * 1024 * 1024);
+            auto decode = [&, peer, reader]() {
                 if (received) {
                     return;
                 }
-                QDataStream in(peer);
+                reader->feed(peer->readAll());
+                const std::optional<Sonic::Ipc::Frame> frame = reader->next();
+                if (!frame) {
+                    QCOMPARE(reader->error(), Sonic::Ipc::FrameReader::Error::None);
+                    return;
+                }
+                QDataStream in(frame->payload);
                 in.setVersion(QDataStream::Qt_6_0);
                 in.startTransaction();
                 QString username, password, config;
@@ -100,6 +114,7 @@ private Q_SLOTS:
                     return;
                 }
                 received = true;
+                QCOMPARE(frame->type, type);
                 QCOMPARE(username, QStringLiteral("test-user"));
                 QCOMPARE(password, QStringLiteral("test-password"));
                 QCOMPARE(id, quint32(1));

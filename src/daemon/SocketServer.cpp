@@ -19,15 +19,41 @@
 
 #include "DaemonApp.h"
 #include "Messages.h"
-#include "SocketWriter.h"
 #include "Utils.h"
 
+#include <Sonic/Ipc/Connection>
+#include <Sonic/Ipc/Server>
+
+#include <QDataStream>
 #include <QDebug>
-#include <QLocalServer>
 #include <QLocalSocket>
 
 namespace SONICLOGIN
 {
+namespace {
+// The greeter's connection owns its socket, so the socket the login signal carries leads back to it.
+Sonic::Ipc::Connection *connectionOf(QLocalSocket *socket)
+{
+    return socket ? qobject_cast<Sonic::Ipc::Connection *>(socket->parent()) : nullptr;
+}
+
+// One message per frame: the frame type is the message, the payload the message's stream bytes.
+template<typename... Fields>
+void sendMessage(QLocalSocket *socket, DaemonMessages message, const Fields &...fields)
+{
+    Sonic::Ipc::Connection *connection = connectionOf(socket);
+    if (!connection) {
+        qWarning() << "SocketServer: no greeter connection for message" << quint32(message);
+        return;
+    }
+    QByteArray payload;
+    QDataStream output(&payload, QIODevice::WriteOnly);
+    output << quint32(message);
+    ((output << fields), ...);
+    connection->send(quint32(message), payload);
+}
+}
+
 SocketServer::SocketServer(QObject *parent)
     : QObject(parent)
 {
@@ -54,15 +80,15 @@ bool SocketServer::start(const QString &displayName)
     qDebug() << "Socket server starting...";
 
     // create server
-    m_server = new QLocalServer(this);
+    m_server = new Sonic::Ipc::Server(this);
 
-    // set server options
-    m_server->setSocketOptions(QLocalServer::UserAccessOption);
-
-    // start listening
-    if (!m_server->listen(socketName)) {
+    // start listening, owner-only until Display hands the socket to the greeter user
+    if (!m_server->listen(socketName, Sonic::Ipc::Server::Access::User, greeterProtocolVersion)) {
         // log message
-        qCritical() << "Failed to start socket server.";
+        qCritical() << "Failed to start socket server:" << m_server->errorString();
+
+        delete m_server;
+        m_server = nullptr;
 
         // return fail
         return false;
@@ -72,7 +98,7 @@ bool SocketServer::start(const QString &displayName)
     qDebug() << "Socket server started.";
 
     // connect signals
-    connect(m_server, &QLocalServer::newConnection, this, &SocketServer::newConnection);
+    connect(m_server, &Sonic::Ipc::Server::newConnection, this, &SocketServer::newConnection);
 
     // return success
     return true;
@@ -96,59 +122,50 @@ void SocketServer::stop()
     qDebug() << "Socket server stopped.";
 }
 
-void SocketServer::newConnection()
+void SocketServer::newConnection(Sonic::Ipc::Connection *connection)
 {
-    // get pending connection
-    QLocalSocket *socket = m_server->nextPendingConnection();
+    QLocalSocket *socket = connection->socket();
 
     // connect signals
-    connect(socket, &QLocalSocket::readyRead, this, &SocketServer::readyRead);
+    connect(connection, &Sonic::Ipc::Connection::frameReceived, this, [this, socket](quint32 type, const QByteArray &payload) {
+        frameReceived(socket, type, payload);
+    });
     connect(socket, &QLocalSocket::errorOccurred, this, [socket](QLocalSocket::LocalSocketError error) {
         qWarning() << "SocketServer: socket error occurred, serverName=" << socket->serverName() << " error=" << error << "=" << socket->errorString();
     });
-    connect(socket, &QObject::destroyed, this, [](QObject *obj) {
-        qWarning() << "SocketServer: socket object destroyed, ptr=" << obj;
-    });
-    connect(socket, &QLocalSocket::disconnected, this, [socket] {
+    connect(connection, &Sonic::Ipc::Connection::disconnected, this, [socket] {
         qWarning() << "SocketServer: client disconnected, serverName=" << socket->serverName() << "socket ptr=" << (void *)socket << "state=" << socket->state()
                    << "error=" << socket->errorString();
     });
-    connect(socket, &QLocalSocket::disconnected, socket, &QLocalSocket::deleteLater);
 }
 
-void SocketServer::readyRead()
+void SocketServer::frameReceived(QLocalSocket *socket, quint32 type, const QByteArray &payload)
 {
-    QLocalSocket *socket = qobject_cast<QLocalSocket *>(sender());
-
-    // check socket
-    if (!socket) {
-        qWarning() << "SocketServer::readyRead: socket is null!";
-        return;
-    }
-
     // input stream
-    QDataStream input(socket);
+    QDataStream input(payload);
 
-    // Qt's QLocalSocket::readyRead is not designed to be called at every socket.write(),
-    // so we need to use a loop to read all the signals.
-    while (socket->bytesAvailable()) {
+    {
         // read message
         quint32 message;
         input >> message;
+        if (message != type) {
+            qWarning() << "SocketServer: frame type" << type << "doesn't match its message" << message;
+            return;
+        }
 
         switch (GreeterMessages(message)) {
         case GreeterMessages::Connect: {
             // log message
             // send host name
-            SocketWriter(socket) << quint32(DaemonMessages::HostName) << daemonApp->hostName();
+            sendMessage(socket, DaemonMessages::HostName, daemonApp->hostName());
 
             // send session capabilities
             if (daemonApp->powerManager()) {
                 Capabilities caps = daemonApp->powerManager()->capabilities();
-                SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(caps);
+                sendMessage(socket, DaemonMessages::SessionCapabilities, quint32(caps));
             } else {
                 qWarning() << "SocketServer::Connect: no PowerManager available, sending zero capabilities";
-                SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(Capability::None);
+                sendMessage(socket, DaemonMessages::SessionCapabilities, quint32(Capability::None));
             }
 
             // emit signal
@@ -180,7 +197,7 @@ void SocketServer::readyRead()
         } break;
         default: {
             // log message
-            qWarning() << "SocketServer::readyRead: GreeterMessages: Unknown message" << message;
+            qWarning() << "SocketServer::frameReceived: GreeterMessages: Unknown message" << message;
         }
         }
     }
@@ -188,23 +205,23 @@ void SocketServer::readyRead()
 
 void SocketServer::loginFailed(QLocalSocket *socket)
 {
-    SocketWriter(socket) << quint32(DaemonMessages::LoginFailed);
+    sendMessage(socket, DaemonMessages::LoginFailed);
 }
 
 void SocketServer::loginSucceeded(QLocalSocket *socket)
 {
-    SocketWriter(socket) << quint32(DaemonMessages::LoginSucceeded);
+    sendMessage(socket, DaemonMessages::LoginSucceeded);
 }
 
 void SocketServer::informationMessage(QLocalSocket *socket, const QString &message)
 {
-    SocketWriter(socket) << quint32(DaemonMessages::InformationMessage) << message;
+    sendMessage(socket, DaemonMessages::InformationMessage, message);
 }
 
 void SocketServer::sendSessionCapabilities(QLocalSocket *socket, Capabilities caps)
 {
     if (socket) {
-        SocketWriter(socket) << quint32(DaemonMessages::SessionCapabilities) << quint32(caps);
+        sendMessage(socket, DaemonMessages::SessionCapabilities, quint32(caps));
     }
 }
 

@@ -1,3 +1,4 @@
-#!/bin/executableline -b
-fdmove -c 1 2
-sleep infinity
+#!/bin/execlineb -P
+foreground { @CMAKE_INSTALL_FULL_BINDIR@/soniclogin --prepare-log-directory }
+foreground { mkdir -p -m 0755 /var/log/sonic/soniclogin }
+s6-log n10 s1000000 /var/log/sonic/soniclogin

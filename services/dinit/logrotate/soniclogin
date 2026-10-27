@@ -1,6 +1,8 @@
 # /etc/logrotate.d/soniclogin
 
-/var/log/sonic-login-manager.log {
+# dinit opened logfile as the daemon's output, so it is copied and truncated:
+# a renamed file would keep receiving the daemon's output.
+/var/log/sonic/soniclogin.log /var/log/sonic-login-manager.err {
     daily
     rotate 7
     compress
@@ -8,4 +10,11 @@
     missingok
     notifempty
     copytruncate
+}
+
+# The helper isn't service-managed; it rotates to .last on every run.
+/var/log/sonic/soniclogin-helper.log.last {
+    rotate 1
+    compress
+    missingok
 }

@@ -16,7 +16,6 @@
 
 #include "Constants.h"
 #include "InitSystem.h"
-#include "MessageHandler.h"
 #include <QCoreApplication>
 #include <QDBusArgument>
 #include <QDebug>
@@ -77,10 +76,14 @@
 #include "klookandfeelmanager.h"
 #include "lookandfeelsettings.h"
 
+#include <Sonic/Logging/Logging>
+
 #include <X11/Xatom.h>
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xfixes.h>
 #include <private/qtx11extras_p.h>
+
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.startx11")
 
 using namespace Qt::StringLiterals;
 
@@ -562,11 +565,6 @@ void resetSystemdFailedUnits()
     QDBusConnection::sessionBus().call(message);
 }
 
-void StartPlasmaMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN STARTPLASMA"), msg);
-}
-
 static QSet<QString> s_lastAppliedLiveHashes;
 
 static void doApply(KScreen::ConfigPtr config, const QString &kscreenDir)
@@ -863,8 +861,9 @@ int main(int argc, char **argv)
     applyCursorEnv();
     QGuiApplication app(argc, argv);
 
-    // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(StartPlasmaMessageHandler);
+    // Logs to ~/.local/state/sonic/start-soniclogin-x11.log, rotated on every run.
+    Sonic::Logging::install({.rotateOnStartup = true});
+    qInfo() << "StartSonicLoginX11: logging to" << Sonic::Logging::logFilePath() << "as uid" << geteuid();
 
     qDebug() << "StartSonicLoginX11: Starting...";
 

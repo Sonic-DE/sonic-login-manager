@@ -16,10 +16,13 @@
  ***************************************************************************/
 
 #include "GreeterProxy.h"
-#include "SocketWriter.h"
+#include "Session.h"
 
+#include <Sonic/Ipc/Client>
+#include <Sonic/Ipc/Connection>
+
+#include <QDataStream>
 #include <QDebug>
-#include <QLocalSocket>
 
 namespace SONICLOGIN
 {
@@ -27,33 +30,50 @@ class GreeterProxyPrivate
 {
 public:
     SessionModel *sessionModel{nullptr};
-    QLocalSocket *socket{nullptr};
+    Sonic::Ipc::Client *client{nullptr};
+    Sonic::Ipc::Connection *connection{nullptr};
+
+    // One message per frame: the frame type is the message, the payload the message's stream bytes.
+    template<typename... Fields>
+    bool send(GreeterMessages message, const Fields &...fields) const
+    {
+        if (!connection) {
+            qWarning() << "GreeterProxy: not connected to the daemon; dropping message" << quint32(message);
+            return false;
+        }
+        QByteArray payload;
+        QDataStream output(&payload, QIODevice::WriteOnly);
+        output << quint32(message);
+        ((output << fields), ...);
+        return connection->send(quint32(message), payload);
+    }
 };
 
 GreeterProxy::GreeterProxy(QObject *parent)
     : QObject(parent)
     , d(new GreeterProxyPrivate())
 {
-    d->socket = new QLocalSocket(this);
-    // connect signals
-    connect(d->socket, &QLocalSocket::connected, this, [this]() {
-        SocketWriter(d->socket) << quint32(GreeterMessages::Connect);
+    d->client = new Sonic::Ipc::Client(greeterProtocolVersion, Sonic::Ipc::defaultMaxPayload, this);
+    connect(d->client, &Sonic::Ipc::Client::connected, this, [this](Sonic::Ipc::Connection *connection) {
+        d->connection = connection;
+        connect(connection, &Sonic::Ipc::Connection::frameReceived, this, &GreeterProxy::frameReceived);
+        connect(connection, &Sonic::Ipc::Connection::disconnected, this, [this, connection]() {
+            if (d->connection == connection) {
+                d->connection = nullptr;
+            }
+            Q_EMIT socketDisconnected();
+        });
+        d->send(GreeterMessages::Connect);
     });
-    connect(d->socket, &QLocalSocket::disconnected, this, [this]() {
-        Q_EMIT socketDisconnected();
-    });
-    connect(d->socket, &QLocalSocket::readyRead, this, &GreeterProxy::readyRead);
-    connect(d->socket, &QLocalSocket::errorOccurred, this, [this]() {
-        qWarning() << "GreeterProxy::errorOccurred: Socket error:" << d->socket->errorString() << "state=" << d->socket->state()
-                   << "serverName=" << d->socket->serverName() << "fullServerName=" << d->socket->fullServerName()
-                   << "bytesAvailable=" << d->socket->bytesAvailable();
+    connect(d->client, &Sonic::Ipc::Client::connectionFailed, this, [](const QString &reason) {
+        qWarning() << "GreeterProxy: cannot connect to the daemon:" << reason;
     });
     const QString socket = qEnvironmentVariable("SONICLOGIN_SOCKET");
     if (socket.isEmpty()) {
         qCritical() << "GreeterProxy: SONICLOGIN_SOCKET environment variable is empty!";
     }
     // connect to server
-    d->socket->connectToServer(socket);
+    d->client->connectToServer(socket);
 }
 
 GreeterProxy::~GreeterProxy()
@@ -67,59 +87,52 @@ void GreeterProxy::setSessionModel(SessionModel *model)
 
 void GreeterProxy::login(const QString &user, const QString &password, const SONICLOGIN::SessionType sessionType, const QString &sessionFileName) const
 {
-    SocketWriter(d->socket) << quint32(GreeterMessages::Login) << user << password << static_cast<uint32_t>(sessionType) << sessionFileName;
-    qDebug() << "GreeterProxy::login: Message written, waiting for flush...";
-    const bool flushOk = d->socket->flush();
-    if (!flushOk) {
-        qWarning() << "GreeterProxy::login: flush failed";
+    if (!d->send(GreeterMessages::Login, user, password, static_cast<quint32>(sessionType), sessionFileName)) {
+        qWarning() << "GreeterProxy::login: sending failed";
     }
 }
 
 void GreeterProxy::shutdown()
 {
-    SocketWriter(d->socket) << quint32(GreeterMessages::PowerOff);
-    const bool flushOk = d->socket->flush();
-    if (!flushOk) {
-        qWarning() << "GreeterProxy::shutdown: flush failed";
+    if (!d->send(GreeterMessages::PowerOff)) {
+        qWarning() << "GreeterProxy::shutdown: sending failed";
     }
 }
 
 void GreeterProxy::reboot()
 {
-    SocketWriter(d->socket) << quint32(GreeterMessages::Reboot);
-    const bool flushOk = d->socket->flush();
-    if (!flushOk) {
-        qWarning() << "GreeterProxy::reboot: flush failed";
+    if (!d->send(GreeterMessages::Reboot)) {
+        qWarning() << "GreeterProxy::reboot: sending failed";
     }
 }
 
 void GreeterProxy::suspend()
 {
-    SocketWriter(d->socket) << quint32(GreeterMessages::Suspend);
-    const bool flushOk = d->socket->flush();
-    if (!flushOk) {
-        qWarning() << "GreeterProxy::suspend: flush failed";
+    if (!d->send(GreeterMessages::Suspend)) {
+        qWarning() << "GreeterProxy::suspend: sending failed";
     }
 }
 
 void GreeterProxy::hibernate()
 {
-    SocketWriter(d->socket) << quint32(GreeterMessages::Hibernate);
-    const bool flushOk = d->socket->flush();
-    if (!flushOk) {
-        qWarning() << "GreeterProxy::hibernate: flush failed";
+    if (!d->send(GreeterMessages::Hibernate)) {
+        qWarning() << "GreeterProxy::hibernate: sending failed";
     }
 }
 
-void GreeterProxy::readyRead()
+void GreeterProxy::frameReceived(quint32 type, const QByteArray &payload)
 {
     // input stream
-    QDataStream input(d->socket);
+    QDataStream input(payload);
 
-    while (input.device()->bytesAvailable()) {
+    {
         // read message
         quint32 message;
         input >> message;
+        if (message != type) {
+            qWarning() << "GreeterProxy: frame type" << type << "doesn't match its message" << message;
+            return;
+        }
 
         switch (DaemonMessages(message)) {
         case DaemonMessages::HostName: {

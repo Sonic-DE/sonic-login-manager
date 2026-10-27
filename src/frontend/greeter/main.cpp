@@ -34,8 +34,9 @@
 #include "backend/GreeterProxy.h"
 #include "mockbackend/MockGreeterProxy.h"
 
-#include "MessageHandler.h"
 #include "SignalHandler.h"
+
+#include <Sonic/Logging/Logging>
 
 #include "blurscreenbridge.h"
 #include "greetereventfilter.h"
@@ -50,6 +51,10 @@
 #include <X11/Xcursor/Xcursor.h>
 #include <X11/extensions/Xfixes.h>
 #include <private/qtx11extras_p.h>
+
+#include <unistd.h>
+
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.greeter")
 
 class GreeterKeyboardSettings : public QObject {
 protected:
@@ -173,15 +178,11 @@ bool LoginGreeter::testModeEnabled()
     return s_testMode;
 }
 
-void GreeterMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN GREETER"), msg);
-}
-
 int main(int argc, char *argv[])
 {
-    // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(GreeterMessageHandler);
+    // Logs to ~/.local/state/sonic/soniclogin-greeter.log, rotated on every run.
+    Sonic::Logging::install({.rotateOnStartup = true});
+    qInfo() << "Greeter main: logging to" << Sonic::Logging::logFilePath() << "as uid" << geteuid();
     qDebug() << "Greeter main: Starting...";
 
     KLocalizedString::setApplicationDomain(QByteArrayLiteral("sonic_login"));

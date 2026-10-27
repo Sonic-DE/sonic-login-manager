@@ -4,69 +4,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-#include <QAtomicInt>
-#include <QDateTime>
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include <QLatin1StringView>
-#include <QMutex>
-#include <QMutexLocker>
-#include <QStandardPaths>
-#include <QTextStream>
-#include <QtGlobal>
-#include <QtLogging>
+#include <Sonic/Logging/Logging>
 
-static QtMessageHandler s_previousHandler = nullptr;
-
-static void kcmMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-{
-    const QLatin1StringView cat(context.category ? context.category : "");
-
-    if (type == QtDebugMsg
-        && (cat.startsWith(QLatin1StringView("qt.")) || cat.startsWith(QLatin1StringView("kf.")) || cat.startsWith(QLatin1StringView("libkwin."))
-            || cat.startsWith(QLatin1StringView("kwin_")) || cat == QLatin1StringView("kwin") || cat == QLatin1StringView("heap") || cat.isEmpty())) {
-        return;
-    }
-
-    static QBasicMutex mutex;
-    QMutexLocker locker(&mutex);
-
-    const QString formatted = qFormatLogMessage(type, context, msg);
-    const QString line = QDateTime::currentDateTime().toString(Qt::ISODateWithMs) + QLatin1Char(' ') + formatted + QLatin1Char('\n');
-
-    static const QString logPath = QStandardPaths::writableLocation(QStandardPaths::GenericStateLocation) + QStringLiteral("/sonic/desktop-interface.log");
-    static const QString logDirectory = QFileInfo(logPath).absolutePath();
-    static const bool logDirectoryReady = QDir().mkpath(logDirectory);
-    if (!logDirectoryReady) {
-        if (s_previousHandler) {
-            s_previousHandler(type, context, msg);
-        }
-        return;
-    }
-
-    // Directory traversal requires the execute bit; logs themselves do not.
-    QFile::setPermissions(logDirectory, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
-
-    QFile file(logPath);
-    if (file.open(QIODevice::Append | QIODevice::WriteOnly | QIODevice::Text)) {
-        // Owner read/write only (mode 0600): no group or other access, no execute bit.
-        file.setPermissions(QFileDevice::Permission(0x600));
-        file.write(line.toLocal8Bit());
-        file.flush();
-        file.close();
-    }
-
-    if (s_previousHandler) {
-        s_previousHandler(type, context, msg);
-    }
-}
-
-void installKcmMessageHandler()
-{
-    static QAtomicInt s_installed(0);
-    if (s_installed.fetchAndStoreRelaxed(1) != 0) {
-        return;
-    }
-    s_previousHandler = qInstallMessageHandler(kcmMessageHandler);
-}
+// The KCM runs inside systemsettings or kcmshell6, so it logs to the host's file, unless the host installed its own handler.
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.kcm")
+SONIC_LOGGING_AUTO_INSTALL()

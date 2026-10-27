@@ -4,13 +4,14 @@
  */
 
 #include "daemonrequest.h"
+#include "Messages.h"
 
 #include <QDataStream>
-#include <QDeadlineTimer>
 #include <QFile>
-#include <QLocalSocket>
 
 #include <KLocalizedString>
+
+#include <Sonic/Ipc/Client>
 
 namespace SONICLOGIN {
 DaemonReply
@@ -32,12 +33,6 @@ requestDaemon(const QString &operation, const QJsonObject &arguments, const QStr
             return {false, false, kxi18n("Sonic Login daemon is not running. Start it and try again.").toString()};
         }
         socketName = QStringLiteral("/run/soniclogin/kcm-ipc-") + QString::number(pid);
-    }
-
-    QLocalSocket socket;
-    socket.connectToServer(socketName);
-    if (!socket.waitForConnected(5000)) {
-        return {false, false, kxi18n("Cannot connect to the Sonic Login daemon: %1").subs(socket.errorString()).toString()};
     }
 
     QByteArray block;
@@ -62,28 +57,34 @@ requestDaemon(const QString &operation, const QJsonObject &arguments, const QStr
         out << arguments.value(QStringLiteral("config")).toString();
         writeBinaryMap(arguments.value(QStringLiteral("wallpapers")).toObject());
     }
-    if (out.status() != QDataStream::Ok || socket.write(block) != block.size()) {
-        return {false, false, kxi18n("Cannot send settings to the Sonic Login daemon: %1").subs(socket.errorString()).toString()};
+    if (out.status() != QDataStream::Ok) {
+        return {false, false, kxi18n("Cannot send settings to the Sonic Login daemon: %1").subs(QStringLiteral("encoding failed")).toString()};
     }
-    socket.flush();
 
-    QDeadlineTimer deadline(timeoutMs >= 0 ? timeoutMs : type == sync ? 120000 : 15000);
-    QDataStream in(&socket);
+    // One frame out, one frame back, all within the deadline; the frame type is the request type.
+    QString transportError;
+    const auto frame = Sonic::Ipc::Client::request(socketName,
+                                                   type,
+                                                   block,
+                                                   kcmProtocolVersion,
+                                                   timeoutMs >= 0     ? timeoutMs
+                                                       : type == sync ? 120000
+                                                                      : 15000,
+                                                   &transportError);
+    if (!frame) {
+        if (transportError.startsWith(QLatin1String("cannot connect"))) {
+            return {false, false, kxi18n("Cannot connect to the Sonic Login daemon: %1").subs(transportError).toString()};
+        }
+        return {false, false, kxi18n("Daemon did not respond: %1").subs(transportError).toString()};
+    }
+
+    QDataStream in(frame->payload);
     in.setVersion(QDataStream::Qt_6_0);
     quint32 responseType = 0, responseId = 0;
     quint8 success = 0;
     QString error;
-    for (;;) {
-        in.startTransaction();
-        in >> responseType >> responseId >> success >> error;
-        if (in.commitTransaction()) {
-            break;
-        }
-        if (deadline.hasExpired() || !socket.waitForReadyRead(int(deadline.remainingTime()))) {
-            return {false, false, kxi18n("Daemon did not respond: %1").subs(socket.errorString()).toString()};
-        }
-    }
-    if (responseType != response || responseId != requestId || success > 1) {
+    in >> responseType >> responseId >> success >> error;
+    if (in.status() != QDataStream::Ok || frame->type != response || responseType != response || responseId != requestId || success > 1) {
         return {false, false, kxi18n("Unexpected response from daemon: %1").subs(responseType).toString()};
     }
     return {success == 1, success == 0, error.isEmpty() && !success ? kxi18n("Operation failed.").toString() : error};

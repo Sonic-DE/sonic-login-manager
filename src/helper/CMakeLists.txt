@@ -12,7 +12,6 @@ add_executable(soniclogin-helper)
 target_sources(soniclogin-helper PRIVATE
     ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
     ${CMAKE_SOURCE_DIR}/src/common/ConfigReader.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/SafeDataStream.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
     ${CMAKE_SOURCE_DIR}/src/auth/Auth.cpp
     ${CMAKE_SOURCE_DIR}/src/auth/AuthRequest.cpp
@@ -29,7 +28,10 @@ target_sources(soniclogin-helper PRIVATE
 target_link_libraries(soniclogin-helper
                       Qt6::Network
                       Qt6::DBus
-                      Qt6::Qml)
+                      Qt6::Qml
+                      Sonic::InitInfo
+                      Sonic::Ipc
+                      Sonic::Logging)
 
 target_link_libraries(soniclogin-helper ${PAM_LIBRARIES})
 
@@ -69,7 +71,7 @@ add_executable(soniclogin-helper-start-x11user HelperStartX11User.cpp xorguserhe
                                                 ${CMAKE_SOURCE_DIR}/src/common/filedescriptor.cpp
                                                 ${CMAKE_SOURCE_DIR}/src/daemon/LogindDBusTypes.cpp
                                                 )
-target_link_libraries(soniclogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU)
+target_link_libraries(soniclogin-helper-start-x11user Qt6::Core Qt6::DBus PkgConfig::LIBXAU Sonic::InitInfo Sonic::Logging)
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
     target_link_libraries(soniclogin-helper-start-x11user ${LIBCAP_LIBRARIES})
 endif()

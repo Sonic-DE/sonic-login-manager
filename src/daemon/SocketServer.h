@@ -24,8 +24,12 @@
 #include "PowerManager.h"
 #include "Session.h"
 
-class QLocalServer;
 class QLocalSocket;
+
+namespace Sonic::Ipc {
+class Connection;
+class Server;
+}
 
 namespace SONICLOGIN
 {
@@ -42,8 +46,7 @@ public:
     QString socketAddress() const;
 
 private slots:
-    void newConnection();
-    void readyRead();
+    void newConnection(Sonic::Ipc::Connection *connection);
 
 public slots:
     void informationMessage(QLocalSocket *socket, const QString &message);
@@ -60,7 +63,9 @@ signals:
     void connected();
 
 private:
-    QLocalServer *m_server{nullptr};
+    void frameReceived(QLocalSocket *socket, quint32 type, const QByteArray &payload);
+
+    Sonic::Ipc::Server *m_server{nullptr};
 };
 }
 

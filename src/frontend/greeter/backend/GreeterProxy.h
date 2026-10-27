@@ -21,8 +21,6 @@
 
 #include "Messages.h"
 
-class QLocalSocket;
-
 namespace SONICLOGIN
 {
 class SessionModel;
@@ -76,7 +74,7 @@ public slots:
     void hibernate();
 
 private slots:
-    void readyRead();
+    void frameReceived(quint32 type, const QByteArray &payload);
 
 signals:
     void informationMessage(const QString &message);

@@ -7,6 +7,8 @@
 type = process
 command = @CMAKE_INSTALL_FULL_BINDIR@/soniclogin
 smooth-recovery = true
-logfile         = /var/log/sonic-login-manager.log
+# The daemon recognises dinit's capture and writes its log lines to stdout.
+logfile         = /var/log/sonic/soniclogin.log
+depends-on      = soniclogin-logdir
 depends-on      = logind
 depends-on      = login.target

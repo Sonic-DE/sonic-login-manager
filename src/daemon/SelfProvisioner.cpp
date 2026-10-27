@@ -9,7 +9,7 @@
 
 #include "SelfProvisioner.h"
 
-#include "MessageHandler.h"
+#include <Sonic/Logging/Logging>
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -22,11 +22,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-void SelfProvisionerMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN SELFPROVISIONER"), msg);
-}
 
 namespace SONICLOGIN
 {
@@ -44,12 +39,7 @@ bool SelfProvisioner::provision()
         return false;
     }
 
-    if (!setupLogging()) {
-        qCritical() << "SelfProvisioner: Failed to set up logging";
-        return false;
-    }
-
-    qInstallMessageHandler(SelfProvisionerMessageHandler);
+    installLogging();
 
     qDebug() << "SelfProvisioner: Starting system provisioning...";
 
@@ -500,57 +490,39 @@ bool SelfProvisioner::createDbusDirectory()
     return true;
 }
 
-bool SelfProvisioner::setupLogging()
+void SelfProvisioner::installLogging()
 {
-    qDebug() << "SelfProvisioner: Setting up logging...";
+    // Rotates /var/log/sonic/soniclogin.log on every run, or writes to the
+    // service manager's capture; an insecure old /var/log/sonic is moved aside.
+    Sonic::Logging::install({.rotateOnStartup = true});
+    const QString logFile = Sonic::Logging::logFilePath();
+    qInfo() << "SelfProvisioner: logging to" << (logFile.isEmpty() ? QStringLiteral("the service manager's output") : logFile) << "as uid" << geteuid();
+    removeOldLogFiles();
+}
 
-    // Rotate log file
-    QString oldLog = QStringLiteral(LOG_FILE) + QStringLiteral(".last");
-    if (QFile::exists(oldLog)) {
-        QFile::remove(oldLog);
-    }
-    if (QFile::exists(QStringLiteral(LOG_FILE))) {
-        QFile::rename(QStringLiteral(LOG_FILE), oldLog);
-    }
-
-    // Create log file
-    if (!QFile::exists(QStringLiteral(LOG_FILE))) {
-        QFile file(QStringLiteral(LOG_FILE));
-        if (!file.open(QIODevice::WriteOnly)) {
-            qCritical() << "SelfProvisioner: Failed to create log file:" << QStringLiteral(LOG_FILE);
-            return false;
+void SelfProvisioner::removeOldLogFiles()
+{
+    // Nothing writes these names any more, so this only removes anything on the first start.
+    struct stat out{};
+    struct stat err{};
+    const bool haveOut = fstat(STDOUT_FILENO, &out) == 0;
+    const bool haveErr = fstat(STDERR_FILENO, &err) == 0;
+    for (const QString &path : {QStringLiteral("/var/log/sonic-login-manager.log"), QStringLiteral("/var/log/sonic-login-manager.log.last")}) {
+        struct stat st{};
+        if (lstat(QFile::encodeName(path).constData(), &st) != 0) {
+            continue;
         }
-        file.close();
+        // An old service file may still point this daemon's own output here.
+        if ((haveOut && st.st_dev == out.st_dev && st.st_ino == out.st_ino) || (haveErr && st.st_dev == err.st_dev && st.st_ino == err.st_ino)) {
+            qInfo() << "SelfProvisioner: keeping" << path << "because it is this daemon's output";
+            continue;
+        }
+        if (QFile::remove(path)) {
+            qInfo() << "SelfProvisioner: removed the old log file" << path;
+        } else {
+            qWarning() << "SelfProvisioner: cannot remove the old log file" << path;
+        }
     }
-
-    // The daemon downgrades to the soniclogin user before opening this file
-    // for write, so it must be owned by soniclogin:soniclogin. Mode 0644 keeps
-    // the file non-executable and prevents other users from tampering.
-    uid_t logUid;
-    gid_t logGid;
-    if (!getUserIds(&logUid, &logGid)) {
-        qCritical() << "SelfProvisioner: Failed to get soniclogin user/group IDs";
-        return false;
-    }
-
-    if (!setOwnership(QStringLiteral(LOG_FILE), logUid, logGid)) {
-        qCritical() << "SelfProvisioner: Failed to set ownership for log file";
-        return false;
-    }
-
-    if (!setPermissions(QStringLiteral(LOG_FILE), 0644)) {
-        qCritical() << "SelfProvisioner: Failed to set permissions for log file";
-        return false;
-    }
-
-    // Remove the insecure shared logging directory left by older versions.
-    QDir legacyLogDirectory(QStringLiteral("/var/log/sonic"));
-    if (legacyLogDirectory.exists() && !legacyLogDirectory.removeRecursively()) {
-        qWarning() << "SelfProvisioner: Failed to remove legacy log directory:" << legacyLogDirectory.absolutePath();
-    }
-
-    qDebug() << "SelfProvisioner: Log file setup complete.";
-    return true;
 }
 
 bool SelfProvisioner::cleanupAuthSockets()

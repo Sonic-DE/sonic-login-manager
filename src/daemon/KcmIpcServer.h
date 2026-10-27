@@ -8,13 +8,17 @@
 #define SONICLOGIN_KCMIPCSERVER_H
 
 #include <QByteArray>
+#include <QDataStream>
 #include <QList>
-#include <QLocalServer>
-#include <QLocalSocket>
 #include <QObject>
 #include <QPair>
 #include <QString>
 #include <optional>
+
+namespace Sonic::Ipc {
+class Connection;
+class Server;
+}
 
 namespace SONICLOGIN
 {
@@ -47,14 +51,13 @@ public:
     QString boundSocketName() const;
 
 private Q_SLOTS:
-    void onNewConnection();
-    void onReadyRead();
-    void onDisconnected();
+    void onNewConnection(Sonic::Ipc::Connection *connection);
 
 private:
-    QLocalServer *m_server{nullptr};
+    Sonic::Ipc::Server *m_server{nullptr};
 
-    void sendResponse(QLocalSocket *socket, quint32 messageId, bool ok, const QString &error);
+    void onRequest(Sonic::Ipc::Connection *connection, quint32 frameType, const QByteArray &payload);
+    void sendResponse(Sonic::Ipc::Connection *connection, quint32 messageId, bool ok, const QString &error);
 
     bool authenticate(const QString &username, const QString &password, QString *errorOut);
 

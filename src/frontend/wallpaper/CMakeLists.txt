@@ -1,4 +1,4 @@
-# Include common directory for MessageHandler
+# Include common directory
 include_directories(
     "${CMAKE_SOURCE_DIR}/src/common"
     "${CMAKE_BINARY_DIR}/src/common"
@@ -31,6 +31,7 @@ target_link_libraries(soniclogin-wallpaper PRIVATE
     KF6::WindowSystem
     KF6::Package
     Plasma::PlasmaQuick
+    Sonic::Logging
 )
 
 

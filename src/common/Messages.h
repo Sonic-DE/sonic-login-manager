@@ -59,6 +59,11 @@ enum class SessionType {
     X11 = 0,
     Wayland
 };
+
+// Sonic IPC protocol versions, carried in every frame header; both ends of each socket ship together.
+constexpr quint16 greeterProtocolVersion = 1;
+constexpr quint16 kcmProtocolVersion = 1;
+constexpr quint16 helperProtocolVersion = 1;
 }
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(SONICLOGIN::Capabilities)

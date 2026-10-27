@@ -1,17 +1,20 @@
 # /etc/logrotate.d/soniclogin
 
-/var/log/sonic-login-manager.log /var/log/sonic-login-manager.err {
+# supervise-daemon opened these as the daemon's stdout and stderr, so they are
+# copied and truncated: a renamed file would keep receiving the daemon's output.
+/var/log/sonic/soniclogin.log /var/log/sonic-login-manager.err {
     daily
     rotate 7
     compress
     delaycompress
     missingok
     notifempty
-    sharedscripts
-    postrotate
-        # Signal supervise-daemon log handle update directly using its PID file
-        if [ -f /run/soniclogin.pid ]; then
-            kill -USR1 $(cat /run/soniclogin.pid)
-        fi
-    endscript
+    copytruncate
+}
+
+# The helper isn't service-managed; it rotates to .last on every run.
+/var/log/sonic/soniclogin-helper.log.last {
+    rotate 1
+    compress
+    missingok
 }

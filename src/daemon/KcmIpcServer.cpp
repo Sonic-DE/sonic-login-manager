@@ -6,10 +6,12 @@
 
 #include "KcmIpcServer.h"
 
-#include "MessageHandler.h"
-
 #include "Constants.h"
+#include "Messages.h"
 #include "ThemeSync.h"
+
+#include <Sonic/Ipc/Connection>
+#include <Sonic/Ipc/Server>
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -43,6 +45,7 @@ constexpr quint32 MsgResetSettings = 2;
 constexpr quint32 MsgSaveConfig = 3;
 constexpr quint32 MsgSyncThemeSettings = 4;
 constexpr quint32 MsgResponse = 100;
+constexpr qint64 kcmMaxPayload = 512 * 1024 * 1024;
 
 constexpr QFile::Permissions standardPermissions = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
 constexpr QFile::Permissions standardDirectoryPermissions =
@@ -104,20 +107,16 @@ bool KcmIpcServer::start()
         return false;
     }
 
-    m_server = new QLocalServer(this);
-
-    // WorldAccessOption => mode 0666 so the unprivileged KCM can connect.
-    // Authentication is enforced by the daemon via PAM on every operation;
-    // an unauthenticated connection cannot perform any privileged action.
-    m_server->setSocketOptions(QLocalServer::WorldAccessOption);
+    m_server = new Sonic::Ipc::Server(this);
 
     const QString name = QStringLiteral("/run/soniclogin/kcm-ipc-") + QString::number(QCoreApplication::applicationPid());
 
     QDir().mkpath(QStringLiteral("/run/soniclogin"));
 
-    QLocalServer::removeServer(name);
-
-    if (!m_server->listen(name)) {
+    // World access so the unprivileged KCM can connect. Authentication is
+    // enforced by the daemon via PAM on every operation; an unauthenticated
+    // connection cannot perform any privileged action. Theme bundles are large.
+    if (!m_server->listen(name, Sonic::Ipc::Server::Access::World, kcmProtocolVersion, kcmMaxPayload)) {
         qWarning() << "KcmIpcServer: failed to listen on" << name << ":" << m_server->errorString();
         delete m_server;
         m_server = nullptr;
@@ -126,9 +125,9 @@ bool KcmIpcServer::start()
 
     qInfo() << "KcmIpcServer: listening on" << m_server->fullServerName();
 
-    connect(m_server, &QLocalServer::newConnection, this, &KcmIpcServer::onNewConnection);
+    connect(m_server, &Sonic::Ipc::Server::newConnection, this, &KcmIpcServer::onNewConnection);
 
-    return m_server->isListening();
+    return true;
 }
 
 void KcmIpcServer::stop()
@@ -142,46 +141,45 @@ void KcmIpcServer::stop()
     m_server = nullptr;
 }
 
-void KcmIpcServer::onNewConnection()
+void KcmIpcServer::onNewConnection(Sonic::Ipc::Connection *connection)
 {
-    while (m_server && m_server->hasPendingConnections()) {
-        QLocalSocket *socket = m_server->nextPendingConnection();
-        if (!socket) {
-            continue;
-        }
-        connect(socket, &QLocalSocket::readyRead, this, &KcmIpcServer::onReadyRead);
-        connect(socket, &QLocalSocket::disconnected, this, &KcmIpcServer::onDisconnected);
-    }
+    connect(connection, &Sonic::Ipc::Connection::frameReceived, this, [this, connection](quint32 frameType, const QByteArray &payload) {
+        onRequest(connection, frameType, payload);
+    });
+    connect(connection, &Sonic::Ipc::Connection::disconnected, this, [connection] {
+        qInfo() << "KcmIpcServer: client disconnected:" << connection;
+    });
 }
 
-void KcmIpcServer::onReadyRead()
+void KcmIpcServer::onRequest(Sonic::Ipc::Connection *connection, quint32 frameType, const QByteArray &payload)
 {
-    QLocalSocket *socket = qobject_cast<QLocalSocket *>(sender());
-    if (!socket) {
-        return;
-    }
-
     // Each connection handles exactly one operation: the client connects,
-    // sends [username][password][type][id][payload...], reads the response,
-    // and disconnects. We read the whole message in a single transaction so
-    // partial reads just wait for more data. Only after commitTransaction()
-    // succeeds do we authenticate and apply side effects (write files).
-    QDataStream reader(socket);
+    // sends one frame of [username][password][type][id][payload...], reads
+    // the response, and disconnects. The frame arrives whole, so the request
+    // is parsed completely before we authenticate and apply side effects.
+    const auto peer = connection->peerCredentials();
+    qInfo() << "KcmIpcServer: request type" << frameType << "from uid" << (peer ? peer->uid : -1) << "pid" << (peer ? peer->pid : -1);
+
+    QDataStream reader(payload);
     reader.setVersion(QDataStream::Qt_6_0);
 
-    reader.startTransaction();
     QString username;
     QString password;
     quint32 type = 0;
     quint32 id = 0;
     reader >> username >> password >> type >> id;
 
-    // Read the full payload inside the transaction. No side effects yet.
+    // Read the full payload. No side effects yet.
     std::optional<SyncPayload> syncPayload;
     std::optional<SavePayload> savePayload;
 
     if (reader.status() != QDataStream::Ok) {
-        reader.commitTransaction();
+        qWarning() << "KcmIpcServer: malformed request header";
+        return;
+    }
+    if (type != frameType) {
+        qWarning() << "KcmIpcServer: frame type" << frameType << "doesn't match request type" << type;
+        sendResponse(connection, id, false, QStringLiteral("frame type mismatch"));
         return;
     }
 
@@ -195,15 +193,10 @@ void KcmIpcServer::onReadyRead()
         qWarning() << "KcmIpcServer: unknown messageType" << type;
     }
 
-    if (!reader.commitTransaction()) {
-        // Full message not yet available; wait for more data.
-        return;
-    }
-
-    // Full message verified. Authenticate and apply side effects.
+    // Full message read. Authenticate and apply side effects.
     QString authErr;
     if (!authenticate(username, password, &authErr)) {
-        sendResponse(socket, id, false, QStringLiteral("auth: %1").arg(authErr));
+        sendResponse(connection, id, false, QStringLiteral("auth: %1").arg(authErr));
         return;
     }
 
@@ -226,27 +219,16 @@ void KcmIpcServer::onReadyRead()
         result = qMakePair(false, QStringLiteral("unknown message type"));
     }
 
-    sendResponse(socket, id, result.first, result.second);
+    sendResponse(connection, id, result.first, result.second);
 }
 
-void KcmIpcServer::onDisconnected()
-{
-    QLocalSocket *socket = qobject_cast<QLocalSocket *>(sender());
-    if (!socket) {
-        return;
-    }
-    qInfo() << "KcmIpcServer: client disconnected:" << socket;
-    socket->deleteLater();
-}
-
-void KcmIpcServer::sendResponse(QLocalSocket *socket, quint32 messageId, bool ok, const QString &error)
+void KcmIpcServer::sendResponse(Sonic::Ipc::Connection *connection, quint32 messageId, bool ok, const QString &error)
 {
     QByteArray block;
     QDataStream out(&block, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_6_0);
     out << MsgResponse << messageId << static_cast<quint8>(ok ? 1 : 0) << error;
-    socket->write(block);
-    socket->flush();
+    connection->send(MsgResponse, block);
 }
 
 bool KcmIpcServer::authenticate(const QString &username, const QString &password, QString *errorOut)

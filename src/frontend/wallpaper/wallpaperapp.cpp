@@ -31,20 +31,15 @@
 
 #include "wallpaperapp.h"
 
-#include "MessageHandler.h"
-
-void WallpaperAppMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPERAPP"), msg);
-}
+#include <Sonic/Logging/Logging>
 
 WallpaperApp::WallpaperApp(int &argc, char **argv)
     : QGuiApplication(argc, argv)
 {
     setQuitOnLastWindowClosed(false);
 
-    // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(WallpaperAppMessageHandler);
+    // main() installed it already; a second install changes nothing.
+    Sonic::Logging::install({.rotateOnStartup = true});
 
     qInfo() << "WallpaperApp: initialized"
             << "platform=" << platformName() << "screens=" << screens().size();

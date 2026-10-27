@@ -7,10 +7,8 @@ include_directories(
 
 set(DAEMON_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/Configuration.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/SafeDataStream.cpp
     ${CMAKE_SOURCE_DIR}/src/common/ConfigReader.cpp
     ${CMAKE_SOURCE_DIR}/src/common/Session.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/SocketWriter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
     ${CMAKE_SOURCE_DIR}/src/common/ThemeSync.cpp
     ${CMAKE_SOURCE_DIR}/src/common/VirtualTerminal.cpp
@@ -61,7 +59,10 @@ target_link_libraries(soniclogin
                       KF6::ConfigCore
                       KF6::ConfigGui
                       ZLIB::ZLIB
-                      KF6::CoreAddons)
+                      KF6::CoreAddons
+                      Sonic::InitInfo
+                      Sonic::Ipc
+                      Sonic::Logging)
 
 
 install(TARGETS soniclogin DESTINATION "${CMAKE_INSTALL_BINDIR}")

@@ -21,7 +21,6 @@ set(LOGIN_GREETER_SRCS
     blurscreenbridge.cpp
     greetereventfilter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/SignalHandler.cpp
-    ${CMAKE_SOURCE_DIR}/src/common/SocketWriter.cpp
     ${CMAKE_SOURCE_DIR}/src/common/Session.cpp
 )
 
@@ -85,6 +84,8 @@ target_link_libraries(soniclogin-greeter PRIVATE
     Qt6::GuiPrivate
     PW::KWorkspace
     KF6::ScreenDpms
+    Sonic::Ipc
+    Sonic::Logging
 )
 
 ecm_finalize_qml_module(soniclogin-greeter)

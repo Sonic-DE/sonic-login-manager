@@ -49,7 +49,8 @@ private:
     bool createStateDirectory();
     bool createRuntimeDirectory();
     bool createDbusDirectory();
-    bool setupLogging();
+    void installLogging();
+    void removeOldLogFiles();
     bool cleanupAuthSockets();
 
     // Helper methods for user/group management

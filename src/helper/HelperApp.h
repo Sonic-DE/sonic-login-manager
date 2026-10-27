@@ -14,7 +14,13 @@
 
 #include "AuthMessages.h"
 
+#include <QByteArrayList>
+
 class QLocalSocket;
+
+namespace Sonic::Ipc {
+class Connection;
+}
 
 namespace SONICLOGIN
 {
@@ -49,10 +55,19 @@ private slots:
     void sessionFinished(int status);
 
 private:
+    //! Sends one message as one frame and waits until it is written.
+    template<typename... Fields>
+    void sendMessage(Msg message, const Fields &...fields);
+    //! The next reply's payload; waits without a timeout, as the PAM conversation needs.
+    QByteArray receivePayload();
+
     qint64 m_id{-1};
     PamBackend *m_backend{nullptr};
     UserSession *m_session{nullptr};
     QLocalSocket *m_socket{nullptr};
+    Sonic::Ipc::Connection *m_connection{nullptr};
+    // Frames that arrived while not waiting for one, e.g. during a blocking write.
+    QByteArrayList m_pendingPayloads;
     QString m_user{};
 
     /*!

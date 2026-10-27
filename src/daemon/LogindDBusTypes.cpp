@@ -18,11 +18,9 @@
 
 #include <QDBusMetaType>
 
-#include <QDBusConnection>
-#include <QDBusConnectionInterface>
 #include <QDebug>
-#include <QFile>
-#include <QTextStream>
+
+#include <Sonic/InitInfo/InitInfo>
 
 class LogindPathInternal
 {
@@ -63,12 +61,10 @@ LogindPathInternal::LogindPathInternal()
     qRegisterMetaType<UserInfoList>("UserInfoList");
     qDBusRegisterMetaType<UserInfoList>();
 
-    if (QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.login1"))) {
-        if (Logind::isELogind()) {
-            qDebug() << "elogind login interface found";
-        } else {
-            qDebug() << "logind login interface found";
-        }
+    const Sonic::InitInfo::SeatManager seatManager = Sonic::InitInfo::seatManager();
+    qDebug() << "Seat manager:" << Sonic::InitInfo::name(seatManager);
+
+    if (seatManager == Sonic::InitInfo::SeatManager::SystemdLogind || seatManager == Sonic::InitInfo::SeatManager::Elogind) {
         available = true;
         serviceName = QStringLiteral("org.freedesktop.login1");
         managerPath = QStringLiteral("/org/freedesktop/login1");
@@ -79,8 +75,7 @@ LogindPathInternal::LogindPathInternal()
         return;
     }
 
-    if (QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.freedesktop.ConsoleKit"))) {
-        qDebug() << "Console Kit login interface found";
+    if (seatManager == Sonic::InitInfo::SeatManager::ConsoleKit2) {
         available = true;
         serviceName = QStringLiteral("org.freedesktop.ConsoleKit");
         managerPath = QStringLiteral("/org/freedesktop/ConsoleKit/Manager");
@@ -90,7 +85,8 @@ LogindPathInternal::LogindPathInternal()
         userIfaceName = QStringLiteral("org.freedesktop.ConsoleKit.User");
         return;
     }
-    qDebug() << "No session manager found";
+    // seatd and no seat manager offer none of the login1 or ConsoleKit interfaces this daemon uses.
+    qWarning() << "No logind, elogind or ConsoleKit2 seat manager; session management over D-Bus is unavailable";
 }
 
 Q_GLOBAL_STATIC(LogindPathInternal, s_instance);
@@ -132,27 +128,5 @@ QString Logind::userIfaceName()
 
 bool Logind::isELogind()
 {
-    // systemd-logind uses /lib/systemd/systemd-logind
-    // elogind uses /lib/elogind/elogind
-    QString serviceFile = QStringLiteral("/usr/share/dbus-1/system-services/org.freedesktop.login1.service");
-
-    // Read the service file to determine which backend is in use
-    QFile file(serviceFile);
-    if (file.open(QIODevice::ReadOnly)) {
-        QTextStream stream(&file);
-        while (!stream.atEnd()) {
-            QString line = stream.readLine().trimmed();
-            if (line.startsWith(QStringLiteral("Exec="))) {
-                QString execPath = line.mid(5).trimmed();
-                if (execPath.contains(QStringLiteral("/elogind/"))) {
-                    return true; // elogind
-                }
-                return false; // systemd-logind
-            }
-        }
-        file.close();
-    }
-
-    // Fallback: assume systemd-logind (most common)
-    return false;
+    return Sonic::InitInfo::seatManager() == Sonic::InitInfo::SeatManager::Elogind;
 }

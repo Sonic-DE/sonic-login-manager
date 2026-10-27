@@ -1,8 +1,8 @@
 set(QT_USE_QTTEST TRUE)
 
 add_executable(DaemonRequestTest DaemonRequestTest.cpp ../src/frontend/kcm/daemonrequest.cpp)
-target_include_directories(DaemonRequestTest PRIVATE ../src/frontend/kcm)
-target_link_libraries(DaemonRequestTest PRIVATE Qt6::Network Qt6::Test Qt6::Concurrent KF6::I18n)
+target_include_directories(DaemonRequestTest PRIVATE ../src/frontend/kcm ../src/common)
+target_link_libraries(DaemonRequestTest PRIVATE Qt6::Network Qt6::Test Qt6::Concurrent KF6::I18n Sonic::Ipc)
 add_test(NAME DaemonRequest COMMAND DaemonRequestTest)
 set_tests_properties(DaemonRequest PROPERTIES TIMEOUT 30)
 
@@ -100,7 +100,7 @@ target_include_directories(WallpaperAppTest BEFORE PRIVATE
 target_compile_definitions(WallpaperAppTest PRIVATE WALLPAPER_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/wallpaper")
 kconfig_add_kcfg_files(WallpaperAppTest GENERATE_MOC ${settings_source}/sonicloginsettingsbase.kcfgc)
 target_link_libraries(WallpaperAppTest PRIVATE Qt6::Quick Qt6::Network Qt6::DBus Qt6::Test
-    KF6::ConfigQml KF6::I18n KF6::Package KF6::WindowSystem Plasma::PlasmaQuick)
+    KF6::ConfigQml KF6::I18n KF6::Package KF6::WindowSystem Plasma::PlasmaQuick Sonic::Logging)
 qt_add_resources(WallpaperAppTest wallpaper_test_host
     PREFIX "/qt/qml/org/kde/sonic/login/wallpaper"
     BASE "${wallpaper_source}"
@@ -194,11 +194,10 @@ add_test(NAME SessionModel COMMAND SessionModelTest)
 add_executable(GreeterProtocolTest
     GreeterProtocolTest.cpp
     ../src/frontend/greeter/backend/GreeterProxy.cpp
-    ../src/common/SocketWriter.cpp
     ../src/common/Session.cpp
 )
 target_include_directories(GreeterProtocolTest PRIVATE ../src/frontend/greeter/backend)
-target_link_libraries(GreeterProtocolTest PRIVATE Qt6::Core Qt6::Network Qt6::Test KF6::ConfigCore)
+target_link_libraries(GreeterProtocolTest PRIVATE Qt6::Core Qt6::Network Qt6::Test KF6::ConfigCore Sonic::Ipc)
 add_test(NAME GreeterProtocol COMMAND GreeterProtocolTest)
 
 add_executable(GreeterEventFilterTest

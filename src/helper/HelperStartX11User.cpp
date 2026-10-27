@@ -13,9 +13,10 @@
 
 #include "Auth.h"
 #include "LogindDBusTypes.h"
-#include "MessageHandler.h"
 #include "SignalHandler.h"
 #include "xorguserhelper.h"
+
+#include <Sonic/Logging/Logging>
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -29,15 +30,13 @@
 #include <signal.h>
 #include <unistd.h>
 
-void X11UserHelperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("X11 USER HELPER"), msg);
-}
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.x11userhelper")
 
 int main(int argc, char **argv)
 {
-    qInstallMessageHandler(X11UserHelperMessageHandler);
+    Sonic::Logging::install({.rotateOnStartup = true});
     QCoreApplication app(argc, argv);
+    qInfo() << "HelperStartX11User: logging to" << Sonic::Logging::logFilePath() << "as uid" << geteuid();
     SONICLOGIN::SignalHandler s;
     QObject::connect(&s, &SONICLOGIN::SignalHandler::sigtermReceived, &app, [&argc, &argv] {
         pid_t ppid = getppid();

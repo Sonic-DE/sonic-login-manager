@@ -1,0 +1,9 @@
+# Copyright 2026 SonicDE Community
+# Distributed under the terms of the GNU General Public License v2
+#
+# Creates or repairs /var/log/sonic with the daemon's own trust rules before
+# dinit opens soniclogin's logfile inside it; dinit doesn't create the directory.
+# Install as /etc/dinit.d/soniclogin-logdir
+
+type = scripted
+command = @CMAKE_INSTALL_FULL_BINDIR@/soniclogin --prepare-log-directory

@@ -73,9 +73,11 @@ endif()
 
 # dinit service - install if detected
 configure_file(dinit/soniclogin.in dinit/soniclogin @ONLY)
+configure_file(dinit/soniclogin-logdir.in dinit/soniclogin-logdir @ONLY)
 if(SPLIT_BUILD)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/dinit/soniclogin"
+              "${CMAKE_CURRENT_BINARY_DIR}/dinit/soniclogin-logdir"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
         COMPONENT dinit
     )
@@ -88,6 +90,7 @@ if(SPLIT_BUILD)
 elseif(DINIT_FOUND)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/dinit/soniclogin"
+              "${CMAKE_CURRENT_BINARY_DIR}/dinit/soniclogin-logdir"
         DESTINATION "${CMAKE_INSTALL_SYSCONFDIR}/dinit.d"
     )
 
@@ -100,7 +103,7 @@ endif()
 # s6 service - install if detected
 # Artix S6 convention: service split into soniclogin-srv and soniclogin-log
 # soniclogin-srv contains the main daemon run script
-# soniclogin-log is a no-op logger since soniclogin logs to its own file
+# soniclogin-log runs s6-log on the daemon's output into /var/log/sonic/soniclogin
 configure_file(s6/run.in s6/run @ONLY)
 configure_file(s6/log/run.in s6/log/run @ONLY)
 if(SPLIT_BUILD)

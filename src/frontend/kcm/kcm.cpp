@@ -42,15 +42,12 @@
 #include "daemonrequest.h"
 #include "kcm.h"
 
-extern void installKcmMessageHandler();
-
 K_PLUGIN_FACTORY_WITH_JSON(SonicLoginKcmFactory, "kcm_soniclogin.json", registerPlugin<SonicLoginKcm>(); registerPlugin<SonicLoginData>();)
 
 SonicLoginKcm::SonicLoginKcm(QObject *parent, const KPluginMetaData &data)
     : KQuickManagedConfigModule(parent, data)
     , m_wallpaperSettings(new WallpaperSettings(this))
 {
-    installKcmMessageHandler();
     setAuthActionName(QStringLiteral("org.kde.kcontrol.kcmsoniclogin.save"));
     registerSettings(&SonicLoginSettings::getInstance());
 

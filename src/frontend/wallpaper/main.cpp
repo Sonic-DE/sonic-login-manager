@@ -9,19 +9,19 @@
 #include <QQuickWindow>
 #include <QSurfaceFormat>
 
-#include "MessageHandler.h"
 #include "wallpaperapp.h"
 
-void WallpaperMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &msg)
-{
-    SONICLOGIN::messageHandler(type, QStringLiteral("SONICLOGIN WALLPAPER"), msg);
-}
+#include <Sonic/Logging/Logging>
+
+#include <unistd.h>
+
+SONIC_LOGGING_COMPONENT("org.sonicde.loginmanager.wallpaper")
 
 int main(int argc, char **argv)
 {
-    // Install message handler to log to soniclogin.log
-    qInstallMessageHandler(WallpaperMessageHandler);
-    qInfo() << "soniclogin-wallpaper: process starting";
+    // Logs to ~/.local/state/sonic/soniclogin-wallpaper.log, rotated on every run.
+    Sonic::Logging::install({.rotateOnStartup = true});
+    qInfo() << "soniclogin-wallpaper: process starting; logging to" << Sonic::Logging::logFilePath() << "as uid" << geteuid();
 
     QCoreApplication::setApplicationName(QStringLiteral("soniclogin-wallpaper"));
 
