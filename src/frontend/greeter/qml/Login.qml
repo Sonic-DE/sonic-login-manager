@@ -104,6 +104,7 @@ SessionManagementScreen {
             Layout.fillWidth: true
 
             placeholderText: i18nd("sonic_login", "Password")
+            placeholderTextColor: Kirigami.Theme.highlightColor
             focus: !showUsernamePrompt
 
             onAccepted: {
