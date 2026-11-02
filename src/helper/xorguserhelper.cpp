@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utility>
 
 namespace SONICLOGIN
 {
@@ -86,15 +87,15 @@ bool XOrgUserHelper::start(const QString &cmd)
 
 void XOrgUserHelper::stop()
 {
-    if (m_serverProcess) {
+    // Waiting below can quit the app and re-enter stop() via aboutToQuit.
+    if (QProcess *serverProcess = std::exchange(m_serverProcess, nullptr)) {
         qInfo("Stopping server...");
-        m_serverProcess->terminate();
-        if (!m_serverProcess->waitForFinished(5000)) {
-            m_serverProcess->kill();
-            m_serverProcess->waitForFinished(25000);
+        serverProcess->terminate();
+        if (!serverProcess->waitForFinished(5000)) {
+            serverProcess->kill();
+            serverProcess->waitForFinished(25000);
         }
-        m_serverProcess->deleteLater();
-        m_serverProcess = nullptr;
+        serverProcess->deleteLater();
 
         displayFinished();
     }
