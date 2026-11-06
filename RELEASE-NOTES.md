@@ -15,7 +15,7 @@ Sonic Login Manager is the SonicDE login screen: it greets you when your compute
 - Your chosen mouse cursor now shows up on the login screen on every system, and cursor handling is more dependable.
 - The "Picture of the Day" wallpaper now works out of the box.
 - Fixed the blur around the login prompt being cut off at the edges.
-- Behind the scenes: new automated tests make sure theme and wallpaper settings keep being applied correctly.
+- Behind the scenes: new automated tests make sure theme and wallpaper settings keep being applied correctly, and sessions you sign in to use QXLibre for X11 when it's installed, going back to Qt's own X11 support when it isn't.
 
 ## 6.8.0.3 (2026-10-25)
 

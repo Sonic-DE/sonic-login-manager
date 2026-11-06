@@ -49,7 +49,7 @@ QProcessEnvironment XOrgUserHelper::sessionEnvironment() const
     auto env = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("DISPLAY"), m_display);
     env.insert(QStringLiteral("XAUTHORITY"), m_xauth.authPath());
-    env.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("xcb"));
+    env.insert(QStringLiteral("QT_QPA_PLATFORM"), QStringLiteral("xlibre;xcb"));
     return env;
 }
 
