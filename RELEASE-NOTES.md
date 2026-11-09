@@ -2,20 +2,17 @@
 
 Sonic Login Manager is the SonicDE login screen: it greets you when your computer starts, signs you in, and has a System Settings page for choosing its look, wallpaper and automatic login.
 
-## Unreleased
+## 6.8.2 (2026-11-10)
 
 - The login screen, its settings page and the sign-in helper now talk to each other through SonicDE's new shared messaging system, which is faster and more reliable. Restart the login manager after upgrading.
 - Logs now go through SonicDE's new logging system: to the system journal where one is available, otherwise to `/var/log/sonic`, and old log files are cleaned up automatically.
 - The OpenRC, dinit, runit and s6 service files now prepare the log folder themselves and rotate logs correctly.
 - The login manager can now be started on systems that use sysvinit, and installing it on an OpenRC system no longer risks replacing its OpenRC start-up script.
-- The login screen now uses the Silver Dark theme by default, so text and icons stay light and readable over the wallpaper, and all text follows your theme's colors.
-- The theme you pick in System Settings is now applied properly, both when you click "Apply desktop settings" and when the login screen styles itself.
-- Copying your theme to the login screen is quicker and keeps System Settings responsive, since themes already installed system-wide are no longer copied.
-- The login screen uses the SonicDE on-screen keyboard, and your picture and password field stay visible and centered above it while it is open.
-- Your chosen mouse cursor now shows up on the login screen on every system, and cursor handling is more dependable.
-- The "Picture of the Day" wallpaper now works out of the box.
-- Fixed the blur around the login prompt being cut off at the edges.
-- Behind the scenes: new automated tests make sure theme and wallpaper settings keep being applied correctly, and sessions you sign in to use QXLibre for X11 when it's installed, going back to Qt's own X11 support when it isn't.
+- The login manager now recognises the init system correctly on BSD.
+- Text and icons on the login screen now have a soft glow on dark themes, or a shadow on light ones, so they stand out over any wallpaper.
+- The hint text in the password field is now readable.
+- Fixed a crash when the display server stops while the login manager is shutting down.
+- Behind the scenes: sessions you sign in to use QXLibre for X11 when it's installed, going back to Qt's own X11 support when it isn't.
 
 ## 6.8.0.3 (2026-10-25)
 
