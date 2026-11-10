@@ -75,9 +75,12 @@ sudo rc-update add soniclogin default
 
 ##### runit
 
+The service is installed to `/etc/runit/sv/soniclogin`. Link it into the folder of enabled services,
+which is `/run/runit/service` on Artix and `/var/service` on Void:
+
 ```shell
-sudo rm /var/service/sddm
-sudo ln -s /etc/sv/soniclogin /var/service/
+sudo rm /run/runit/service/sddm
+sudo ln -s /etc/runit/sv/soniclogin /run/runit/service/
 ```
 
 ##### S6

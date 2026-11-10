@@ -2,6 +2,10 @@
 
 Sonic Login Manager is the SonicDE login screen: it greets you when your computer starts, signs you in, and has a System Settings page for choosing its look, wallpaper and automatic login.
 
+## Unreleased
+
+- On systems that keep 64-bit libraries in `lib64`, such as Gentoo and Fedora, the login screen and its settings page now read the same system-wide defaults as the login manager, in `/usr/lib/soniclogin`.
+
 ## 6.8.2 (2026-11-10)
 
 - The login screen, its settings page and the sign-in helper now talk to each other through SonicDE's new shared messaging system, which is faster and more reliable. Restart the login manager after upgrading.

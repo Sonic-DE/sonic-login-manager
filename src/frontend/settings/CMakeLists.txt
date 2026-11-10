@@ -1,7 +1,9 @@
 include(GNUInstallDirs)
 
-set(SONICLOGIN_SYSTEM_CONFIG_FILE  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/soniclogin/defaults.conf"      CACHE PATH  "Path of the system soniclogin config file")
-set(SONICLOGIN_SYSTEM_CONFIG_DIR   "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/soniclogin/soniclogin.conf.d" CACHE PATH  "Path of the system soniclogin config directory")
+# The daemon's system configuration (SYSTEM_CONFIG_DIR, top-level CMakeLists.txt), not CMAKE_INSTALL_LIBDIR.
+get_filename_component(SONICLOGIN_SYSTEM_CONFIG_ROOT "${SYSTEM_CONFIG_DIR}" DIRECTORY)
+set(SONICLOGIN_SYSTEM_CONFIG_FILE  "${SONICLOGIN_SYSTEM_CONFIG_ROOT}/defaults.conf")
+set(SONICLOGIN_SYSTEM_CONFIG_DIR   "${SYSTEM_CONFIG_DIR}")
 set(SONICLOGIN_CONFIG_FILE         "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf"          CACHE PATH  "Path of the soniclogin config file")
 set(SONICLOGIN_CONFIG_DIR          "${CMAKE_INSTALL_FULL_SYSCONFDIR}/soniclogin.conf.d"        CACHE PATH  "Path of the soniclogin config directory")
 
