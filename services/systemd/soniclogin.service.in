@@ -2,7 +2,7 @@
 Description=Sonic Login Manager
 Documentation=man:soniclogin(1) man:soniclogin.conf(5)
 Conflicts=getty@tty${SONICLOGIN_INITIAL_VT}.service
-After=systemd-user-sessions.service getty@tty${SONICLOGIN_INITIAL_VT}.service plymouth-quit.service systemd-logind.service
+After=systemd-user-sessions.service getty@tty${SONICLOGIN_INITIAL_VT}.service systemd-logind.service
 PartOf=graphical.target
 StartLimitIntervalSec=30
 StartLimitBurst=2

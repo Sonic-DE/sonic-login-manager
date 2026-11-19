@@ -28,7 +28,10 @@
 #include "XorgUserDisplayServer.h"
 
 #include <QDebug>
+#include <QFileInfo>
 #include <QLocalSocket>
+#include <QProcess>
+#include <QStandardPaths>
 #include <QTimer>
 
 #include <grp.h>
@@ -39,6 +42,39 @@
 #include "VirtualTerminal.h"
 
 static int s_ttyFailures = 0;
+
+static bool checkPlymouth(const QString &plymouth, const QString &argument)
+{
+    QProcess process;
+    process.start(plymouth, {argument});
+    if (!process.waitForFinished(10000)) {
+        process.kill();
+        process.waitForFinished();
+        return false;
+    }
+    return process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0;
+}
+
+// A running Plymouth keeps DRM master, so X can't take the GPU until it quits.
+static void quitPlymouth()
+{
+    QString plymouth = SONICLOGIN::mainConfig.PlymouthPath.get();
+    if (plymouth.isEmpty() || !QFileInfo(plymouth).isExecutable()) {
+        plymouth = QStandardPaths::findExecutable(QStringLiteral("plymouth"));
+    }
+    if (plymouth.isEmpty()) {
+        plymouth =
+            QStandardPaths::findExecutable(QStringLiteral("plymouth"), {QStringLiteral("/usr/local/bin"), QStringLiteral("/usr/bin"), QStringLiteral("/bin")});
+    }
+    if (plymouth.isEmpty() || !checkPlymouth(plymouth, QStringLiteral("--ping"))) {
+        return;
+    }
+
+    qInfo() << "Display: asking Plymouth to quit before the display server starts";
+    if (!checkPlymouth(plymouth, QStringLiteral("quit"))) {
+        qWarning() << "Display: Plymouth didn't quit; the display server may fail to take the GPU";
+    }
+}
 
 namespace SONICLOGIN {
 Display::Display(Seat *parent)
@@ -138,6 +174,8 @@ bool Display::start()
     }
 
     m_started = true;
+
+    quitPlymouth();
 
     // Handle autologin early, unless it needs the display server to be up
     // (rootful X + X11 autologin session).

@@ -5,6 +5,7 @@ Sonic Login Manager is the SonicDE login screen: it greets you when your compute
 ## Unreleased
 
 - On systems that keep 64-bit libraries in `lib64`, such as Gentoo and Fedora, the login screen and its settings page now read the same system-wide defaults as the login manager, in `/usr/lib/soniclogin`.
+- The login screen now starts even if the Plymouth boot splash is still running, under every init system: the login manager closes the splash itself before starting the display server. If `plymouth` is installed outside `/usr/local/bin`, `/usr/bin` or `/bin`, set its path with `PlymouthPath` in `soniclogin.conf`.
 
 ## 6.8.2 (2026-11-10)
 

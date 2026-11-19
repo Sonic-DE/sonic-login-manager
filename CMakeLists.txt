@@ -163,6 +163,12 @@ if(NOT X_SERVER_EXECUTABLE_REAL)
 endif()
 set(X_SERVER_EXECUTABLE "${X_SERVER_EXECUTABLE_REAL}" CACHE FILEPATH "Path to the native Xorg executable" FORCE)
 
+# Plymouth is optional; without a path here the daemon searches for it at runtime.
+find_program(PLYMOUTH_EXECUTABLE plymouth DOC "Path to the plymouth client")
+if(NOT PLYMOUTH_EXECUTABLE)
+    set(PLYMOUTH_EXECUTABLE "")
+endif()
+
 # Set constants
 set(DATA_INSTALL_DIR            "${CMAKE_INSTALL_FULL_DATADIR}/soniclogin"                     CACHE PATH      "System application data install directory")
 set(DBUS_CONFIG_DIR             "${CMAKE_INSTALL_FULL_DATADIR}/dbus-1/system.d"                 CACHE PATH      "DBus config files directory")

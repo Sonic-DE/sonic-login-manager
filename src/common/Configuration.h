@@ -26,6 +26,7 @@ namespace SONICLOGIN
     Config(MainConfig, QStringLiteral(CONFIG_FILE), QStringLiteral(CONFIG_DIR), QStringLiteral(SYSTEM_CONFIG_DIR),
         //  Name                   Type         Default value                                   Description
         Entry(Namespaces,          QStringList, QStringList(),                                  _S("Comma-separated list of Linux namespaces for user session to enter"));
+        Entry(PlymouthPath,        QString,     _S(PLYMOUTH_EXECUTABLE),                    _S("Path to the plymouth client; if empty or missing, it is searched for in $PATH, /usr/local/bin, /usr/bin and /bin"));
         // TODO: Not absolutely sure if everything belongs here. Xsessions, VT and probably some more seem universal
         Section(X11,
             Entry(ServerPath,          QString,     _S(X_SERVER_EXECUTABLE),                    _S("Path to X server binary"));
