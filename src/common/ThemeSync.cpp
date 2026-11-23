@@ -10,7 +10,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QMap>
-#include <QSaveFile>
+#include <QRandomGenerator>
 #include <QScopeGuard>
 #include <QSet>
 #include <QStandardPaths>
@@ -21,6 +21,7 @@
 #include <KSharedConfig>
 
 #include <cerrno>
+#include <dirent.h>
 #include <fcntl.h>
 #include <functional>
 #include <sys/stat.h>
@@ -37,8 +38,6 @@ const QStringList roots = {QStringLiteral("icons"),
                            QStringLiteral("plasma/desktoptheme"),
                            QStringLiteral("plasma/look-and-feel"),
                            QStringLiteral("color-schemes")};
-constexpr QFile::Permissions filePermissions = QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther;
-constexpr QFile::Permissions directoryPermissions = filePermissions | QFile::ExeOwner | QFile::ExeGroup | QFile::ExeOther;
 
 void copyEffectiveGroup(const KConfigGroup &source, KConfigGroup &destination)
 {
@@ -129,48 +128,166 @@ int openDataDirectory(const QString &home, const QString &relative, bool create,
     return fd;
 }
 
-QString descriptorPath(int fd)
+// Everything below a pinned directory works relative to its descriptor, so a
+// directory the greeter swaps afterwards is never written through.
+int openDirectoryAt(int directoryFd, const QByteArray &name)
 {
-    return QStringLiteral("/dev/fd/") + QString::number(fd);
+    return openat(directoryFd, name.constData(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+}
+
+bool isRegularFileAt(int directoryFd, const QByteArray &name)
+{
+    struct stat info;
+    return fstatat(directoryFd, name.constData(), &info, AT_SYMLINK_NOFOLLOW) == 0 && S_ISREG(info.st_mode);
+}
+
+QList<QByteArray> entriesAt(int directoryFd)
+{
+    QList<QByteArray> names;
+    // A descriptor of its own: closedir() closes it, and readdir() moves its offset.
+    const int fd = openat(directoryFd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    DIR *directory = fd >= 0 ? fdopendir(fd) : nullptr;
+    if (!directory) {
+        if (fd >= 0) {
+            ::close(fd);
+        }
+        return names;
+    }
+    while (const dirent *entry = readdir(directory)) {
+        const QByteArray name(entry->d_name);
+        if (name != "." && name != "..") {
+            names.append(name);
+        }
+    }
+    closedir(directory);
+    return names;
+}
+
+// Never follows symlinks: a symlink is removed itself.
+bool removeAt(int directoryFd, const QByteArray &name)
+{
+    struct stat info;
+    if (fstatat(directoryFd, name.constData(), &info, AT_SYMLINK_NOFOLLOW) != 0) {
+        return errno == ENOENT;
+    }
+    if (!S_ISDIR(info.st_mode)) {
+        return unlinkat(directoryFd, name.constData(), 0) == 0;
+    }
+    const int fd = openDirectoryAt(directoryFd, name);
+    if (fd < 0) {
+        return false;
+    }
+    bool removed = true;
+    for (const auto &entry : entriesAt(fd)) {
+        removed = removeAt(fd, entry) && removed;
+    }
+    ::close(fd);
+    return removed && unlinkat(directoryFd, name.constData(), AT_REMOVEDIR) == 0;
+}
+
+// A new mode-0700 directory below the pinned parent; *name receives its entry name.
+int makeStagingAt(int parentFd, const QString &prefix, QByteArray *name)
+{
+    for (int attempt = 0; attempt < 100; ++attempt) {
+        *name = QFile::encodeName(prefix + QString::number(QRandomGenerator::system()->generate64(), 36));
+        if (mkdirat(parentFd, name->constData(), 0700) == 0) {
+            const int fd = openDirectoryAt(parentFd, *name);
+            if (fd < 0) {
+                unlinkat(parentFd, name->constData(), AT_REMOVEDIR);
+            }
+            return fd;
+        }
+        if (errno != EEXIST) {
+            return -1;
+        }
+    }
+    return -1;
+}
+
+// Empties the staging directory through its own descriptor, then removes its entry.
+void removeStaging(int parentFd, int stagingFd, const QByteArray &name)
+{
+    for (const auto &entry : entriesAt(stagingFd)) {
+        removeAt(stagingFd, entry);
+    }
+    ::close(stagingFd);
+    unlinkat(parentFd, name.constData(), AT_REMOVEDIR);
+}
+
+bool writeFileAt(int directoryFd, const QByteArray &name, const QByteArray &bytes)
+{
+    const int fd = openat(directoryFd, name.constData(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+    if (fd < 0) {
+        return false;
+    }
+    qsizetype written = 0;
+    while (written < bytes.size()) {
+        const ssize_t count = ::write(fd, bytes.constData() + written, size_t(bytes.size() - written));
+        if (count < 0 && errno == EINTR) {
+            continue;
+        }
+        if (count <= 0) {
+            break;
+        }
+        written += count;
+    }
+    const bool complete = written == bytes.size() && fchmod(fd, 0644) == 0 && fsync(fd) == 0;
+    return ::close(fd) == 0 && complete;
+}
+
+// Only used below the private, daemon-owned staging directory. Returns the
+// deepest directory's descriptor.
+int makeDirectoriesAt(int directoryFd, const QString &relative)
+{
+    int fd = openat(directoryFd, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    for (const auto &part : relative.split(QLatin1Char('/'), Qt::SkipEmptyParts)) {
+        if (fd < 0) {
+            return -1;
+        }
+        const QByteArray name = QFile::encodeName(part);
+        if (mkdirat(fd, name.constData(), 0700) != 0 && errno != EEXIST) {
+            ::close(fd);
+            return -1;
+        }
+        const int next = openDirectoryAt(fd, name);
+        ::close(fd);
+        if (next < 0 || fchmod(next, 0755) != 0) {
+            if (next >= 0) {
+                ::close(next);
+            }
+            return -1;
+        }
+        fd = next;
+    }
+    return fd;
 }
 
 // Called only inside a daemon-owned, mode-0700 staging directory, before the
 // completed assets become visible to the greeter account.
-bool setOwner(const QString &path, uid_t owner, gid_t group, QString *error)
+bool setOwnerAt(int directoryFd, const QByteArray &name, uid_t owner, gid_t group, QString *error)
 {
     if (owner == uid_t(-1)) {
         return true;
     }
-    const QFileInfo info(path);
-    if (info.isSymLink()) {
+    struct stat info;
+    if (fstatat(directoryFd, name.constData(), &info, AT_SYMLINK_NOFOLLOW) != 0 || S_ISLNK(info.st_mode)) {
         return fail(error, QStringLiteral("Unexpected symlink in staged theme"));
     }
-    if (info.isDir()) {
-        const auto entries = QDir(path).entryInfoList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
-        for (const auto &entry : entries) {
-            if (!setOwner(entry.filePath(), owner, group, error)) {
+    if (S_ISDIR(info.st_mode)) {
+        const int fd = openDirectoryAt(directoryFd, name);
+        if (fd < 0) {
+            return fail(error, QStringLiteral("Cannot set theme asset ownership"));
+        }
+        for (const auto &entry : entriesAt(fd)) {
+            if (!setOwnerAt(fd, entry, owner, group, error)) {
+                ::close(fd);
                 return false;
             }
         }
+        ::close(fd);
     }
-    return lchown(QFile::encodeName(path).constData(), owner, group) == 0 ? true : fail(error, QStringLiteral("Cannot set theme asset ownership"));
-}
-
-// Only used below the private, daemon-owned staging directory.
-bool makeDirectory(const QString &home, const QString &relative, QString *error)
-{
-    QString path = home;
-    for (const auto &part : relative.split(QLatin1Char('/'))) {
-        path += QLatin1Char('/') + part;
-        const QFileInfo info(path);
-        if (info.isSymLink() || (info.exists() && !info.isDir())) {
-            return fail(error, QStringLiteral("Unsafe theme directory: %1").arg(path));
-        }
-        if (!info.exists() && (!QDir().mkdir(path) || !QFile::setPermissions(path, directoryPermissions))) {
-            return fail(error, QStringLiteral("Cannot create theme directory: %1").arg(path));
-        }
-    }
-    return true;
+    return fchownat(directoryFd, name.constData(), owner, group, AT_SYMLINK_NOFOLLOW) == 0 ? true
+                                                                                           : fail(error, QStringLiteral("Cannot set theme asset ownership"));
 }
 
 bool collect(const QString &source, const QString &relative, QMap<QString, QByteArray> &files, QSet<QString> &ancestors, qsizetype &size, QString *error)
@@ -460,61 +577,84 @@ bool install(const QString &home, const QString &relativeName, const QByteArray 
     const auto closeParent = qScopeGuard([parentFd] {
         ::close(parentFd);
     });
-    const QString parentPath = descriptorPath(parentFd);
-    const QString target = parentPath + QLatin1Char('/') + relativeName.section(QLatin1Char('/'), -1);
-    const QString targetMarker = directory ? target + QLatin1Char('/') + marker : target + marker;
-    const QFileInfo targetInfo(target);
-    if (targetInfo.isSymLink() || (targetInfo.exists() && (!QFileInfo(targetMarker).isFile() || QFileInfo(targetMarker).isSymLink()))) {
+    const QByteArray targetName = QFile::encodeName(relativeName.section(QLatin1Char('/'), -1));
+    const QByteArray markerName = QFile::encodeName(marker);
+    const QByteArray targetMarkerName = targetName + markerName;
+    struct stat targetInfo;
+    const bool targetExists = fstatat(parentFd, targetName.constData(), &targetInfo, AT_SYMLINK_NOFOLLOW) == 0;
+    bool marked = false;
+    if (targetExists && directory) {
+        const int targetFd = openDirectoryAt(parentFd, targetName);
+        marked = targetFd >= 0 && isRegularFileAt(targetFd, markerName);
+        if (targetFd >= 0) {
+            ::close(targetFd);
+        }
+    } else if (targetExists) {
+        marked = !S_ISLNK(targetInfo.st_mode) && isRegularFileAt(parentFd, targetMarkerName);
+    }
+    if (targetExists && !marked) {
         return fail(error, QStringLiteral("Refusing to overwrite an independently installed theme: %1").arg(relativeName));
     }
-    QTemporaryDir staging(parentPath + QStringLiteral("/.soniclogin-theme-XXXXXX"));
-    if (!staging.isValid()) {
+    QByteArray stagingName;
+    const int stagingFd = makeStagingAt(parentFd, QStringLiteral(".soniclogin-theme-"), &stagingName);
+    if (stagingFd < 0) {
         return fail(error, QStringLiteral("Cannot stage theme assets"));
     }
-    const QString content = staging.path() + QStringLiteral("/content");
-    if (directory && (!QDir().mkdir(content) || !QFile::setPermissions(content, directoryPermissions))) {
-        return fail(error, QStringLiteral("Cannot stage theme directory"));
-    }
-    for (auto it = files.cbegin(); it != files.cend(); ++it) {
-        const QString destination = directory ? content + QLatin1Char('/') + it.key() : content;
-        if (directory) {
-            const QString relativeParent = it.key().section(QLatin1Char('/'), 0, -2);
-            if (it.key().contains(QLatin1Char('/')) && !makeDirectory(content, relativeParent, error)) {
-                return false;
-            }
+    const auto removeStagingDirectory = qScopeGuard([parentFd, stagingFd, &stagingName] {
+        removeStaging(parentFd, stagingFd, stagingName);
+    });
+    const QByteArray contentName("content");
+    const QByteArray previousName("previous");
+    int contentFd = -1;
+    if (directory) {
+        if (mkdirat(stagingFd, contentName.constData(), 0700) != 0 || (contentFd = openDirectoryAt(stagingFd, contentName)) < 0
+            || fchmod(contentFd, 0755) != 0) {
+            return fail(error, QStringLiteral("Cannot stage theme directory"));
         }
-        QSaveFile file(destination);
-        if (!file.open(QIODevice::WriteOnly) || !file.setPermissions(filePermissions) || file.write(it.value()) != it.value().size() || !file.commit()) {
+    }
+    const auto closeContent = qScopeGuard([contentFd] {
+        if (contentFd >= 0) {
+            ::close(contentFd);
+        }
+    });
+    for (auto it = files.cbegin(); it != files.cend(); ++it) {
+        bool written = false;
+        if (directory) {
+            const int fd = makeDirectoriesAt(contentFd, it.key().section(QLatin1Char('/'), 0, -2));
+            if (fd < 0) {
+                return fail(error, QStringLiteral("Cannot create theme directory: %1").arg(it.key()));
+            }
+            written = writeFileAt(fd, QFile::encodeName(it.key().section(QLatin1Char('/'), -1)), it.value());
+            ::close(fd);
+        } else {
+            written = writeFileAt(stagingFd, contentName, it.value());
+        }
+        if (!written) {
             return fail(error, QStringLiteral("Cannot write theme asset: %1").arg(it.key()));
         }
     }
-    const QString stagedMarker = directory ? content + QLatin1Char('/') + marker : staging.path() + QLatin1Char('/') + marker;
-    QFile ownershipMarker(stagedMarker);
-    if (!ownershipMarker.open(QIODevice::WriteOnly) || ownershipMarker.write("synced from user session\n") < 0) {
+    if (!writeFileAt(directory ? contentFd : stagingFd, markerName, QByteArrayLiteral("synced from user session\n"))) {
         return fail(error, QStringLiteral("Cannot mark synchronized theme"));
     }
-    ownershipMarker.close();
-    ownershipMarker.setPermissions(filePermissions);
-    if (!setOwner(content, owner, group, error) || (!directory && !setOwner(stagedMarker, owner, group, error))) {
+    if (!setOwnerAt(stagingFd, contentName, owner, group, error) || (!directory && !setOwnerAt(stagingFd, markerName, owner, group, error))) {
         return false;
     }
     // Keep the previous copy until the replacement is complete and ready.
-    const QString backup = staging.path() + QStringLiteral("/previous");
-    if (targetInfo.exists() && !QDir().rename(target, backup)) {
+    if (targetExists && renameat(parentFd, targetName.constData(), stagingFd, previousName.constData()) != 0) {
         return fail(error, QStringLiteral("Cannot replace synchronized theme: %1").arg(relativeName));
     }
-    if (!QDir().rename(content, target)) {
-        if (targetInfo.exists()) {
-            QDir().rename(backup, target);
+    if (renameat(stagingFd, contentName.constData(), parentFd, targetName.constData()) != 0) {
+        if (targetExists) {
+            renameat(stagingFd, previousName.constData(), parentFd, targetName.constData());
         }
         return fail(error, QStringLiteral("Cannot install theme: %1").arg(relativeName));
     }
     if (!directory) {
-        QFile::remove(targetMarker);
-        if (!QFile::rename(stagedMarker, targetMarker)) {
-            QFile::remove(target);
-            if (targetInfo.exists()) {
-                QDir().rename(backup, target);
+        unlinkat(parentFd, targetMarkerName.constData(), 0);
+        if (renameat(stagingFd, markerName.constData(), parentFd, targetMarkerName.constData()) != 0) {
+            unlinkat(parentFd, targetName.constData(), 0);
+            if (targetExists) {
+                renameat(stagingFd, previousName.constData(), parentFd, targetName.constData());
             }
             return fail(error, QStringLiteral("Cannot mark synchronized color scheme"));
         }
@@ -551,20 +691,20 @@ bool writeConfig(const QString &home, const QString &relativeName, const std::op
             ? true
             : fail(error, QStringLiteral("Cannot reset synchronized configuration: %1").arg(name));
     }
-    const QString parentPath = descriptorPath(parentFd);
-    QTemporaryDir staging(parentPath + QStringLiteral("/.soniclogin-config-XXXXXX"));
-    if (!staging.isValid()) {
+    QByteArray stagingName;
+    const int stagingFd = makeStagingAt(parentFd, QStringLiteral(".soniclogin-config-"), &stagingName);
+    if (stagingFd < 0) {
         return fail(error, QStringLiteral("Cannot stage synchronized configuration"));
     }
-    const QString path = staging.path() + QStringLiteral("/config");
-    QSaveFile file(path);
-    const QByteArray bytes = text->toUtf8();
-    if (!file.open(QIODevice::WriteOnly) || !file.setPermissions(filePermissions) || file.write(bytes) != bytes.size() || !file.commit()
-        || !setOwner(path, owner, group, error)) {
+    const auto removeStagingDirectory = qScopeGuard([parentFd, stagingFd, &stagingName] {
+        removeStaging(parentFd, stagingFd, stagingName);
+    });
+    const QByteArray configName("config");
+    if (!writeFileAt(stagingFd, configName, text->toUtf8()) || !setOwnerAt(stagingFd, configName, owner, group, error)) {
         return fail(error, QStringLiteral("Cannot write synchronized configuration: %1").arg(name));
     }
     // Atomic replacement does not follow an existing greeter-owned symlink.
-    return rename(QFile::encodeName(path).constData(), QFile::encodeName(parentPath + QLatin1Char('/') + name).constData()) == 0
+    return renameat(stagingFd, configName.constData(), parentFd, QFile::encodeName(name).constData()) == 0
         ? true
         : fail(error, QStringLiteral("Cannot install synchronized configuration: %1").arg(name));
 }
@@ -583,28 +723,44 @@ bool prune(const QString &home, const QSet<QString> &retained, QString *error)
         const auto closeParent = qScopeGuard([parentFd] {
             ::close(parentFd);
         });
-        const QString parentPath = descriptorPath(parentFd);
-        const auto entries = QDir(parentPath).entryInfoList(QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot);
-        for (const auto &entry : entries) {
-            if (entry.isSymLink() || retained.contains(root + QLatin1Char('/') + entry.fileName())) {
+        const QByteArray markerName = QFile::encodeName(marker);
+        const QByteArray removedName("removed");
+        for (const auto &name : entriesAt(parentFd)) {
+            const QString path = root + QLatin1Char('/') + QFile::decodeName(name);
+            struct stat info;
+            if (fstatat(parentFd, name.constData(), &info, AT_SYMLINK_NOFOLLOW) != 0 || S_ISLNK(info.st_mode) || retained.contains(path)) {
                 continue;
             }
-            const QString path = entry.filePath();
-            const QString ownershipMarker = entry.isDir() ? path + QLatin1Char('/') + marker : path + marker;
-            if (QFileInfo(ownershipMarker).isFile() && !QFileInfo(ownershipMarker).isSymLink()) {
-                QTemporaryDir staging(parentPath + QStringLiteral("/.soniclogin-reset-XXXXXX"));
-                const QString removedPath = staging.path() + QStringLiteral("/removed");
-                if (!staging.isValid() || !QDir().rename(path, removedPath)) {
-                    return fail(error, QStringLiteral("Cannot stage theme removal: %1").arg(path));
+            const bool isDirectory = S_ISDIR(info.st_mode);
+            bool marked = false;
+            if (isDirectory) {
+                const int fd = openDirectoryAt(parentFd, name);
+                marked = fd >= 0 && isRegularFileAt(fd, markerName);
+                if (fd >= 0) {
+                    ::close(fd);
                 }
-                const QFileInfo removedInfo(removedPath);
-                const bool removed = removedInfo.isDir() && !removedInfo.isSymLink() ? QDir(removedPath).removeRecursively() : QFile::remove(removedPath);
-                if (!removed) {
-                    return fail(error, QStringLiteral("Cannot remove synchronized theme: %1").arg(path));
-                }
-                if (!entry.isDir()) {
-                    QFile::remove(ownershipMarker);
-                }
+            } else {
+                marked = isRegularFileAt(parentFd, name + markerName);
+            }
+            if (!marked) {
+                continue;
+            }
+            QByteArray stagingName;
+            const int stagingFd = makeStagingAt(parentFd, QStringLiteral(".soniclogin-reset-"), &stagingName);
+            if (stagingFd < 0) {
+                return fail(error, QStringLiteral("Cannot stage theme removal: %1").arg(path));
+            }
+            if (renameat(parentFd, name.constData(), stagingFd, removedName.constData()) != 0) {
+                removeStaging(parentFd, stagingFd, stagingName);
+                return fail(error, QStringLiteral("Cannot stage theme removal: %1").arg(path));
+            }
+            const bool removed = removeAt(stagingFd, removedName);
+            removeStaging(parentFd, stagingFd, stagingName);
+            if (!removed) {
+                return fail(error, QStringLiteral("Cannot remove synchronized theme: %1").arg(path));
+            }
+            if (!isDirectory) {
+                unlinkat(parentFd, (name + markerName).constData(), 0);
             }
         }
     }

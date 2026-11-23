@@ -32,12 +32,40 @@
 #include <sys/prctl.h>
 #endif
 #include <stdio.h>
+#ifdef Q_OS_FREEBSD
+#include <sys/socket.h>
+#include <sys/un.h>
+#endif
 #include <sys/stat.h>
 #include <unistd.h>
 #include <utility>
 
 namespace SONICLOGIN
 {
+
+#ifdef Q_OS_FREEBSD
+// Without abstract sockets, X started with -displayfd replaces a running server's socket file,
+// so pick a display number no server is listening on.
+static int freeDisplayNumber()
+{
+    for (int display = 0; display < 64; ++display) {
+        const QByteArray path = QByteArrayLiteral("/tmp/.X11-unix/X") + QByteArray::number(display);
+        sockaddr_un address{};
+        address.sun_family = AF_UNIX;
+        qstrncpy(address.sun_path, path.constData(), sizeof(address.sun_path));
+        const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        if (fd < 0) {
+            return -1;
+        }
+        const bool listening = ::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) == 0;
+        ::close(fd);
+        if (!listening) {
+            return display;
+        }
+    }
+    return -1;
+}
+#endif
 
 XOrgUserHelper::XOrgUserHelper(QObject *parent)
     : QObject(parent)
@@ -238,6 +266,11 @@ bool XOrgUserHelper::startServer(const QString &cmd)
 
     // Append xauth and display fd to the command
     auto args = QStringList() << QStringLiteral("-auth") << m_xauth.authPath() << QStringLiteral("-displayfd") << QString::number(pipeFds[1]);
+#ifdef Q_OS_FREEBSD
+    if (const int display = freeDisplayNumber(); display >= 0) {
+        args << QStringLiteral(":%1").arg(display);
+    }
+#endif
 
     // Append VT from environment
     // Xorg needs to know which VT to open, regardless of init system.

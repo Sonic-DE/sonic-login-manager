@@ -29,11 +29,70 @@
 #include <string>
 
 #if defined(Q_OS_FREEBSD)
+#include <cerrno>
+#include <csignal>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
+#endif
+
+#if defined(Q_OS_FREEBSD)
+namespace {
+// ConsoleKit2 takes a session's VT from the controlling terminal of the process that opens it; without one the
+// session lands on a seat that can't switch consoles. Hold the VT while PAM opens the session, then give it back
+// so the session itself can make it its controlling terminal.
+class ControllingConsole {
+public:
+    explicit ControllingConsole(int vt)
+    {
+        if (vt <= 0) {
+            return;
+        }
+        const QString path = SONICLOGIN::VirtualTerminal::path(vt);
+        if (getsid(0) != getpid() && setsid() == -1) {
+            qWarning() << "PamBackend: cannot become a session leader to hold" << path << ":" << strerror(errno);
+            return;
+        }
+        m_fd = ::open(qPrintable(path), O_RDWR | O_NOCTTY);
+        if (m_fd < 0) {
+            qWarning() << "PamBackend: cannot open" << path << ":" << strerror(errno);
+            return;
+        }
+        if (ioctl(m_fd, TIOCSCTTY, 0) == -1) {
+            qWarning() << "PamBackend: cannot make" << path << "the controlling terminal:" << strerror(errno);
+            ::close(m_fd);
+            m_fd = -1;
+        }
+    }
+    ~ControllingConsole()
+    {
+        release();
+    }
+    void release()
+    {
+        if (m_fd < 0) {
+            return;
+        }
+        // Giving up the terminal hangs up the session leader's foreground group, which is this process.
+        struct sigaction ignore = {};
+        struct sigaction previous = {};
+        ignore.sa_handler = SIG_IGN;
+        sigaction(SIGHUP, &ignore, &previous);
+        ioctl(m_fd, TIOCNOTTY);
+        sigaction(SIGHUP, &previous, nullptr);
+        ::close(m_fd);
+        m_fd = -1;
+    }
+
+private:
+    int m_fd = -1;
+};
+}
 #endif
 
 namespace SONICLOGIN
@@ -336,6 +395,17 @@ bool PamBackend::openSession()
         }
     }
 
+#ifdef Q_OS_FREEBSD
+    // Without this pam_ck_connector names the X device /dev/tty<XDG_VTNR>, a Linux name, and ConsoleKit2 puts
+    // a session with no display yet (the greeter's) on a seat that can't switch consoles, so Xorg gets no seat.
+    if (sessionEnv.contains(QStringLiteral("XDG_VTNR"))) {
+        const bool hasDisplay = sessionType == QLatin1String("x11") && (sessionClass == QLatin1String("user") || !m_displayServer)
+            && !sessionEnv.value(QStringLiteral("DISPLAY")).isEmpty();
+        sessionEnv.insert(QStringLiteral("CKCON_X11_DISPLAY_DEVICE"),
+                          hasDisplay ? VirtualTerminal::path(sessionEnv.value(QStringLiteral("XDG_VTNR")).toInt()) : QString());
+    }
+#endif
+
     if (!m_pam->putEnv(sessionEnv)) {
         qCritical() << "PamBackend: openSession: putEnv failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
@@ -348,6 +418,9 @@ bool PamBackend::openSession()
     // out of any supervisor-imposed nested cgroup before pam_open_session.
     migrateToRootCgroup();
 
+#if defined(Q_OS_FREEBSD)
+    ControllingConsole console(sessionEnv.value(QStringLiteral("XDG_VTNR")).toInt());
+#endif
     if (!m_pam->openSession()) {
         qCritical() << "PamBackend: openSession: pam_open_session failed:" << m_pam->errorString();
         if (m_app->socket()->state() == QLocalSocket::ConnectedState) {
@@ -355,7 +428,14 @@ bool PamBackend::openSession()
         }
         return false;
     }
+#if defined(Q_OS_FREEBSD)
+    console.release();
+#endif
     sessionEnv.insert(m_pam->getEnv());
+#ifdef Q_OS_FREEBSD
+    // Only pam_ck_connector reads it; the session doesn't need it.
+    sessionEnv.remove(QStringLiteral("CKCON_X11_DISPLAY_DEVICE"));
+#endif
     m_app->session()->setProcessEnvironment(sessionEnv);
 
     QProcessEnvironment env = m_app->session()->processEnvironment();

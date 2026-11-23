@@ -14,5 +14,6 @@ account		required pam_permit.so
 # Can't change password
 password	required pam_deny.so
 
-# Setup session
+# Setup session; ConsoleKit2 gives the greeter's X server its seat, as pam_systemd does on Linux
 session		required pam_permit.so
+session		optional pam_ck_connector.so nofail

@@ -77,15 +77,40 @@ QString XorgUserDisplayServer::command(Display *display, const QString &userName
     if (serverPath.isEmpty()) {
         serverPath = nativeXServerPath(QStringLiteral(X_SERVER_EXECUTABLE));
     }
+    // The X server's suid wrapper option moves Xorg between bin and libexec, so the path
+    // found at build time is gone after the server is rebuilt the other way.
+    for (const char *dir : {"/usr/bin", "/usr/libexec", "/usr/lib", "/usr/local/bin", "/usr/local/libexec"}) {
+        if (!serverPath.isEmpty()) {
+            break;
+        }
+        const QString candidate = QLatin1String(dir) + QStringLiteral("/Xorg");
+        if (QFileInfo::exists(candidate)) {
+            serverPath = nativeXServerPath(candidate);
+        }
+    }
     if (serverPath.isEmpty()) {
         // Keep the display-server helper path active so an invalid override
         // cannot bypass Xorg startup and launch the greeter directly.
         serverPath = QStringLiteral("/nonexistent/soniclogin-invalid-xorg");
     }
 
+    bool useLogFile = true;
+#ifdef Q_OS_FREEBSD
+    // FreeBSD grants hardware I/O only to root; Xorg.wrap gives X root as Xwrapper.config allows.
+    // X refuses -logfile with elevated privileges, so it logs to its default file instead.
+    const QString wrapperPath = QFileInfo(serverPath).absolutePath() + QStringLiteral("/Xorg.wrap");
+    if (QFileInfo(wrapperPath).isExecutable()) {
+        serverPath = wrapperPath;
+        useLogFile = false;
+    }
+#endif
+
     args << serverPath << mainConfig.X11.ServerArguments.get().split(QLatin1Char(' '), Qt::SkipEmptyParts) << QStringLiteral("-background")
          << QStringLiteral("none") << QStringLiteral("-seat") << display->seat()->name() << QStringLiteral("-noreset") << QStringLiteral("-keeptty")
-         << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3") << QStringLiteral("-logfile") << xorgLogFile;
+         << QStringLiteral("-novtswitch") << QStringLiteral("-verbose") << QStringLiteral("3");
+    if (useLogFile) {
+        args << QStringLiteral("-logfile") << xorgLogFile;
+    }
 
     return args.join(QLatin1Char(' '));
 }
