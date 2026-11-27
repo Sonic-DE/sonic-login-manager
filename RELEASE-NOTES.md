@@ -4,6 +4,8 @@ Sonic Login Manager is the SonicDE login screen: it greets you when your compute
 
 ## Unreleased
 
+- Text and icons on the login screen are sharp again. The clock and date have a stronger glow (on dark themes) or shadow (on light themes) behind them while only the wallpaper shows, and it fades away when the rest of the login screen and its blurred background appear.
+- The on-screen keyboard and keyboard layout buttons now appear together with the rest of the login controls, instead of staying over the clock while the screen is idle.
 - On systems that keep 64-bit libraries in `lib64`, such as Gentoo and Fedora, the login screen and its settings page now read the same system-wide defaults as the login manager, in `/usr/lib/soniclogin`.
 - The login screen now starts even if the Plymouth boot splash is still running, under every init system: the login manager closes the splash itself before starting the display server. If `plymouth` is installed outside `/usr/local/bin`, `/usr/bin` or `/bin`, set its path with `PlymouthPath` in `soniclogin.conf`.
 - The login screen now finds the X server after it has been reinstalled to a different folder, for example after switching Gentoo's `suid` USE flag, instead of failing to start.

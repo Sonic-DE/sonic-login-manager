@@ -41,16 +41,26 @@ Item {
     Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
-    // A glow in the background colour, so the scheme's text and icons stay
-    // readable on any wallpaper: dark on dark schemes, light on light ones.
-    component ContentShadow: MultiEffect {
-        Kirigami.Theme.colorSet: Kirigami.Theme.Window
-        Kirigami.Theme.inherit: false
+    // A glow in the background colour behind the clock, so it stays readable on any wallpaper.
+    // Used as a sibling placed before its source: a layer.effect would draw the text blurry.
+    component GlowLayer: MultiEffect {
+        anchors.fill: parent
         shadowEnabled: true
         shadowColor: Kirigami.Theme.backgroundColor
-        shadowOpacity: 0.9
+        shadowOpacity: 1
         shadowBlur: 1
-        blurMax: 8
+    }
+    component ContentShadow: Item {
+        id: glow
+        required property Item source
+        Kirigami.Theme.colorSet: Kirigami.Theme.Window
+        Kirigami.Theme.inherit: false
+
+        // Two tight and two wider halos: one blurred layer alone is too faint over bright wallpapers.
+        GlowLayer { source: glow.source; blurMax: 16 }
+        GlowLayer { source: glow.source; blurMax: 16 }
+        GlowLayer { source: glow.source; blurMax: 48 }
+        GlowLayer { source: glow.source; blurMax: 48 }
     }
 
     property string notificationMessage
@@ -108,10 +118,22 @@ Item {
         onPressed: SonicLogin.GreeterState.activateWindow(Window.window);
         onPositionChanged: SonicLogin.GreeterState.activateWindow(Window.window);
 
+        // Only over the plain wallpaper: the blurred background behind the active UI needs no glow.
+        ContentShadow {
+            anchors.fill: clock
+            source: clock
+            visible: !root.softwareRendering && clock.visible
+            opacity: loginScreenRoot.uiVisible ? 0 : 1
+            Behavior on opacity {
+                OpacityAnimator {
+                    duration: Kirigami.Units.veryLongDuration * 2
+                    easing.type: Easing.InOutQuad
+                }
+            }
+        }
+
         BreezeComponents.Clock {
             id: clock
-            layer.enabled: !root.softwareRendering
-            layer.effect: ContentShadow {}
             visible: !root.keyboardActive && y > 0 && Settings.showClock
             anchors.horizontalCenter: parent.horizontalCenter
             y: (userListComponent.userList.y + mainStack.y)/2 - height/2
@@ -128,9 +150,6 @@ Item {
             hoverEnabled: true
 
             focus: true
-
-            layer.enabled: !root.softwareRendering
-            layer.effect: ContentShadow {}
 
             opacity: loginScreenRoot.uiVisible ? 1 : 0
             Behavior on opacity {
@@ -373,9 +392,9 @@ Item {
 
         LoginLockScreen.Footer {
             id: footer
-            visible: !root.keyboardActive
-            layer.enabled: !root.softwareRendering
-            layer.effect: ContentShadow {}
+            // Shown with the rest of the login UI, not over the idle clock; hidden, it takes no clicks.
+            visible: !root.keyboardActive && opacity > 0
+            opacity: loginScreenRoot.uiVisible ? 1 : 0
 
             onVirtualKeyboardVisibleChanged: SonicLogin.GreeterState.setTimeoutInhibited(footer, virtualKeyboardVisible)
             Component.onDestruction: {
